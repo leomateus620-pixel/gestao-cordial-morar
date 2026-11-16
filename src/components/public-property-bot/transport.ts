@@ -47,7 +47,11 @@ async function checked(response: Response) {
   }
   throw new TransportError(code, Number(response.headers.get("Retry-After")) || 0);
 }
-export async function openSession(brand: BotBrand, signal: AbortSignal): Promise<SessionView> {
+export async function openSession(
+  brand: BotBrand,
+  signal: AbortSignal,
+  openingId: string = crypto.randomUUID(),
+): Promise<SessionView> {
   return sessionViewSchema.parse(
     await (
       await checked(
@@ -55,7 +59,7 @@ export async function openSession(brand: BotBrand, signal: AbortSignal): Promise
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: "{}",
+          body: JSON.stringify({ openingId }),
           signal,
           cache: "no-store",
         }),

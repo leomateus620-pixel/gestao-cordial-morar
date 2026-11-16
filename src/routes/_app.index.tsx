@@ -19,6 +19,7 @@ import { AgenciamentosQuickStrip } from "@/components/agenciamentos/Agenciamento
 import { DailyBriefing } from "@/components/assistant/AgentWorkspace";
 import { AttendanceEvolutionCard } from "@/components/dashboard/AttendanceEvolutionCard";
 import { DashboardMetricCards } from "@/components/dashboard/DashboardMetricCards";
+import { PublicBotInsightsSection } from "@/components/dashboard/PublicBotInsights";
 
 import { LeadOriginCard } from "@/components/dashboard/LeadOriginCard";
 import { PropertyIntelligenceCard } from "@/components/dashboard/PropertyIntelligenceCard";
@@ -158,6 +159,7 @@ function Dashboard() {
 
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
+      {isAdminOwner && <PublicBotInsightsSection />}
       {session && session.perfil !== "financeiro_admin" && <DailyBriefing />}
 
       {/* ── Agenciamentos — resumo compacto ─────────────────────────────── */}

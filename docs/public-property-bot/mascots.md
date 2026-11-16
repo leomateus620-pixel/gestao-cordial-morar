@@ -1,19 +1,39 @@
-# Personagens e movimento
+# Mascotes originais e movimento
 
-O usuário pediu explicitamente um personagem com movimento dentro do ícone. O símbolo estático provisório da marca foi substituído por dois desenhos SVG próprios, sem alterar os logotipos oficiais.
+Os dois personagens foram gerados com a ferramenta nativa ImageGen em 16/11/2026, seguindo o workflow Creative Production `produce`, `board-runtime` e a skill ImageGen. A ferramenta `creative_production_board` não estava disponível: não foi criado nem aprovado um board. A geração dos arquivos, porém, foi concluída e verificada; os desenhos SVG provisórios foram substituídos no componente por ilustrações raster originais com transparência real.
 
-Creative Production foi solicitado e seus `produce/SKILL.md` e `board-runtime` foram lidos. A sessão não disponibilizou `creative_production_board`; portanto, estes são assets vetoriais locais provisórios, não uma entrega gerada/aprovada no Creative Production. O brief original continua sendo a referência para eventual acabamento nessa ferramenta.
+Os logos existentes foram vistos antes da criação e usados como referência de formas e cores no briefing. Nenhum logo oficial foi alterado ou incorporado como texto gerado. Os PNGs originais, prompts integrais, dimensões, tamanhos e hashes estão em [mascot-sources/manifest.json](./mascot-sources/manifest.json).
 
-- Cordial: rosto arredondado, expressão acolhedora, petróleo e turquesa, pequena alusão a um telhado e gesto de mão.
-- Morar: silhueta de casa mais angular, chaminé, visor e corpo grafite, telhado e detalhes laranja. A diferença vai além da cor.
-- Estados: neutro, ouvindo, buscando e concluído. `Mascot.tsx` é a fonte do desenho; `mascot.css` anima cabeça, olhos e mão conforme o estado real da conversa.
-- O cumprimento decorativo dura 4,6 segundos e termina. Hover/foco reproduz um gesto breve. Escuta/busca animam apenas enquanto essas operações estão em andamento. `prefers-reduced-motion: reduce` remove todas as animações, mantendo expressão e status textual.
-- Não há vídeo, canvas, biblioteca de animação ou requisições de imagem para o launcher. O SVG decorativo fica fora da árvore acessível; o botão mantém nome completo e estado expandido.
+- **Cordial:** personagem-casa arredondado, telhado petróleo, corpo turquesa, rosto creme e mão em aceno. O contorno macio e a porta mantêm o vínculo com acolhimento e moradia.
+- **Morar:** personagem-casa angular grafite, telhado assimétrico laranja, rosto em arco e chave lateral. A silhueta, pose e expressão são próprias; não é uma recoloração da Cordial.
+- **Material:** ilustração tridimensional suave com acabamento fosco. São PNG/WebP, não vetores.
 
-Oito exports estáticos transparentes ficam em `public/public-property-bot/{cordial,morar}-{neutral,listening,searching,complete}.svg`. São vetores reais, de 1.275 a 1.537 bytes cada, total de 11.082 bytes. O launcher usa 36 px; cabeçalho do chat, 40 px; boas-vindas, 64 px. A prévia identificada `state=mascots` permite comparar 24/32/40/64 px e os quatro estados. Não há fundo raster nem bordas com halo.
+## Entrega e custo de carregamento
 
-Capturas em `evidence/mascots.png` e `evidence/mascots-detail.png` registram o desenho em tamanho real. A checagem de movimento reduzido no navegador confirmou `animation-name: none` nos elementos animados. O desenho a 24 px conserva silhueta e olhos; o gesto é mais legível a partir de 32 px.
+| Asset servido         | Dimensão         |  Bytes | Uso     |
+| --------------------- | ---------------- | -----: | ------- |
+| `cordial-mascot.webp` | 192 × 192, alpha | 38.808 | Cordial |
+| `morar-mascot.webp`   | 192 × 192, alpha | 40.160 | Morar   |
 
-Medição isolada com esbuild minificado, React externo: 3.091 bytes de JavaScript (1.177 gzip) e 2.089 bytes de CSS (586 gzip). Isso mede o componente, não a diferença total do bundle do site. O build final do navegador não contém mediabunny, nomes dos segredos do bot ou referência a SUPABASE_SERVICE_ROLE.
+Os arquivos ficam em `public/public-property-bot/`. Cada site requisita apenas sua imagem, reutilizada no cabeçalho e no painel; o navegador pode reutilizar o mesmo recurso entre estados. O orçamento adotado foi **48 KiB por marca**. Os originais de 1.254 × 1.254 ficam somente na documentação e não são importados pelo site. A exportação usa redimensionamento Lanczos3 e WebP sem perda pelo Photon já existente, sem novo pacote ou processamento de imagem no navegador.
 
-Brief para Creative Production quando disponível: preservar o par de identidades, acabamento elegante, acolhimento sem infantilização exagerada, legibilidade pequena, quatro estados e transparência. Não incorporar texto gerado, não redesenhar logo oficial, não criar animação pesada.
+Medição isolada do componente com esbuild minificado e React externo: **838 bytes de JavaScript (455 gzip)** e **3.528 bytes de CSS (953 gzip)**. É a medida do componente, não a diferença total do bundle da aplicação. As imagens são recursos externos ao JavaScript. Não há vídeo, canvas, SDK ou biblioteca de animação adicional.
+
+## Quatro estados, uma arte por marca
+
+`Mascot.tsx` usa um raster original por marca; os quatro estados são composições de interface com CSS, não quatro imagens geradas. A arte permanece decorativa (`aria-hidden`, imagem com `alt` vazio); o controle e o status da conversa fornecem o nome acessível.
+
+| Estado    | Comportamento                                                                                                                       |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Neutro    | Cordial faz um balanço acolhedor de 1,6 s; Morar um breve gesto de 1,3 s. Uma execução ao montar, sem animação decorativa contínua. |
+| Ouvindo   | Inclinação estática diferente por marca; pequeno indicador de áudio anima somente enquanto a gravação está ativa.                   |
+| Buscando  | Cordial oscila suavemente; Morar inclina o corpo com a chave. Três pontos acompanham a busca real.                                  |
+| Concluído | Elevação breve de 560 ms e indicador de confirmação.                                                                                |
+
+Hover/foco no launcher pode repetir o gesto breve. `prefers-reduced-motion: reduce` remove todas as animações, preservando a arte, a inclinação de escuta, os indicadores e os textos de status. O movimento não altera filtros, estado de rede, cota ou comportamento de foco.
+
+## Inspeção
+
+Os originais e os WebPs exportados foram abertos e inspecionados. Há canal alpha e margens transparentes reais. A [prancha de escala](./evidence/mascots-raster-scale.png) mostra Cordial na primeira linha e Morar na segunda; em cada metade, as colunas são 24, 32, 40 e 64 px, primeiro sobre a superfície clara e depois sobre petróleo/grafite usados no produto. Rosto e silhueta continuam distinguíveis a 24 px; mão e chave são mais legíveis a partir de 32 px. Não foi observado halo claro nessas escalas.
+
+A prévia identificada `state=mascots` reutiliza o componente real e permite inspecionar todos os estados e tamanhos. Capturas antigas `mascots.png`/`mascots-detail.png` registram a versão SVG anterior e não são evidência desta arte raster. A inspeção do movimento e do layout completo no navegador é registrada separadamente pela validação da interface.

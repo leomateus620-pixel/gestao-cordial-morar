@@ -3,6 +3,9 @@ import { sitePublicHost } from "../cordial-site/domains";
 import {
   chatInputSchema,
   normalizedEventSchema,
+  botSessionInputSchema,
+  botPanelOpenEventSchema,
+  botOperationalEventSchema,
   newDraft,
   type BotBrand,
   type BotEvent,
@@ -23,6 +26,7 @@ import { publicSuggestions } from "./suggestions.server";
 import { transcribeRequest, voiceAvailable } from "./voice.server";
 import { QUOTA_MESSAGE } from "./brand-config";
 import { readBoundedBody } from "./transport";
+import { recordInsight } from "./insights.server";
 export { readBoundedBody } from "./transport";
 
 export type BotEndpoint = "session" | "chat" | "suggestions" | "transcribe" | "events";
@@ -137,9 +141,7 @@ export async function handlePublicBot(
     validatePublicBotRequest(request, brand, endpoint);
     const identity = await dailyIdentity(request);
     if (endpoint === "session") {
-      z.object({})
-        .strict()
-        .parse(await jsonBody(request));
+      botSessionInputSchema.parse(await jsonBody(request));
       const config = await repo.configuration(brand, request.signal);
       if (!config.enabled) throw new BotError("service_unavailable");
       const token = readToken(request, brand) ?? newToken();
@@ -187,8 +189,23 @@ export async function handlePublicBot(
       );
     }
     if (endpoint === "events") {
-      const event = normalizedEventSchema.parse(await jsonBody(request));
-      await repo.event(brand, hash, event, request.signal);
+      const body = await jsonBody(request);
+      if (body?.kind === "panel_open") {
+        const event = botPanelOpenEventSchema.parse(body);
+        await repo.readSession(brand, hash, request.signal);
+        await recordInsight("open", brand, (signal) =>
+          repo.insightOpen(brand, hash, event.eventId, signal),
+        );
+      } else if (body?.kind === "contact_click") {
+        const event = botOperationalEventSchema.parse(body);
+        await repo.readSession(brand, hash, request.signal);
+        await recordInsight("whatsapp", brand, (signal) =>
+          repo.insightWhatsapp(brand, hash, event, signal),
+        );
+      } else {
+        const event = normalizedEventSchema.parse(body);
+        await repo.event(brand, hash, event, request.signal);
+      }
       return new Response(null, { status: 204, headers: publicBotHeaders });
     }
     if (endpoint === "transcribe") {

@@ -14,6 +14,10 @@ import {
 import { FilterChips, filterLabel } from "../../src/components/public-property-bot/FilterChips";
 import Panel from "../../src/components/public-property-bot/Panel";
 const mocks = vi.hoisted(() => ({ open: vi.fn(), send: vi.fn(), transcribe: vi.fn() }));
+vi.mock("../../src/components/public-property-bot/events", async (original) => ({
+  ...(await original<object>()),
+  recordBotOpen: vi.fn(),
+}));
 vi.mock("../../src/components/public-property-bot/transport", async (original) => ({
   ...(await original<object>()),
   openSession: mocks.open,

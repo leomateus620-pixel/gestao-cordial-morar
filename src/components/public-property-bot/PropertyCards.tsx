@@ -30,7 +30,7 @@ export function PropertyCards({
 }: {
   cards: BotCard[];
   brand: BotBrand;
-  onAction?(kind: "open" | "whatsapp"): void;
+  onAction?(kind: "open" | "whatsapp", publicId: string): void;
 }) {
   return (
     <div className="ppb-cards">
@@ -51,7 +51,7 @@ export function PropertyCards({
                 tabIndex={-1}
                 aria-hidden="true"
                 className="ppb-card-photo"
-                onClick={() => onAction?.("open")}
+                onClick={() => onAction?.("open", card.id)}
               >
                 <img src={href.image} alt="" loading="lazy" width={600} height={375} />
               </a>
@@ -66,7 +66,7 @@ export function PropertyCards({
                   href={href.detail}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => onAction?.("open")}
+                  onClick={() => onAction?.("open", card.id)}
                 >
                   {card.title}
                   <span className="ppb-sr-only"> (abre em nova aba)</span>
@@ -101,7 +101,7 @@ export function PropertyCards({
                   href={href.detail}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => onAction?.("open")}
+                  onClick={() => onAction?.("open", card.id)}
                 >
                   Ver imóvel <ArrowUpRight size={15} aria-hidden="true" />
                 </a>
@@ -110,7 +110,7 @@ export function PropertyCards({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => {
-                    if (href.contact.startsWith("https:")) onAction?.("whatsapp");
+                    if (href.contact.startsWith("https:")) onAction?.("whatsapp", card.id);
                   }}
                 >
                   <MessageCircle size={16} aria-hidden="true" />

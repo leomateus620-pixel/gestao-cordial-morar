@@ -37,6 +37,7 @@ import {
 import { QUOTA_MESSAGE } from "./brand-config";
 import { redactIncidentalData } from "./privacy";
 import { guardTextPatch } from "./text-patch";
+import { recordTurnInsight } from "./insights.server";
 
 export type TurnDependencies = { repo: PublicRepository; interpret: typeof interpret };
 const defaults: TurnDependencies = { repo: repository, interpret };
@@ -97,6 +98,9 @@ export async function prepareTurn(
       throw new TurnNotAccepted("stale_revision", 409, acceptance.draft, 0);
     case "interrupted":
       throw new TurnNotAccepted("interrupted", 409, acceptance.draft, 0);
+  }
+  if (acceptance.state === "accepted" || acceptance.state === "replay") {
+    await recordTurnInsight(deps.repo, brand, tokenHash, input.requestId, input.action);
   }
   // Only IDs and controlled historical answers. Never an employee or caller-supplied transcript.
   const session = await deps.repo.readSession(brand, tokenHash, signal);

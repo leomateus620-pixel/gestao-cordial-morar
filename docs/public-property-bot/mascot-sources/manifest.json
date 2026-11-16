@@ -1,0 +1,50 @@
+{
+  "createdAt": "2026-11-16",
+  "workflow": "Creative Production produce + native ImageGen",
+  "generator": "image_gen.imagegen (native builtin)",
+  "transparentBackground": true,
+  "board": { "available": false, "created": false },
+  "brandReferencesInspected": [
+    "public/cordial-site/logo.png",
+    "public/cordial-site/logo-petroleo.png",
+    "public/morar-site/logo.jpg"
+  ],
+  "referenceMethod": "Local official logos were inspected visually; brand language was described in the prompts. No official logo was edited or generated inside the characters.",
+  "export": {
+    "tool": "@cf-wasm/photon 0.4.0 (existing project package, used only during asset export)",
+    "operation": "Deterministic Lanczos3 resize to 192x192 and lossless WebP encoding; no generative edits, recoloring or vector tracing",
+    "runtimeDependencyAdded": false,
+    "maximumBytesPerServedAsset": 49152
+  },
+  "assets": [
+    {
+      "brand": "cordial",
+      "source": "cordial-imagegen.png",
+      "sourceDimensions": [1254, 1254],
+      "sourceBytes": 1411313,
+      "servedFile": "public/public-property-bot/cordial-mascot.webp",
+      "servedDimensions": [192, 192],
+      "servedBytes": 38808,
+      "sha256": "b4f090f1ba6ca38791fb08594e70fcda04ca97471ff58e8b937b7aac1a4990f6",
+      "promptFile": "cordial-prompt.txt"
+    },
+    {
+      "brand": "morar",
+      "source": "morar-imagegen.png",
+      "sourceDimensions": [1254, 1254],
+      "sourceBytes": 1415773,
+      "servedFile": "public/public-property-bot/morar-mascot.webp",
+      "servedDimensions": [192, 192],
+      "servedBytes": 40160,
+      "sha256": "3b34afbc07fda7c892a8ab9ddf3c3c3d9adbb2bc438eef7e5b70dfd59be61bb4",
+      "promptFile": "morar-prompt.txt"
+    }
+  ],
+  "states": {
+    "neutral": "Static original art plus one short greeting on mount; brand-specific sway or nod",
+    "listening": "Attentive static tilt plus animated CSS audio bars only while recording",
+    "searching": "Brand-specific subtle sway or lean plus CSS dots only during an actual search",
+    "complete": "One short lift plus a CSS checkmark",
+    "reducedMotion": "All animations disabled; the static art, listening tilt and status indicator remain"
+  }
+}

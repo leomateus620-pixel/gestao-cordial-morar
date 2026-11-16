@@ -28,5 +28,6 @@ jobs:
         run: |
           bun run test:public-bot
           bun run test:public-bot:ui
+          bun run test:public-bot-insights:ui
       - name: Build
         run: bun run build

@@ -3,7 +3,7 @@ export const botBrand = (brand: BotBrand) => ({
   brand,
   name: brand === "cordial" ? "Cordial Bot" : "Morar Bot",
   api: `/api/${brand}-site/bot`,
-  avatar: `/public-property-bot/${brand}-neutral.svg`,
+  avatar: `/public-property-bot/${brand}-mascot.webp`,
   greeting: "Vamos encontrar seu lugar? Conte o que você procura.",
 });
 export const QUOTA_MESSAGE =

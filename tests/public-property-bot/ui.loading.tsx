@@ -15,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   rejectVoice: null as null | ((error: Error) => void),
 }));
+vi.mock("../../src/components/public-property-bot/events", async (original) => ({
+  ...(await original<object>()),
+  recordBotOpen: vi.fn(),
+}));
 vi.mock("../../src/components/public-property-bot/Panel", async () => {
   throw new Error("Synthetic panel chunk failure");
 });
