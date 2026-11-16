@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-16",
+  "commit": "2f7dcd595507e209c2c4315bee1672cc346978f3",
+  "environment": "Isolated temporary Lovable process; real scoped gateway, public catalog and AI; synthetic sessions and TEST-NET request fixture",
+  "ok": true,
+  "exitCode": 0,
+  "productionIngressAttested": false,
+  "aiCalls": 2,
+  "costReservations": 2,
+  "reports": [
+    {
+      "brand": "cordial",
+      "ok": true,
+      "elapsedMs": 5560,
+      "turns": 1,
+      "cards": 5,
+      "suggestions": 4,
+      "persisted": true,
+      "crossBrandDenied": true,
+      "centralLinksVerified": true,
+      "model": "google/gemini-3.1-flash-lite",
+      "providerLatencyMs": 1061,
+      "inputTokens": 2299,
+      "outputTokens": 102
+    },
+    {
+      "brand": "morar",
+      "ok": true,
+      "elapsedMs": 5926,
+      "turns": 1,
+      "cards": 1,
+      "suggestions": 4,
+      "persisted": true,
+      "crossBrandDenied": true,
+      "centralLinksVerified": true,
+      "model": "google/gemini-3.1-flash-lite",
+      "providerLatencyMs": 1060,
+      "inputTokens": 2098,
+      "outputTokens": 104
+    }
+  ],
+  "cleanupVerifiedViaConnector": true,
+  "remainingSyntheticSessions": 0,
+  "remainingSyntheticQuotas": 0,
+  "remainingSyntheticOpenLimits": 0,
+  "remainingSyntheticUsage": 0,
+  "realPaidCallsRetained": 2,
+  "publicDocumentsAfterCleanup": 852,
+  "limitation": "One sample per brand; elapsedMs includes opening, facets, search, persistence and extra validation. This is not public HTTP E2E, device validation or p95. No automatic paid retry."
+}

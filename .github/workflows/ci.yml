@@ -24,5 +24,9 @@ jobs:
         run: bun run test:marketing
       - name: Site público e política PostgreSQL
         run: bun run test:site
+      - name: Bots públicos — servidor e interface
+        run: |
+          bun run test:public-bot
+          bun run test:public-bot:ui
       - name: Build
         run: bun run build

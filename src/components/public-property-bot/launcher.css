@@ -1,0 +1,142 @@
+.cordial-site .ppb-launcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  min-width: 44px;
+  gap: 8px;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid #155466;
+  border-radius: 999px;
+  background: #155466;
+  color: #fff;
+  font:
+    650 13px/1.2 "Cordial Manrope",
+    Arial,
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.cordial-site .ppb-launcher .ppb-mascot {
+  width: 36px;
+  height: 36px;
+}
+.cordial-site .ppb-launcher:hover {
+  background: #103e49;
+}
+.cordial-site .ppb-launcher:active {
+  filter: brightness(0.9);
+}
+.cordial-site .ppb-launcher:focus-visible {
+  outline: 3px solid #155466;
+  outline-offset: 3px;
+}
+.cordial-site .ppb-launcher[data-brand="morar"] {
+  background: #2a3036;
+  border-color: #2a3036;
+}
+.ppb-launcher-short {
+  display: none;
+}
+.ppb-opening {
+  position: fixed;
+  z-index: 120;
+  right: 16px;
+  top: 90px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: white;
+  color: #253b3e;
+  box-shadow: 0 8px 32px #103e4926;
+}
+.ppb-failure-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 119;
+  background: #102a3426;
+}
+.ppb-failure {
+  position: fixed;
+  z-index: 120;
+  top: max(20px, env(safe-area-inset-top));
+  right: 20px;
+  width: min(430px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px;
+  border-radius: 20px;
+  background: #fff;
+  color: #253b3e;
+  box-shadow: 0 24px 80px #103e4933;
+  font:
+    400 16px/1.5 "Cordial Manrope",
+    Arial,
+    sans-serif;
+}
+.ppb-failure h2 {
+  margin: 0 44px 16px 0;
+  font-size: 20px;
+}
+.ppb-failure p {
+  margin: 0 0 24px;
+}
+.ppb-failure-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ppb-failure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ppb-failure-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #155466;
+  color: #fff;
+  text-decoration: none;
+}
+.ppb-failure[data-brand="morar"] {
+  color: #2a3036;
+}
+.ppb-failure[data-brand="morar"] .ppb-failure-actions a {
+  background: #2a3036;
+}
+.ppb-failure :is(button, a):focus-visible {
+  outline: 3px solid #155466;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .ppb-launcher-full {
+    display: none;
+  }
+  .ppb-launcher-short {
+    display: inline;
+  }
+  .cordial-site .ppb-launcher {
+    gap: 5px;
+    padding-right: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cordial-site .ppb-launcher {
+    transition: none;
+  }
+}
