@@ -1,20 +1,30 @@
-# Destaques semanais: primeiro teste controlado (aguardando código)
+# Liberar os bots Cordial e Morar: validar o IP confiável e publicar
 
-## Já verificado (somente leitura)
-- A chave da IA está configurada e disponível no servidor. O valor não foi exibido.
-- O modelo da edição de fotos (`openai/gpt-image-2.5-sunburst`) está disponível no serviço de IA.
-- Nenhuma imagem foi gerada e nada foi alterado ou cobrado.
+## Objetivo
+Comprovar, separadamente em cordialimoveis.com e imobiliariamorarimoveis.com.br, que o servidor recebe o IP real do visitante e ignora cabeçalhos forjados. Depois configurar `PUBLIC_BOT_TRUSTED_IP_HEADER` e `PUBLIC_BOT_INGRESS_VERIFIED` e publicar, para liberar os dois bots.
 
-## Decisões
-- Só ajustes fiéis feitos pela IA sobre a foto original.
-- Primeiro teste: 1 imóvel com as 3 primeiras fotos dele.
+## Etapas
+1. **Sonda temporária de diagnóstico (código novo e isolado)**
+   - Criar o endereço público `/api/public/ingress-probe`, protegido por um segredo descartável `INGRESS_PROBE_TOKEN` enviado no cabeçalho. Sem o segredo, ele responde 404.
+   - A sonda devolve só um HMAC de cada cabeçalho candidato (`cf-connecting-ip`, `true-client-ip`, `x-real-ip`, o primeiro e o último valor de `x-forwarded-for`, `x-forwarded-for` inteiro), mais o host e a marca. Nunca devolve IP bruto.
+   - Não toca nos bots, no banco, nos limites de acesso nem na ImobiBrasil.
+2. **Publicar a sonda** (sem mudar mais nada) e aguardar que fique no ar nos dois domínios.
+3. **Teste por domínio** (Cordial e Morar, separadamente, com o endereço com e sem www):
+   - Descobrir o IP de saída do ambiente de teste e calcular o HMAC esperado localmente.
+   - Requisição limpa: anotar quais cabeçalhos trazem o HMAC do IP real.
+   - Requisições com `cf-connecting-ip`, `x-forwarded-for`, `x-real-ip` e `true-client-ip` forjados com IPs de teste (TEST-NET): o cabeçalho certo deve continuar com o IP real.
+   - Repetir 3 vezes para descartar cache e IP de saída instável.
+   - Para a Morar, identificar qual cabeçalho a camada extra de proxy preserva ou sobrescreve.
+4. **Decisão**
+   - Aprovado só se existir **um único cabeçalho** que, nos dois domínios, traga o IP real e não aceite valores forjados.
+   - Se os domínios divergirem, ou nenhum cabeçalho for confiável, paro e mostro o resultado, sem configurar nada.
+5. **Configuração e publicação final** (somente se aprovado)
+   - Gravar `PUBLIC_BOT_TRUSTED_IP_HEADER` com o cabeçalho aprovado e `PUBLIC_BOT_INGRESS_VERIFIED=true`.
+   - Remover a sonda e o segredo `INGRESS_PROBE_TOKEN`, e publicar.
+   - Abrir o bot nos dois sites e confirmar que ele está disponível. Isso consome no máximo 1 conversa curta por marca, ou seja, chamadas pagas de IA.
 
-## Quando você mandar o código validado e pedir a execução
-1. Confirmo com você a marca e o imóvel antes de rodar.
-2. Rodo a edição só no servidor, uma vez para cada uma das 3 fotos (3 chamadas pagas).
-3. O resultado fica como edição aguardando aprovação. Nada vai para o site sem a aprovação de um administrador.
-4. Mostro o antes e o depois das 3 fotos para você conferir se ficaram fiéis.
-5. Se faltar crédito ou a IA bloquear o acesso, a rotina para e eu aviso.
+## O que não muda
+Não mudam a NFS-e, os boletos, a ImobiBrasil, os imóveis, as fotos, os dados de clientes nem o assistente interno. Não há migração no banco.
 
-## Agora
-Nenhuma ação até eu receber o código e a sua instrução.
+## Limite da evidência
+O teste vem de um único IP de saída. Ele prova o comportamento da hospedagem e do proxy da Morar para esse caminho, não para toda rede possível.
