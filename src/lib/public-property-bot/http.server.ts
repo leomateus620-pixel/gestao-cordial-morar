@@ -61,12 +61,19 @@ export function validatePublicBotRequest(
   const url = new URL(request.url);
   if (url.pathname !== `/api/${brand}-site/bot/${endpoint}` || url.search)
     throw new BotError("not_found", 404);
-  for (const candidate of ["cordial", "morar"] as const) {
-    const prefix = candidate === "cordial" ? "CORDIAL_SITE" : "MORAR_SITE";
-    const host = sitePublicHost(candidate, env[`VITE_${prefix}_PUBLIC_HOST`]);
-    if ([host, `www.${host}`].includes(url.host.toLowerCase()) && candidate !== brand)
-      throw new BotError("not_found", 404);
-  }
+  const prefix = brand === "cordial" ? "CORDIAL_SITE" : "MORAR_SITE";
+  const host = sitePublicHost(brand, env[`VITE_${prefix}_PUBLIC_HOST`]);
+  // Ingress attestation applies only to this brand's canonical HTTPS origin.
+  // Gestão, preview, www and forwarded Host headers never grant another path to paid APIs.
+  if (
+    !/^[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?$/.test(host) ||
+    url.origin !== `https://${host}` ||
+    url.hostname !== host ||
+    url.port ||
+    url.username ||
+    url.password
+  )
+    throw new BotError("not_found", 404);
   const expectedMethod = endpoint === "suggestions" ? "GET" : "POST";
   if (request.method !== expectedMethod) throw new BotError("invalid_request", 405);
   const origin = request.headers.get("origin");

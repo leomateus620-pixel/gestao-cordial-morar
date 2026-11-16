@@ -26,7 +26,7 @@ Resultados efetivamente registrados até esta revisão:
 | `npm run test:site`          | 200 testes passaram no baseline e após as alterações | Busca comum, contratos públicos, marca, arquivo/publicação e helpers dos sites.                                         |
 | `npm run test:morar`         | 35 testes passaram                                   | Regressão da busca e apresentação Morar.                                                                                |
 | `npm run test:assistant`     | 173 testes passaram                                  | Regressão do assistente interno; o bot público não reutiliza seu backend.                                               |
-| `npm run test:public-bot`    | 92 testes passaram na execução final                 | Filtros, estado, evidência, privacidade, fronteira HTTP, sessão, cota, provedor, áudio e transporte do gateway fechado. |
+| `npm run test:public-bot`    | 96 testes passaram na execução final                 | Filtros, estado, evidência, privacidade, fronteira HTTP, sessão, cota, provedor, áudio e transporte do gateway fechado. |
 | `npm run test:public-bot:ui` | 38 testes passaram                                   | Formulários, estados, foco/Escape, cota, recuperação, transporte SSE, consentimento, links e gravação cliente.          |
 | `npm run typecheck`          | Passou; repetido após os últimos ajustes de UI       | Contratos e tipos do projeto.                                                                                           |
 | `npm run build`              | Passou após os cartões de quantidade                 | Compilação de navegador e servidor; avisos preexistentes de chunks grandes e depreciação inputValidator.                |
@@ -69,7 +69,7 @@ O Lovable confirmou configuração de `PUBLIC_BOT_DATABASE_REST_URL`, `PUBLIC_BO
 
 O solicitante salvou o segredo opaco pelo formulário protegido. O Lovable confirmou sua presença no servidor e executou a operação fechada `configuration` por HTTP: Cordial 200 e Morar 200, ambas enabled=true, voice=true, trends=false; chamada sem `X-Public-Bot-Key` 401/PT401. Nenhum valor secreto foi exibido e nenhuma chamada paga foi feita nesse ensaio. Isso valida o transporte do gateway, mas não comprova cota/IP no percurso público. O diagnóstico de headers forjados ainda não comprova o endereço recebido no runtime final dos dois domínios. Enquanto faltar essa comprovação, a API deve responder indisponibilidade e manter busca comum/contato.
 
-Uma inspeção posterior pelo Lovable confirmou ausência dos dois headers de IP confiável do limitador legado; os segredos de rate limit existem. Por isso esse handler usa bucket compartilhado e não consegue provar o IP do bot. Nenhuma configuração foi alterada nessa inspeção. Também foi identificado que os caminhos de API em www/Gestão/preview precisam de prova equivalente de ingresso ou restrição explícita de host antes da atestação global.
+Uma inspeção posterior pelo Lovable confirmou ausência dos dois headers de IP confiável do limitador legado; os segredos de rate limit existem. Por isso esse handler usa bucket compartilhado e não consegue provar o IP do bot. Nenhuma configuração foi alterada nessa inspeção. O bot foi endurecido para aceitar apenas a origem HTTPS canônica da própria marca. www, Gestão, Lovable/preview, localhost, domínio arbitrário, outra marca, HTTP e portas alternativas recebem 404 antes de acesso ao repositório ou ao provedor, mesmo com Origin/Host forjados coerentes. Os handlers legados permanecem inalterados. A comprovação de IP nos dois domínios canônicos continua necessária.
 
 ### Ensaio de servidor com catálogo e IA reais
 
@@ -117,7 +117,7 @@ Creative Production foi solicitado e a documentação lida, mas a ferramenta de 
 
 ## Pendências para aceite final
 
-1. Comprovar sobrescrita e origem confiável do IP no runtime de ambos os domínios, incluindo bloqueio de hostname alternativo. Só então atestar o ingresso.
+1. Comprovar sobrescrita e origem confiável do IP no runtime de ambos os domínios, confirmando também em HTTP o bloqueio de hostname alternativo já coberto pelos testes locais. Só então atestar o ingresso.
 2. Implantar o código da PR e executar o percurso público real das duas marcas: sessão, seleção, texto, resultado atual, refinamento, revalidação de retirada e WhatsApp central.
 3. Transcrever fala real, revisar e enviar nos navegadores/dispositivos alvo; conferir recusa, silêncio, cancelamento e indisponibilidade. Completar leitor de tela, zoom nativo e teclado virtual real.
 4. Completar capturas restantes e medição de carga delimitada antes de afirmar cumprimento das metas.

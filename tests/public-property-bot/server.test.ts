@@ -515,6 +515,129 @@ test("body limit applies to actual streamed bytes without trusting Content-Lengt
     (e) => e instanceof BotError && e.status === 413,
   );
 });
+
+for (const [brand, canonical] of [
+  ["cordial", "cordialimoveis.com"],
+  ["morar", "imobiliariamorarimoveis.com.br"],
+] as const) {
+  test(`${brand} bot accepts only its canonical HTTPS origin, including GET endpoints`, () => {
+    const path = `/api/${brand}-site/bot/chat`;
+    const make = (origin: string) =>
+      new Request(`${origin}${path}`, {
+        method: "POST",
+        headers: {
+          origin: new URL(origin).origin,
+          "content-type": "application/json",
+          host: canonical,
+          "x-forwarded-host": canonical,
+        },
+        body: "{}",
+      });
+    assert.doesNotThrow(() =>
+      validatePublicBotRequest(make(`https://${canonical}`), brand, "chat", {}),
+    );
+    // Explicit 443 normalizes to the identical HTTPS origin; other ports are separate origins.
+    assert.doesNotThrow(() =>
+      validatePublicBotRequest(make(`https://${canonical}:443`), brand, "chat", {}),
+    );
+    for (const origin of [
+      "https://attacker.invalid",
+      `https://www.${canonical}`,
+      `https://${canonical}:8443`,
+      `https://${canonical}:80`,
+      `http://${canonical}`,
+      `https://${canonical}.attacker.invalid`,
+      "https://cordialgestao.com",
+      "https://www.cordialgestao.com",
+      "https://gestao-cordial.lovable.app",
+      "https://preview.example.workers.dev",
+      "http://localhost:3000",
+      "https://localhost",
+      `https://${brand === "cordial" ? "imobiliariamorarimoveis.com.br" : "cordialimoveis.com"}`,
+    ]) {
+      assert.throws(
+        () => validatePublicBotRequest(make(origin), brand, "chat", {}),
+        (error) => error instanceof BotError && error.status === 404,
+        origin,
+      );
+    }
+    assert.doesNotThrow(() =>
+      validatePublicBotRequest(
+        new Request(`https://${canonical}/api/${brand}-site/bot/suggestions`),
+        brand,
+        "suggestions",
+        {},
+      ),
+    );
+    assert.throws(
+      () =>
+        validatePublicBotRequest(
+          new Request(`https://attacker.invalid/api/${brand}-site/bot/suggestions`),
+          brand,
+          "suggestions",
+          {},
+        ),
+      (error) => error instanceof BotError && error.status === 404,
+    );
+  });
+}
+test("existing canonical-host configuration replaces the origin without adding aliases or ports", () => {
+  const make = (host: string) =>
+    new Request(`https://${host}/api/cordial-site/bot/session`, {
+      method: "POST",
+      headers: { origin: new URL(`https://${host}`).origin, "content-type": "application/json" },
+      body: "{}",
+    });
+  const env = { VITE_CORDIAL_SITE_PUBLIC_HOST: "cordial.example.test" };
+  assert.doesNotThrow(() =>
+    validatePublicBotRequest(make("cordial.example.test"), "cordial", "session", env),
+  );
+  for (const host of [
+    "www.cordial.example.test",
+    "cordialimoveis.com",
+    "imobiliariamorarimoveis.com.br",
+    "cordial.example.test:8443",
+  ])
+    assert.throws(() => validatePublicBotRequest(make(host), "cordial", "session", env));
+  assert.throws(() =>
+    validatePublicBotRequest(make("cordial.example.test:8443"), "cordial", "session", {
+      VITE_CORDIAL_SITE_PUBLIC_HOST: "cordial.example.test:8443",
+    }),
+  );
+  assert.throws(() =>
+    validatePublicBotRequest(make("cordial.example.test"), "cordial", "session", {
+      VITE_CORDIAL_SITE_PUBLIC_HOST: "*.example.test",
+    }),
+  );
+});
+test("same-origin forged hosts are rejected before any public repository or model access", async () => {
+  const f = fake();
+  let reads = 0;
+  f.repo.configuration = async () => {
+    reads++;
+    throw new Error("must-not-be-reached");
+  };
+  for (const endpoint of ["session", "chat", "suggestions", "transcribe", "events"] as const) {
+    const response = await handlePublicBot(
+      new Request(`https://attacker.invalid/api/cordial-site/bot/${endpoint}`, {
+        method: endpoint === "suggestions" ? "GET" : "POST",
+        headers: {
+          origin: "https://attacker.invalid",
+          "content-type": "application/json",
+          host: "cordialimoveis.com",
+        },
+        ...(endpoint === "suggestions" ? {} : { body: "{}" }),
+      }),
+      "cordial",
+      endpoint,
+      f.deps,
+    );
+    assert.equal(response.status, 404);
+  }
+  assert.equal(reads, 0);
+  assert.equal(f.state.paid, 0);
+  assert.equal(f.state.calls, 0);
+});
 test("suggestions are omitted if current catalog no longer proves results", async () => {
   const f = fake();
   assert.equal((await publicSuggestions(f.repo, "cordial", signal)).length, 1);
