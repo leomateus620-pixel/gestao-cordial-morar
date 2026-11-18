@@ -9,6 +9,7 @@ import {
   requestSiteBrand,
 } from "./lib/cordial-site/request.server";
 import { siteDomainRedirect } from "./lib/cordial-site/domains";
+import { placeCordialGtmAtHeadTop } from "./lib/cordial-site/gtm-head-placement";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -78,7 +79,24 @@ export default {
         if (value) headers.set(name, value);
       if (normalized.headers.get("content-type")?.startsWith("image/"))
         headers.set("Cache-Control", normalized.headers.get("cache-control") ?? "no-store");
-      return new Response(normalized.body, {
+      const status = withdrawn && normalized.status === 200 ? 410 : normalized.status;
+      let body: BodyInit | null = normalized.body;
+      // React 19 hoists meta/link ahead of the GTM script; move it to the top of <head> (Cordial only).
+      if (
+        requestSiteBrand(request) === "cordial" &&
+        [200, 404, 410].includes(status) &&
+        normalized.headers.get("content-type")?.startsWith("text/html")
+      ) {
+        const html = await normalized.text();
+        try {
+          body = placeCordialGtmAtHeadTop(html);
+        } catch (error) {
+          console.error(error);
+          body = html;
+        }
+        headers.delete("content-length");
+      }
+      return new Response(body, {
         status: withdrawn && normalized.status === 200 ? 410 : normalized.status,
         statusText: withdrawn && normalized.status === 200 ? "Gone" : normalized.statusText,
         headers,
