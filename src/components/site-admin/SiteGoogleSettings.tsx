@@ -187,7 +187,7 @@ function IdentitySeoSection({ brand, values, setValues }: Props) {
         {text(
           "gtmContainerId",
           "Google Tag Manager — GTM-…",
-          "Opcional. Se o GA4 também estiver no GTM, a medição fica duplicada.",
+          "Opcional. Com o GTM ativo no site Cordial, o GA4 deve ficar dentro do container: o código G-… acima deixa de ser carregado no site.",
         )}
       </fieldset>
     </div>

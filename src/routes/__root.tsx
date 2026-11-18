@@ -1,9 +1,12 @@
+import { GTM_MARKER, gtmHeadScript, gtmNoscriptSrc } from "@/lib/cordial-site/gtm-install";
+import { isGtmId } from "@/lib/cordial-site/meta-pixel";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -135,12 +138,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  // Decided server-side by the /site loader (Cordial public host only); stable across navigation.
+  const gtmId = useRouterState({
+    select: (state) => {
+      const match = state.matches.find((m) => m.routeId === "/site");
+      const gtm = (match?.loaderData as { gtm?: { id: string } | null } | undefined)?.gtm;
+      return gtm && isGtmId(gtm.id) ? gtm.id : null;
+    },
+  });
   return (
     <html lang="pt-BR">
       <head>
+        {gtmId ? (
+          <script
+            data-gtm={GTM_MARKER}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: gtmHeadScript(gtmId) }}
+          />
+        ) : null}
         <HeadContent />
       </head>
       <body>
+        {gtmId ? (
+          <noscript data-gtm={GTM_MARKER} suppressHydrationWarning>
+            <iframe
+              src={gtmNoscriptSrc(gtmId)}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+              title="Google Tag Manager"
+            />
+          </noscript>
+        ) : null}
         {children}
         <Scripts />
       </body>

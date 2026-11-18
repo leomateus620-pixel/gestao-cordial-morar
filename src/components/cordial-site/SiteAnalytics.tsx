@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { SiteLink } from "./SiteShell";
 import { sitePath } from "@/lib/cordial-site/presentation";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
-import { isGtmId, isPixelId, loadGtm, loadMetaPixel, pixelEventFor } from "@/lib/cordial-site/meta-pixel";
+import {
+  isGtmId,
+  isPixelId,
+  loadGtm,
+  loadMetaPixel,
+  pixelEventFor,
+} from "@/lib/cordial-site/meta-pixel";
+import { documentHasGtm, gtmEventFor, updateGtmConsent } from "@/lib/cordial-site/gtm-install";
 import type { SiteSettings } from "@/lib/cordial-site/contract";
 import {
   ANALYTICS_CONSENT_KEY,
@@ -24,9 +31,13 @@ export function SiteAnalytics({
 }) {
   const [consent, setConsent] = useState<AnalyticsConsent>(null);
   const [editing, setEditing] = useState(false);
+  // Official GTM snippet rendered in the document (Cordial public host): it is the only Google tag.
+  const [docGtm, setDocGtm] = useState(false);
+  useEffect(() => setDocGtm(documentHasGtm(document)), []);
   const id = settings.analyticsMeasurementId;
   const privacyPath = sitePath("/privacidade", brand);
   const gaConfigured =
+    !docGtm &&
     /^G-[A-Z0-9]{4,20}$/.test(id ?? "") &&
     !!settings.privacy &&
     settings.analyticsManualEventsOnly === true;
@@ -35,10 +46,26 @@ export function SiteAnalytics({
   const extras = !!settings.privacy && (isPixelId(pixelId) || isGtmId(gtmId));
   const configured = gaConfigured || extras;
   useEffect(() => {
+    if (!docGtm) return;
+    const w = window as unknown as { dataLayer?: unknown[]; gtag?: (...a: unknown[]) => void };
+    updateGtmConsent(w, consent === "granted");
+    if (consent !== "granted") return;
+    const forward = (event: Event) => {
+      try {
+        const item = gtmEventFor((event as CustomEvent<Record<string, unknown>>).detail ?? {});
+        if (item) (w.dataLayer ??= []).push(item);
+      } catch {
+        /* Measurement never blocks the public flow. */
+      }
+    };
+    window.addEventListener("cordial:analytics", forward);
+    return () => window.removeEventListener("cordial:analytics", forward);
+  }, [docGtm, consent]);
+  useEffect(() => {
     if (!extras || consent !== "granted") return;
     const w = window as never;
     const stopPixel = loadMetaPixel(w, pixelId);
-    const stopGtm = loadGtm(w, gtmId);
+    const stopGtm = docGtm ? () => {} : loadGtm(w, gtmId);
     const onEvent = (event: Event) => {
       const mapped = pixelEventFor((event as CustomEvent<Record<string, unknown>>).detail ?? {});
       const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
@@ -50,7 +77,7 @@ export function SiteAnalytics({
       stopPixel();
       stopGtm();
     };
-  }, [extras, consent, pixelId, gtmId]);
+  }, [extras, consent, pixelId, gtmId, docGtm]);
   useEffect(() => {
     const target = window as unknown as AnalyticsRuntime;
     let listener: ((event: StorageEvent) => void) | undefined;

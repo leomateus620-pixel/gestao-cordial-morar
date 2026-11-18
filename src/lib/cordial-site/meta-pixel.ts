@@ -1,14 +1,23 @@
 /** Meta Pixel and GTM loaders. Called only after the visitor granted consent; never sends PII. */
-type Fbq = ((...args: unknown[]) => void) & { queue?: unknown[]; loaded?: boolean; version?: string; callMethod?: (...a: unknown[]) => void; push?: unknown };
+type Fbq = ((...args: unknown[]) => void) & {
+  queue?: unknown[];
+  loaded?: boolean;
+  version?: string;
+  callMethod?: (...a: unknown[]) => void;
+  push?: unknown;
+};
 type PixelWindow = Window & { fbq?: Fbq; _fbq?: Fbq; dataLayer?: unknown[] };
 
 export const isPixelId = (id: string) => /^\d{10,20}$/.test(id);
 export const isGtmId = (id: string) => /^GTM-[A-Z0-9]{4,10}$/.test(id);
 
 /** Maps site events to Pixel standard events with only reference/type, never contact data. */
-export function pixelEventFor(detail: Record<string, unknown>): [string, Record<string, string>] | null {
+export function pixelEventFor(
+  detail: Record<string, unknown>,
+): [string, Record<string, string>] | null {
   const ref = typeof detail.reference === "string" ? detail.reference : undefined;
-  if (detail.name === "property_open") return ["ViewContent", ref ? { content_ids: ref } as never : {}];
+  if (detail.name === "property_open")
+    return ["ViewContent", ref ? ({ content_ids: ref } as never) : {}];
   if (detail.name === "form_persisted") return ["Lead", {}];
   return null;
 }
@@ -40,6 +49,9 @@ export function loadMetaPixel(w: PixelWindow, id: string): () => void {
 
 export function loadGtm(w: PixelWindow, id: string): () => void {
   if (!isGtmId(id)) return () => {};
+  // The official document-level snippet already loaded GTM: never add a second Google tag.
+  if (w.document.querySelector('script[data-gtm], script[src*="googletagmanager.com/gtm.js"]'))
+    return () => {};
   w.dataLayer = w.dataLayer ?? [];
   w.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
   const s = w.document.createElement("script");

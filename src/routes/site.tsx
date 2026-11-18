@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadBootstrap } from "@/lib/cordial-site/data";
+import { cordialGtmDecision } from "@/lib/cordial-site/gtm.functions";
 import { agentJsonLd, homeHead, siteLayoutHead } from "@/lib/cordial-site/seo";
 import {
   SiteShell,
@@ -9,7 +10,13 @@ import {
 } from "@/components/cordial-site/SiteShell";
 import siteCss from "@/components/cordial-site/site.css?url";
 export const Route = createFileRoute("/site")({
-  loader: ({ abortController }) => loadBootstrap(abortController.signal),
+  loader: async ({ abortController }) => {
+    const bootstrap = await loadBootstrap(abortController.signal);
+    const gtm = await cordialGtmDecision({
+      data: { containerId: bootstrap?.settings?.gtmContainerId ?? "" },
+    }).catch(() => null);
+    return { ...bootstrap, gtm };
+  },
   head: ({ loaderData }) => {
     // Layout keeps a fallback title/description but no canonical/og:url/og:image (pages own them).
     const base = homeHead(loaderData, "cordial");
@@ -18,8 +25,12 @@ export const Route = createFileRoute("/site")({
       meta: [
         ...base.meta.filter(
           (m) =>
-            !("property" in m && ["og:url", "og:image", "og:image:alt", "og:image:width", "og:image:height"].includes(String(m.property))) &&
-            !("name" in m && m.name === "twitter:image"),
+            !(
+              "property" in m &&
+              ["og:url", "og:image", "og:image:alt", "og:image:width", "og:image:height"].includes(
+                String(m.property),
+              )
+            ) && !("name" in m && m.name === "twitter:image"),
         ),
         ...layout.meta,
       ],
@@ -29,7 +40,12 @@ export const Route = createFileRoute("/site")({
     return {
       meta: head.meta,
       scripts: agent
-        ? [{ type: "application/ld+json", children: JSON.stringify(agent).replace(/</g, "\\u003c") }]
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify(agent).replace(/</g, "\\u003c"),
+            },
+          ]
         : [],
       links: [
         ...head.links,
