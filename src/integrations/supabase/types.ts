@@ -2482,6 +2482,116 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_account_events: {
+        Row: {
+          account_id: string
+          actor: string | null
+          created_at: string
+          detalhe: Json
+          id: string
+          mensagem: string | null
+          ok: boolean
+          tipo: string
+        }
+        Insert: {
+          account_id: string
+          actor?: string | null
+          created_at?: string
+          detalhe?: Json
+          id?: string
+          mensagem?: string | null
+          ok: boolean
+          tipo: string
+        }
+        Update: {
+          account_id?: string
+          actor?: string | null
+          created_at?: string
+          detalhe?: Json
+          id?: string
+          mensagem?: string | null
+          ok?: boolean
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_account_events_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_accounts: {
+        Row: {
+          ambiente: string
+          apelido: string
+          autenticado_em: string | null
+          beneficiario_mascara: string | null
+          brand: string
+          configurado: boolean
+          consulta_ok_em: string | null
+          cooperativa_mascara: string | null
+          created_at: string
+          emissao_habilitada: boolean
+          encargos: Json
+          id: string
+          liberado_em: string | null
+          liberado_por: string | null
+          posto_mascara: string | null
+          provider: string
+          ultimo_teste_em: string | null
+          ultimo_teste_mensagem: string | null
+          ultimo_teste_ok: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          ambiente: string
+          apelido?: string
+          autenticado_em?: string | null
+          beneficiario_mascara?: string | null
+          brand: string
+          configurado?: boolean
+          consulta_ok_em?: string | null
+          cooperativa_mascara?: string | null
+          created_at?: string
+          emissao_habilitada?: boolean
+          encargos?: Json
+          id?: string
+          liberado_em?: string | null
+          liberado_por?: string | null
+          posto_mascara?: string | null
+          provider?: string
+          ultimo_teste_em?: string | null
+          ultimo_teste_mensagem?: string | null
+          ultimo_teste_ok?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string
+          apelido?: string
+          autenticado_em?: string | null
+          beneficiario_mascara?: string | null
+          brand?: string
+          configurado?: boolean
+          consulta_ok_em?: string | null
+          cooperativa_mascara?: string | null
+          created_at?: string
+          emissao_habilitada?: boolean
+          encargos?: Json
+          id?: string
+          liberado_em?: string | null
+          liberado_por?: string | null
+          posto_mascara?: string | null
+          provider?: string
+          ultimo_teste_em?: string | null
+          ultimo_teste_mensagem?: string | null
+          ultimo_teste_ok?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           approximate_income: number | null
@@ -10091,6 +10201,159 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_boleto_events: {
+        Row: {
+          actor: string | null
+          boleto_id: string
+          created_at: string
+          de: string | null
+          detalhe: Json
+          http_status: number | null
+          id: string
+          mensagem: string | null
+          para: string
+        }
+        Insert: {
+          actor?: string | null
+          boleto_id: string
+          created_at?: string
+          de?: string | null
+          detalhe?: Json
+          http_status?: number | null
+          id?: string
+          mensagem?: string | null
+          para: string
+        }
+        Update: {
+          actor?: string | null
+          boleto_id?: string
+          created_at?: string
+          de?: string | null
+          detalhe?: Json
+          http_status?: number | null
+          id?: string
+          mensagem?: string | null
+          para?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_boleto_events_boleto_id_fkey"
+            columns: ["boleto_id"]
+            isOneToOne: false
+            referencedRelation: "rental_boletos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_boletos: {
+        Row: {
+          account_id: string
+          ambiente: string
+          brand: string
+          codigo_barras: string | null
+          competencia: string
+          contract_id: string
+          created_at: string
+          created_by: string
+          emission_id: string | null
+          estado: string
+          id: string
+          id_titulo_empresa: string
+          linha_digitavel: string | null
+          linha_validada: boolean | null
+          liquidacao_evidencia: Json | null
+          nosso_numero: string | null
+          ocorrencia: number
+          pdf_estado: string
+          pdf_path: string | null
+          seu_numero: string
+          situacao_banco: string | null
+          snapshot: Json
+          total_centavos: number
+          ultimo_erro: string | null
+          updated_at: string
+          vencimento: string
+        }
+        Insert: {
+          account_id: string
+          ambiente: string
+          brand: string
+          codigo_barras?: string | null
+          competencia: string
+          contract_id: string
+          created_at?: string
+          created_by: string
+          emission_id?: string | null
+          estado?: string
+          id?: string
+          id_titulo_empresa: string
+          linha_digitavel?: string | null
+          linha_validada?: boolean | null
+          liquidacao_evidencia?: Json | null
+          nosso_numero?: string | null
+          ocorrencia: number
+          pdf_estado?: string
+          pdf_path?: string | null
+          seu_numero: string
+          situacao_banco?: string | null
+          snapshot: Json
+          total_centavos: number
+          ultimo_erro?: string | null
+          updated_at?: string
+          vencimento: string
+        }
+        Update: {
+          account_id?: string
+          ambiente?: string
+          brand?: string
+          codigo_barras?: string | null
+          competencia?: string
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          emission_id?: string | null
+          estado?: string
+          id?: string
+          id_titulo_empresa?: string
+          linha_digitavel?: string | null
+          linha_validada?: boolean | null
+          liquidacao_evidencia?: Json | null
+          nosso_numero?: string | null
+          ocorrencia?: number
+          pdf_estado?: string
+          pdf_path?: string | null
+          seu_numero?: string
+          situacao_banco?: string | null
+          snapshot?: Json
+          total_centavos?: number
+          ultimo_erro?: string | null
+          updated_at?: string
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_boletos_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "billing_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_boletos_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_boletos_emission_id_fkey"
+            columns: ["emission_id"]
+            isOneToOne: false
+            referencedRelation: "rental_emissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_contract_adjustments: {
         Row: {
           ativo: boolean
@@ -14825,6 +15088,72 @@ export type Database = {
       region_display_label: { Args: { _raw: string }; Returns: string }
       region_normalized_key: { Args: { _raw: string }; Returns: string }
       release_expired_provider_codes: { Args: never; Returns: number }
+      rental_boleto_prepare: {
+        Args: {
+          _account_id: string
+          _actor: string
+          _competencia: string
+          _contract_id: string
+          _snapshot: Json
+          _total_centavos: number
+          _vencimento: string
+        }
+        Returns: {
+          out_created: boolean
+          out_estado: string
+          out_id: string
+        }[]
+      }
+      rental_boleto_seu_numero: {
+        Args: { _competencia: string; _contract: string; _ocorrencia: number }
+        Returns: string
+      }
+      rental_boleto_transition: {
+        Args: {
+          _actor: string
+          _detalhe?: Json
+          _from: string[]
+          _http?: number
+          _id: string
+          _mensagem?: string
+          _patch: Json
+          _to: string
+        }
+        Returns: {
+          account_id: string
+          ambiente: string
+          brand: string
+          codigo_barras: string | null
+          competencia: string
+          contract_id: string
+          created_at: string
+          created_by: string
+          emission_id: string | null
+          estado: string
+          id: string
+          id_titulo_empresa: string
+          linha_digitavel: string | null
+          linha_validada: boolean | null
+          liquidacao_evidencia: Json | null
+          nosso_numero: string | null
+          ocorrencia: number
+          pdf_estado: string
+          pdf_path: string | null
+          seu_numero: string
+          situacao_banco: string | null
+          snapshot: Json
+          total_centavos: number
+          ultimo_erro: string | null
+          updated_at: string
+          vencimento: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "rental_boletos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       reorder_property_images: {
         Args: {
           _expected_gallery_revision?: number

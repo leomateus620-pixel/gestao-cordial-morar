@@ -25,6 +25,15 @@ import {
   upsertContractAdjustment,
 } from "@/lib/rentals/emissions.functions";
 import { buildReceiptModel, type ReceiptInput } from "@/lib/rentals/receipt-model";
+import { tenantTotal, tenantTotalSourceFor } from "@/lib/rentals/tenant-total";
+import {
+  getBoletoPdfUrl,
+  listRentalBoletos,
+  refreshBoleto,
+  retryBoletoPdf,
+  type PublicBoleto,
+} from "@/lib/boleto/boletos.functions";
+import { AmbienteSeal, BoletoConfirmModal, BoletoReconcileModal } from "./BoletoConfirmModal";
 import { buildReceiptPdf } from "@/lib/rentals/receipt-pdf";
 import { brl, brlCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -120,6 +129,8 @@ function EmissionCard({
   error,
   emitted,
   test,
+  seal,
+  disabledReason,
   children,
 }: {
   title: string;
@@ -133,6 +144,8 @@ function EmissionCard({
   error?: string | null;
   emitted?: boolean;
   test?: boolean;
+  seal?: React.ReactNode;
+  disabledReason?: string;
   children: React.ReactNode;
 }) {
   const tones = {
@@ -165,6 +178,7 @@ function EmissionCard({
             Teste
           </span>
         )}
+        {seal && <span className="ml-auto">{seal}</span>}
       </header>
       <p className="my-6 font-mono text-2xl font-semibold tabular-nums">{brlCents(value)}</p>
       <Tooltip>
@@ -182,9 +196,10 @@ function EmissionCard({
         </TooltipTrigger>
         {disabled && (
           <TooltipContent>
-            {tone === "boleto"
-              ? "Nenhum provedor de boleto configurado."
-              : "Emissão indisponível para seu acesso."}
+            {disabledReason ??
+              (tone === "boleto"
+                ? "Nenhum provedor de boleto configurado."
+                : "Emissão indisponível para seu acesso.")}
           </TooltipContent>
         )}
       </Tooltip>
@@ -246,7 +261,67 @@ export function RentalEmissions({
     queryFn: () => list({ data: { contractId: contract.id, competencia } }),
   });
   const receipt = docs.data?.find((row) => row.tipo === "recibo" && row.status === "emitido");
-  const boleto = docs.data?.find((row) => row.tipo === "boleto" && row.status === "emitido");
+  const listBoletos = useServerFn(listRentalBoletos);
+  const refresh = useServerFn(refreshBoleto);
+  const retryPdf = useServerFn(retryBoletoPdf);
+  const boletoPdfUrl = useServerFn(getBoletoPdfUrl);
+  const [boletoModal, setBoletoModal] = useState<"emitir" | "conferir" | null>(null);
+  const [boletoBusy, setBoletoBusy] = useState(false);
+  const boletos = useQuery({
+    queryKey: ["rental-boletos", contract.id, competencia],
+    queryFn: () => listBoletos({ data: { contractId: contract.id, competencia } }),
+  });
+  const boletoAdjustments = useQuery({
+    queryKey: ["rental-boleto-adjustments", contract.id],
+    queryFn: () => listAdjustments({ data: { contractId: contract.id } }),
+  });
+  const boletoTotal = tenantTotal(
+    tenantTotalSourceFor(contract, competencia, {
+      receiptValores: receipt?.valores,
+      recurring: boletoAdjustments.data ?? [],
+    }),
+  ).totalCentavos;
+  const boletoList = boletos.data?.boletos ?? [];
+  const liveBoleto = boletoList.find((b) => b.estado !== "rejeitado" && b.estado !== "baixado");
+  const lastBoleto = boletoList[0];
+  const podeEmitirBoleto = Boolean(boletos.data?.podeEmitir);
+  async function boletoDone(b: PublicBoleto, mensagem: string) {
+    setBoletoModal(null);
+    await qc.invalidateQueries({ queryKey: ["rental-boletos", contract.id] });
+    await qc.invalidateQueries({ queryKey: ["rental-emissions", contract.id] });
+    if (b.estado === "registrado" || b.estado === "liquidado") toast.success(mensagem);
+    else toast.error(mensagem);
+  }
+  async function boletoAction(kind: "refresh" | "pdf") {
+    if (!liveBoleto || boletoBusy) return;
+    setBoletoBusy(true);
+    try {
+      if (kind === "refresh") {
+        const out = await refresh({ data: { id: liveBoleto.id } });
+        toast.success(out.mensagem);
+      } else {
+        const out = await retryPdf({ data: { id: liveBoleto.id } });
+        if (out.boleto.pdfEstado === "pronto") toast.success("PDF do boleto guardado.");
+        else toast.error(out.boleto.ultimoErro ?? "O PDF continua pendente.");
+      }
+      await qc.invalidateQueries({ queryKey: ["rental-boletos", contract.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível falar com o Sicredi.");
+    } finally {
+      setBoletoBusy(false);
+    }
+  }
+  async function openBoletoPdf(id: string) {
+    const win = window.open("", "_blank");
+    try {
+      const url = await boletoPdfUrl({ data: { id } });
+      if (win) win.location.href = url;
+      else window.location.href = url;
+    } catch {
+      win?.close();
+      toast.error("Não foi possível abrir o PDF do boleto.");
+    }
+  }
   const notes = [...real.emissions, ...tests.emissions]
     .filter((row) => row.competencia.slice(0, 7) === competencia)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -428,22 +503,67 @@ export function RentalEmissions({
         <EmissionCard
           title="Emitir Boleto"
           icon={Barcode}
-          value={contract.comissaoMensal ?? 0}
+          value={boletoTotal / 100}
           tone="boleto"
-          label="Configurar provedor"
-          disabled
-          emitted={Boolean(boleto)}
+          label={
+            liveBoleto?.estado === "incerto" || liveBoleto?.estado === "enviando"
+              ? "Conferir no Sicredi"
+              : liveBoleto
+                ? "Atualizar situação"
+                : "Emitir Boleto"
+          }
+          disabled={!podeEmitirBoleto || boletos.isLoading}
+          disabledReason={
+            boletos.isLoading ? "Carregando…" : "Apenas a administração ou a secretaria emitem boletos."
+          }
+          busy={boletoBusy}
+          action={() => {
+            if (liveBoleto?.estado === "incerto" || liveBoleto?.estado === "enviando") setBoletoModal("conferir");
+            else if (liveBoleto) void boletoAction("refresh");
+            else setBoletoModal("emitir");
+          }}
+          error={!liveBoleto && lastBoleto?.estado === "rejeitado" ? lastBoleto.ultimoErro : null}
+          emitted={Boolean(liveBoleto && liveBoleto.estado !== "incerto" && liveBoleto.estado !== "enviando")}
+          seal={liveBoleto ? <AmbienteSeal ambiente={liveBoleto.ambiente} /> : undefined}
         >
           <FileSlot
-            name={boleto?.file_name ?? boleto?.numero}
-            date={boleto?.created_at}
-            open={boleto ? () => void openFile(boleto.id) : undefined}
+            name={
+              liveBoleto?.nossoNumero
+                ? `Boleto nº ${liveBoleto.nossoNumero}${liveBoleto.pdfEstado !== "pronto" ? " · PDF pendente" : ""}`
+                : null
+            }
+            date={liveBoleto?.createdAt}
+            open={liveBoleto?.pdfEstado === "pronto" ? () => void openBoletoPdf(liveBoleto.id) : undefined}
             copy={
-              boleto
-                ? async () => boleto.copy_value ?? (await signedUrl({ data: { id: boleto.id } }))
-                : undefined
+              liveBoleto?.linhaDigitavel ? async () => liveBoleto.linhaDigitavel ?? "" : undefined
             }
           />
+          {liveBoleto && (
+            <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+              <p>
+                {liveBoleto.estado === "registrado" &&
+                  `Registrado${liveBoleto.pdfEstado !== "pronto" ? " • PDF pendente" : ""} · vence ${liveBoleto.vencimento.split("-").reverse().join("/")}`}
+                {liveBoleto.estado === "liquidado" &&
+                  "Pago no banco (evidência). A baixa do aluguel continua manual."}
+                {(liveBoleto.estado === "incerto" || liveBoleto.estado === "enviando") &&
+                  "Resultado incerto: confira antes de qualquer novo envio."}
+                {liveBoleto.estado === "baixa_solicitada" && "Baixa solicitada ao banco."}
+                {liveBoleto.vencimentoAlterado && " · vencimento alterado"}
+                {liveBoleto.ambiente === "sandbox" && " · homologação, sem valor de cobrança"}
+              </p>
+              {podeEmitirBoleto && liveBoleto.nossoNumero && liveBoleto.pdfEstado !== "pronto" && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0 text-[11px]"
+                  disabled={boletoBusy}
+                  onClick={() => void boletoAction("pdf")}
+                >
+                  Tentar o PDF de novo
+                </Button>
+              )}
+            </div>
+          )}
         </EmissionCard>
       </div>
       {docs.isError && (
@@ -453,6 +573,29 @@ export function RentalEmissions({
             Tentar novamente
           </Button>
         </p>
+      )}
+      {boletos.isError && (
+        <p role="alert" className="mt-3 text-xs text-destructive">
+          Não foi possível carregar os boletos.
+          <Button variant="link" size="sm" onClick={() => void boletos.refetch()}>
+            Tentar novamente
+          </Button>
+        </p>
+      )}
+      {boletoModal === "emitir" && (
+        <BoletoConfirmModal
+          contractId={contract.id}
+          competencia={competencia}
+          onClose={() => setBoletoModal(null)}
+          onDone={(b, m) => void boletoDone(b, m)}
+        />
+      )}
+      {boletoModal === "conferir" && liveBoleto && (
+        <BoletoReconcileModal
+          boleto={liveBoleto}
+          onClose={() => setBoletoModal(null)}
+          onDone={(b, m) => void boletoDone(b, m)}
+        />
       )}
       {receiptOpen && recurring.isError && (
         <p role="alert" className="mt-3 text-xs text-destructive">

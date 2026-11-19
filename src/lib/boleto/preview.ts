@@ -1,0 +1,133 @@
+/** Pure boleto preview: validations, tenant total and the immutable snapshot. Browser-safe. */
+import type { RecurringAdjustment } from "@/lib/rentals/receipt-model";
+import { tenantTotal, tenantTotalSourceFor, type TenantTotalLine } from "@/lib/rentals/tenant-total";
+import {
+  maskDocumento,
+  normalizePagador,
+  resolveVencimento,
+  type BillingAmbiente,
+  type BoletoBrand,
+  type Encargos,
+  type PagadorNormalizado,
+  type PagadorSource,
+  type Pendencia,
+  type VencimentoResult,
+} from "./rules";
+
+export type BoletoContractData = {
+  id: string;
+  brand: string;
+  status: string;
+  diaVencimento: number;
+  proximoVencimento: string | null;
+  valorMensal: number;
+  seguroValorMensal: number | null;
+};
+export type BoletoSnapshot = {
+  versao: 1;
+  fonte: "recibo" | "contrato";
+  competencia: string;
+  composicao: TenantTotalLine[];
+  total_centavos: number;
+  vencimento: { data: string; original: string; alterado: boolean };
+  pagador: PagadorNormalizado;
+  encargos: Encargos;
+  conta: { brand: BoletoBrand; ambiente: BillingAmbiente };
+  especieDocumento: "RECIBO";
+  tipoCobranca: "NORMAL";
+};
+export type BoletoPreview = {
+  ok: boolean;
+  bloqueios: string[];
+  pendencias: Pendencia[];
+  vencimento: VencimentoResult | null;
+  totalCentavos: number;
+  linhas: TenantTotalLine[];
+  fonte: "recibo" | "contrato";
+  pagador: { nome: string; documento: string; cidadeUf: string } | null;
+  ambiente: BillingAmbiente | null;
+  encargosAtivos: boolean;
+  snapshot: BoletoSnapshot | null;
+};
+
+export function buildBoletoPreview(args: {
+  contract: BoletoContractData;
+  pagador: PagadorSource;
+  competencia: string;
+  today: string;
+  novoVencimento?: string | null;
+  receiptValores?: unknown;
+  recurring?: RecurringAdjustment[];
+  account: { ambiente: BillingAmbiente; encargos: Encargos } | null;
+}): BoletoPreview {
+  const bloqueios: string[] = [];
+  const c = args.contract;
+  const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
+  if (!brand) bloqueios.push("Defina a marca do contrato (Cordial ou Morar) antes de emitir o boleto.");
+  if (c.status === "encerrado" || c.status === "cancelado")
+    bloqueios.push("Contrato encerrado ou cancelado: não é possível emitir boleto.");
+  let vencimento: VencimentoResult | null = null;
+  try {
+    vencimento = resolveVencimento({
+      competencia: args.competencia,
+      diaVencimento: c.diaVencimento,
+      today: args.today,
+      novoVencimento: args.novoVencimento ?? null,
+    });
+    if (c.proximoVencimento && c.proximoVencimento > vencimento.original)
+      bloqueios.push("Esta parcela já recebeu baixa no Gestão (o próximo vencimento é posterior).");
+    if (!vencimento.ok) bloqueios.push(vencimento.message);
+  } catch (e) {
+    bloqueios.push(e instanceof Error ? e.message : "Vencimento inválido.");
+  }
+  const src = tenantTotalSourceFor(
+    { valorMensal: c.valorMensal, seguroValorMensal: c.seguroValorMensal },
+    args.competencia,
+    { receiptValores: args.receiptValores, recurring: args.recurring },
+  );
+  const total = tenantTotal(src);
+  if (total.totalCentavos <= 0) bloqueios.push("O total do inquilino precisa ser maior que zero.");
+  const pag = normalizePagador(args.pagador);
+  const pendencias = pag.ok ? [] : pag.pendencias;
+  if (!args.account) bloqueios.push("Nenhuma conta de cobrança Sicredi configurada para esta marca.");
+  const ok = bloqueios.length === 0 && pendencias.length === 0;
+  const encargos: Encargos = args.account?.encargos.ativo ? args.account.encargos : { ativo: false };
+  return {
+    ok,
+    bloqueios,
+    pendencias,
+    vencimento,
+    totalCentavos: total.totalCentavos,
+    linhas: total.linhas,
+    fonte: src.fonte,
+    pagador: pag.ok
+      ? {
+          nome: pag.pagador.nome,
+          documento: maskDocumento(pag.pagador.documento),
+          cidadeUf: `${pag.pagador.cidade}/${pag.pagador.uf}`,
+        }
+      : null,
+    ambiente: args.account?.ambiente ?? null,
+    encargosAtivos: encargos.ativo,
+    snapshot:
+      ok && pag.ok && brand && vencimento?.ok && args.account
+        ? {
+            versao: 1,
+            fonte: src.fonte,
+            competencia: args.competencia,
+            composicao: total.linhas,
+            total_centavos: total.totalCentavos,
+            vencimento: {
+              data: vencimento.vencimento,
+              original: vencimento.original,
+              alterado: vencimento.alterado,
+            },
+            pagador: pag.pagador,
+            encargos,
+            conta: { brand, ambiente: args.account.ambiente },
+            especieDocumento: "RECIBO",
+            tipoCobranca: "NORMAL",
+          }
+        : null,
+  };
+}

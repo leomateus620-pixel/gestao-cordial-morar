@@ -694,6 +694,27 @@
       "when": 1794810273530,
       "tag": "0098_public_bot_insights",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795109766327,
+      "tag": "0099_billing_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795109847655,
+      "tag": "0100_rental_boletos",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795109880478,
+      "tag": "0101_rental_emissions_boleto_guard",
+      "breakpoints": true
     }
   ]
 }
