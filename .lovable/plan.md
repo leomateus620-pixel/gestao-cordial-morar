@@ -1,44 +1,44 @@
-# Boletos Sicredi — 3 correções antes de publicar (sobre 5c5f6757)
+# Boletos Sicredi — contratos de marca "ambas" (sobre 7a4b552a)
 
-Nada será publicado. Sem alteração de dados, sem tocar sync Imobi, crons, NFS-e ou recibos.
+## O que muda para o operador
+- Contrato **Cordial** ou **Morar**: nada muda. A conta é a da marca do contrato, sem escolha.
+- Contrato **ambas**: a janela de confirmação mostra "Emitir pela conta: Cordial / Morar". Sem escolha, o botão Emitir fica bloqueado com aviso.
+- **Secretária**: só vê as marcas a que está vinculada (com uma marca só, ela já vem marcada). **Admin**: vê as duas.
+- Depois de escolher, a prévia recarrega e mostra o ambiente (produção se liberada, senão homologação), como hoje.
 
-## 1. Migração 0102 — privilégios (aditiva, via ferramenta, journal preservado)
-- `REVOKE ALL` de `anon` em `billing_accounts`, `billing_account_events`, `rental_boletos`, `rental_boleto_events`.
-- `REVOKE INSERT, UPDATE, DELETE, TRUNCATE` de `authenticated` nas mesmas 4 (fica só SELECT + RLS atual). `service_role` intacto.
-- `REVOKE TRUNCATE ON rental_emissions FROM authenticated` (e de `anon`); INSERT/UPDATE/DELETE de recibos/NFS-e não mudam.
-- Conferência: `information_schema.role_table_grants` antes e depois (comparação registrada no resumo).
+## Regra no servidor (a interface não decide nada)
+- Nova função pura `resolveIssuingBrand(flags, contractBrand, escolhida)` em `rules.ts`:
+  - contrato cordial/morar + escolha ausente ou igual → marca do contrato; escolha diferente → **recusada** ("marca forçada").
+  - contrato ambas + sem escolha → bloqueio "Escolha a conta de emissão".
+  - contrato ambas + escolha → admin qualquer; secretária só se a marca está nos vínculos dela; senão **negada** (42501).
+  - outro valor de marca → bloqueio, como hoje.
+- `boletoContractAccess` mantém o acesso de leitura ao contrato "ambas" para secretária com alguma marca (já é assim); a emissão passa a depender também de `resolveIssuingBrand`.
+- Também passa a ser usada em `marcasPermitidas(flags, contractBrand)`, retornada na prévia para a janela montar as opções.
 
-## 2. Secretária e admin emitem para qualquer contrato da marca
-Como a marca é determinada hoje: tabela `user_agencies` (user_id, agency = cordial/morar). Hoje há 1 secretária vinculada à Cordial e 1 à Morar; admins estão nas duas.
+## Arquivos
+- `src/lib/boleto/rules.ts` — `resolveIssuingBrand`, `marcasPermitidas`; comentário de `boletoContractAccess` atualizado.
+- `src/lib/boleto/preview.ts` — recebe a marca resolvida (ou o bloqueio) em vez de ler `c.brand` direto; snapshot ganha `conta.brand` (já existe) e `marcaContrato` + `marcaEscolhida: boolean`.
+- `src/lib/boleto/boletos.functions.ts` — `previewInput`/`issueInput` ganham `brand` opcional (`cordial|morar`); `computePreview` chama `resolveIssuingBrand` com os papéis/vínculos já lidos em `authorizeContract` e só então `pickIssuingAccount(brand)`; `issueBoleto` exige que a marca do preview seja a mesma enviada (como já faz com total e ambiente). Prévia devolve `marcasPermitidas` e `precisaEscolherMarca`.
+- `src/components/alugueis/BoletoConfirmModal.tsx` — seletor Cordial/Morar só para contratos "ambas", com as opções vindas do servidor; reenvia a prévia ao trocar.
+- `src/components/alugueis/RentalEmissions.tsx` — só repassa a marca escolhida, se necessário.
+- `src/lib/boleto/AGENTS.md` — substituir a regra da marca: "brand comes from the contract; 'ambas' contracts take an operator choice validated on the server against user_agencies".
 
-Regra proposta (mais segura):
-- Admin: qualquer contrato, qualquer marca.
-- Secretária: só contratos cuja marca está em `user_agencies` dela; contrato `ambas` conta se ela tiver qualquer marca (o boleto já sai pela marca do contrato). Secretária sem vínculo = negada.
-- Corretor, financeiro, meta_reviewer, atendimentos_viewer: negados (como hoje).
-
-Implementação:
-- Novo `authorizeBoletoContract(ctx, contractId)` no servidor: checa papel e marcas pela sessão do usuário (`user_roles`/`user_agencies`), depois lê o contrato com o cliente de serviço (carregado dentro do handler) e confere a marca.
-- `computePreview`, emitir, atualizar, conciliar, PDF e a lista de boletos do contrato passam a ler contrato, inquilino, imóvel, recibos e `rental_boletos` pelo cliente de serviço sempre filtrados pelo id do contrato autorizado.
-- PDF: URL assinada gerada pelo cliente de serviço após a autorização.
-- Nenhuma policy de aluguel ou de `rental_boletos` é ampliada.
-- O cartão de Emissões já usa as funções do servidor; ele passa a funcionar para a secretária sem mudança de policy.
-
-## 3. Homologação com pagador fictício
-- Novo `SANDBOX_PAGADOR` fixo em `sicredi/body.ts` (nome "PAGADOR TESTE HOMOLOGACAO", CPF de teste válido, endereço/CEP de teste do manual).
-- Em sandbox, o corpo enviado ao Sicredi usa sempre esse pagador. Em produção, segue o inquilino real.
-- O snapshot grava `pagadorEnviado: "ficticio"` e mantém só o id do inquilino real como referência interna.
-- Modal: em homologação, aviso "Pagador fictício de teste será enviado". As falhas de CPF/CEP do inquilino aparecem como aviso, sem bloquear. Em produção elas continuam bloqueando.
+## Migração 0103 (aditiva, só `CREATE OR REPLACE FUNCTION`)
+- `rental_boleto_prepare`: a checagem de marca passa a aceitar `c.brand = acc.brand` **ou** `c.brand = 'ambas'` (com conta cordial ou morar). Cordial→conta Morar e o inverso continuam recusados (42501).
+- Resto idêntico: mesma assinatura, `SECURITY DEFINER`, mesmos grants; trava e regra de um boleto ativo continuam por contrato × competência × ambiente, **sem a marca** — um boleto ativo pela Cordial impede outro pela Morar na mesma competência e ambiente.
+- Evento "Boleto preparado" ganha em `detalhe`: `marca_conta` e `marca_contrato`.
+- Conferência antes/depois: assinatura, dono, grants e `prosecdef` iguais. Nenhum dado alterado; journal Drizzle preservado.
 
 ## Testes
-- Privilégios: teste que lê os grants (sem escrita) e confirma que `authenticated` e `anon` só têm SELECT ou nada. Mais um teste de que o navegador recebe 42501 ao tentar inserir em `rental_boletos`. Os testes de recibos seguem verdes.
-- Permissões: admin ok; secretária ok em contrato da marca dela que não criou (sandbox); secretária de outra marca negada; secretária sem vínculo negada; corretor, financeiro, meta_reviewer e atendimentos_viewer negados.
-- Sandbox: o corpo nunca contém nome, documento ou endereço do inquilino. Produção contém. Aviso no lugar do bloqueio só em sandbox.
-- Rodar build, typecheck, `test:boleto`, `test:receipts` e a suíte completa. Um ensaio real na homologação com a secretária num contrato que ela não criou.
-- Atualizar `src/lib/boleto/AGENTS.md` (regra de leitura via cliente de serviço depois da autorização, e o pagador fictício).
+- Puros (`test:boleto`): secretária Cordial em contrato ambas pela Cordial → ok (homologação); mesma pela Morar → negada; secretária sem marca → negada; admin Cordial e Morar → ok; contrato cordial sem escolha → cordial; contrato cordial com escolha "morar" → recusada; contrato ambas sem escolha → bloqueio; snapshot registra marca escolhida.
+- Banco (SELECT/transação revertida no teste existente de 0100, ou via função de verificação sem gravar): prepare aceita ambas+cordial e ambas+morar; recusa contrato cordial→conta morar; segundo prepare na mesma competência/ambiente por outra marca devolve o boleto existente.
+- Rodar build, typecheck, `test:boleto`, `test:receipts` e a suíte completa (NFS-e, Emissões).
 
 ## Riscos
-- O cliente de serviço ignora a RLS; mitigado por autorização prévia e filtro obrigatório por contrato/marca (coberto por teste).
-- Revogar TRUNCATE em `rental_emissions` não afeta o app (ele não usa TRUNCATE).
+- Dois operadores escolhendo marcas diferentes ao mesmo tempo: resolvido pela trava, que ignora a marca (o segundo recebe o boleto do primeiro).
+- Boleto já ativo pela marca A e operador escolhendo B: a tela mostrará o boleto existente, sem emitir outro. Trocar de marca exige baixa/rejeição do atual.
+- Liberação de produção é por marca: em "ambas", Cordial pode sair em produção e Morar em homologação; o ambiente aparece sempre na confirmação.
 
-## Pergunta
-- Contratos de marca "ambas": a secretária com uma só marca pode emitir? Proposta: sim, pela marca do contrato definida no servidor. Se preferir, posso negar e deixar só para o admin.
+## Perguntas
+1. O teste de banco pode criar uma linha de homologação num contrato "ambas" e revertê-la na mesma transação (nada fica gravado)? Se não, cubro só a regra da função por leitura do código e testes puros.
+2. A escolha deve ficar memorizada por contrato (pré-selecionada na próxima competência) ou sempre começar vazia? Proposta: sempre vazia, exceto quando a secretária tem uma única marca.
