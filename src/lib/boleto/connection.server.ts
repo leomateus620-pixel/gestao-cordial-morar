@@ -5,7 +5,12 @@ import type { SicrediCredentials } from "./sicredi/config.server";
 import { SicrediError, type FetchLike } from "./sicredi/http.server";
 import { forgetSicrediToken, getSicrediToken } from "./sicredi/token.server";
 
-export type ConnectionResult = { tokenOk: boolean; consultaOk: boolean; mensagem: string; status: number | null };
+export type ConnectionResult = {
+  tokenOk: boolean;
+  consultaOk: boolean;
+  mensagem: string;
+  status: number | null;
+};
 
 export async function testSicrediConnection(
   c: SicrediCredentials,
@@ -23,12 +28,16 @@ export async function testSicrediConnection(
     };
   }
   try {
-    await sicrediCobranca(c, { fetchImpl: deps.fetchImpl }).liquidadosDia(lastBusinessDay(deps.today ?? todaySaoPaulo()), 0);
+    await sicrediCobranca(c, { fetchImpl: deps.fetchImpl }).liquidadosDia(
+      lastBusinessDay(deps.today ?? todaySaoPaulo()),
+      0,
+    );
     return {
       tokenOk: true,
       consultaOk: true,
       status: 200,
-      mensagem: "Token e consulta OK. Isso não libera emissão: a liberação é uma decisão do administrador.",
+      mensagem:
+        "Token e consulta OK. Isso não libera emissão: a liberação é uma decisão do administrador.",
     };
   } catch (e) {
     return {

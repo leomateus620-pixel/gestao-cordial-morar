@@ -54,7 +54,8 @@ export function buildCadastroBody(args: {
   const inicio = addDays(args.vencimento, 1);
   if (e.ativo && (e.juros ?? 0) > 0) {
     body.tipoJuros = e.tipoJuros ?? "PERCENTUAL";
-    if (body.tipoJuros === "PERCENTUAL") body.tipoJurosPercentual = e.tipoJurosPercentual ?? "MENSAL";
+    if (body.tipoJuros === "PERCENTUAL")
+      body.tipoJurosPercentual = e.tipoJurosPercentual ?? "MENSAL";
     body.juros = e.juros;
     body.dataInicioJuros = inicio;
   }

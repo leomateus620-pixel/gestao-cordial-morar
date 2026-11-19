@@ -2,7 +2,13 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { BoletoRow, BoletoStore } from "./flow.server";
-import { formatCompetencia, type BillingAmbiente, type BoletoBrand, type Encargos, parseEncargos } from "./rules";
+import {
+  formatCompetencia,
+  type BillingAmbiente,
+  type BoletoBrand,
+  type Encargos,
+  parseEncargos,
+} from "./rules";
 import { accountMasks, readSicrediCredentials } from "./sicredi/config.server";
 
 const asRow = (r: unknown) => r as BoletoRow;
@@ -25,7 +31,8 @@ export function createBoletoStore(): BoletoStore {
         if (msg.includes("production issuance disabled"))
           throw new Error("A emissão em produção desta conta não está liberada.");
         if (msg.includes("not configured")) throw new Error("Conta de cobrança não configurada.");
-        if (msg.includes("brand mismatch")) throw new Error("A conta não corresponde à marca do contrato.");
+        if (msg.includes("brand mismatch"))
+          throw new Error("A conta não corresponde à marca do contrato.");
         throw new Error("Não foi possível preparar o boleto.");
       }
       const r = data[0];
@@ -81,7 +88,11 @@ export function createBoletoStore(): BoletoStore {
           file_path: row.pdf_path,
           file_name: row.pdf_path ? fileName : null,
           provider: "sicredi",
-          valores: { boletoId: row.id, totalCentavos: row.total_centavos, vencimento: row.vencimento } as Json,
+          valores: {
+            boletoId: row.id,
+            totalCentavos: row.total_centavos,
+            vencimento: row.vencimento,
+          } as Json,
           created_by: actor,
         })
         .select("id")
@@ -122,7 +133,10 @@ export type BillingAccountRow = {
 };
 
 /** Ensures the account row exists and mirrors whether its secrets are present (names only). */
-export async function ensureBillingAccount(brand: BoletoBrand, ambiente: BillingAmbiente): Promise<BillingAccountRow> {
+export async function ensureBillingAccount(
+  brand: BoletoBrand,
+  ambiente: BillingAmbiente,
+): Promise<BillingAccountRow> {
   const configurado = readSicrediCredentials(brand, ambiente).ok;
   const { data: existing } = await supabaseAdmin
     .from("billing_accounts")

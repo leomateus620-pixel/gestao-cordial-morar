@@ -11,6 +11,7 @@ import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveR
 import { PushDiagnosticsCard } from "@/components/notifications/PushDiagnosticsCard";
 import { PushDeliveryHealthCard } from "@/components/notifications/PushDeliveryHealthCard";
 import { AssistantAdminPanel } from "@/components/configuracoes/AssistantAdminPanel";
+import { BillingAccountsSettings } from "@/components/configuracoes/BillingAccountsSettings";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
 import { agencies } from "@/lib/mock/data";
@@ -95,6 +96,7 @@ function Page() {
       </section>
 
       {isAdmin && <AssistantAdminPanel />}
+      {isAdmin && <BillingAccountsSettings />}
       <section className="mb-5 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">Site público Cordial</h2>
         <p className="mt-1 text-sm text-muted-foreground">

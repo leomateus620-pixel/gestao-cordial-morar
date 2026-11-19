@@ -40,7 +40,9 @@ const pad = (v: string, n: number) => (/^\d+$/.test(v) ? v.padStart(n, "0") : v)
 export function sicrediSecretNames(brand: BoletoBrand, ambiente: BillingAmbiente): string[] {
   if (ambiente === "sandbox") return ["SICREDI_SANDBOX_API_KEY"];
   const p = `SICREDI_${brand.toUpperCase()}_`;
-  return ["API_KEY", "CODIGO_BENEFICIARIO", "COOPERATIVA", "POSTO", "CODIGO_ACESSO"].map((s) => p + s);
+  return ["API_KEY", "CODIGO_BENEFICIARIO", "COOPERATIVA", "POSTO", "CODIGO_ACESSO"].map(
+    (s) => p + s,
+  );
 }
 
 /** Reads credentials inside a handler. No fallback between brands or environments. */

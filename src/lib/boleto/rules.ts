@@ -51,7 +51,12 @@ export function boletoDueDate(competencia: string, diaVencimento: number): strin
 export const MAX_OVERRIDE_DAYS = 120;
 export type VencimentoResult =
   | { ok: true; vencimento: string; original: string; alterado: boolean }
-  | { ok: false; code: "vencimento_passado" | "vencimento_invalido"; original: string; message: string };
+  | {
+      ok: false;
+      code: "vencimento_passado" | "vencimento_invalido";
+      original: string;
+      message: string;
+    };
 /**
  * The contract date wins while it is today or later. Once it has passed, the operator must
  * inform a new future date (tomorrow or later, at most MAX_OVERRIDE_DAYS ahead).
@@ -121,7 +126,8 @@ export function isValidCnpj(v: string): boolean {
   const d = digits(v);
   if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
   const dv = (n: number) => {
-    const w = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const w =
+      n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     const s = w.reduce((acc, wi, i) => acc + Number(d[i]) * wi, 0);
     const r = s % 11;
     return r < 2 ? 0 : 11 - r;
@@ -166,11 +172,15 @@ export function normalizePagador(
     pend.push({ campo: "CPF/CNPJ válido do inquilino", tela: "Inquilino" });
   if (!clip(p.logradouro, 40)) pend.push({ campo: "Endereço (rua)", tela: "Imóvel do aluguel" });
   if (!clip(p.cidade, 40)) pend.push({ campo: "Cidade", tela: "Imóvel do aluguel" });
-  if (!/^[A-Za-z]{2}$/.test((p.uf ?? "").trim())) pend.push({ campo: "UF", tela: "Imóvel do aluguel" });
+  if (!/^[A-Za-z]{2}$/.test((p.uf ?? "").trim()))
+    pend.push({ campo: "UF", tela: "Imóvel do aluguel" });
   if (digits(p.cep).length !== 8) pend.push({ campo: "CEP", tela: "Imóvel do aluguel" });
   if (pend.length) return { ok: false, pendencias: pend };
   const endereco = clip(
-    [p.logradouro, p.numero, p.complemento, p.bairro].map((s) => clip(s, 40)).filter(Boolean).join(", "),
+    [p.logradouro, p.numero, p.complemento, p.bairro]
+      .map((s) => clip(s, 40))
+      .filter(Boolean)
+      .join(", "),
     40,
   );
   const email = clip(p.email, 60);
@@ -237,7 +247,11 @@ export function formatCompetencia(c: string) {
   return `${c.slice(5, 7)}/${c.slice(0, 4)}`;
 }
 /** Server-side decision: the contract owner alone never issues; meta reviewers never act. */
-export function boletoPermissions(flags: { admin: boolean; secretaria: boolean; metaReviewer: boolean }) {
+export function boletoPermissions(flags: {
+  admin: boolean;
+  secretaria: boolean;
+  metaReviewer: boolean;
+}) {
   const admin = flags.admin && !flags.metaReviewer;
   const secretaria = flags.secretaria && !flags.metaReviewer;
   return { podeEmitir: admin || secretaria, podeGerenciarContas: admin };

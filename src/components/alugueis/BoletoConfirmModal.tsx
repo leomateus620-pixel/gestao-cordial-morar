@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Barcode, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { issueBoleto, previewBoleto, reconcileBoleto, type PublicBoleto } from "@/lib/boleto/boletos.functions";
+import {
+  issueBoleto,
+  previewBoleto,
+  reconcileBoleto,
+  type PublicBoleto,
+} from "@/lib/boleto/boletos.functions";
 import { addDays, formatCompetencia, todaySaoPaulo } from "@/lib/boleto/rules";
 import { brlCents } from "@/lib/format";
 
@@ -48,7 +59,10 @@ export function BoletoConfirmModal({
     setError(null);
     preview({ data: { contractId, competencia, novoVencimento: applied } })
       .then((p) => alive && setData(p))
-      .catch((e) => alive && setError(e instanceof Error ? e.message : "Não foi possível montar a prévia."))
+      .catch(
+        (e) =>
+          alive && setError(e instanceof Error ? e.message : "Não foi possível montar a prévia."),
+      )
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -56,7 +70,9 @@ export function BoletoConfirmModal({
   }, [contractId, competencia, applied, preview]);
 
   const needsDate =
-    data?.vencimento && !data.vencimento.ok && (data.vencimento.code === "vencimento_passado" || applied);
+    data?.vencimento &&
+    !data.vencimento.ok &&
+    (data.vencimento.code === "vencimento_passado" || applied);
   const today = todaySaoPaulo();
 
   async function confirm() {
@@ -115,7 +131,8 @@ export function BoletoConfirmModal({
           <div className="space-y-4 text-sm">
             {data.ambiente === "sandbox" && (
               <p className="rounded-lg bg-emission-boleto/10 p-3 text-xs text-emission-boleto">
-                Ambiente de homologação do Sicredi: o boleto não tem valor de cobrança e não deve ser enviado ao inquilino.
+                Ambiente de homologação do Sicredi: o boleto não tem valor de cobrança e não deve
+                ser enviado ao inquilino.
               </p>
             )}
             <section className="rounded-lg border p-3">
@@ -130,12 +147,18 @@ export function BoletoConfirmModal({
                 <span className="font-mono tabular-nums">{brlCents(data.totalCentavos / 100)}</span>
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {data.fonte === "recibo" ? "Valores do recibo emitido nesta competência." : "Valores do contrato e ajustes recorrentes."}
+                {data.fonte === "recibo"
+                  ? "Valores do recibo emitido nesta competência."
+                  : "Valores do contrato e ajustes recorrentes."}
               </p>
             </section>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
               <dt className="text-muted-foreground">Pagador</dt>
-              <dd>{data.pagador ? `${data.pagador.nome} · ${data.pagador.documento} · ${data.pagador.cidadeUf}` : "Incompleto"}</dd>
+              <dd>
+                {data.pagador
+                  ? `${data.pagador.nome} · ${data.pagador.documento} · ${data.pagador.cidadeUf}`
+                  : "Incompleto"}
+              </dd>
               <dt className="text-muted-foreground">Vencimento</dt>
               <dd>
                 {data.vencimento?.ok
@@ -145,7 +168,11 @@ export function BoletoConfirmModal({
                     : "—"}
               </dd>
               <dt className="text-muted-foreground">Juros e multa</dt>
-              <dd>{data.encargosAtivos ? "Instruções enviadas ao banco a partir do dia seguinte" : "Desligados"}</dd>
+              <dd>
+                {data.encargosAtivos
+                  ? "Instruções enviadas ao banco a partir do dia seguinte"
+                  : "Desligados"}
+              </dd>
             </dl>
             {needsDate && (
               <div className="rounded-lg border border-destructive/40 p-3">
@@ -161,15 +188,24 @@ export function BoletoConfirmModal({
                     value={novo}
                     onChange={(e) => setNovo(e.target.value)}
                   />
-                  <Button variant="outline" disabled={!novo || loading} onClick={() => setApplied(novo)}>
+                  <Button
+                    variant="outline"
+                    disabled={!novo || loading}
+                    onClick={() => setApplied(novo)}
+                  >
                     Usar data
                   </Button>
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">A alteração fica registrada no histórico do boleto.</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  A alteração fica registrada no histórico do boleto.
+                </p>
               </div>
             )}
             {(data.bloqueios.length > 0 || data.pendencias.length > 0) && (
-              <ul role="alert" className="space-y-1 rounded-lg bg-destructive/10 p-3 text-xs text-destructive">
+              <ul
+                role="alert"
+                className="space-y-1 rounded-lg bg-destructive/10 p-3 text-xs text-destructive"
+              >
                 {data.bloqueios.map((b) => (
                   <li key={b} className="flex gap-1">
                     <AlertTriangle className="mt-0.5 size-3 shrink-0" />
@@ -201,7 +237,11 @@ export function BoletoConfirmModal({
             className="bg-emission-boleto text-emission-contrast hover:bg-emission-boleto/90"
           >
             {sending ? <Loader2 className="animate-spin" /> : <Barcode />}
-            {sending ? "Registrando…" : data?.ambiente === "sandbox" ? "Emitir em homologação" : "Emitir boleto"}
+            {sending
+              ? "Registrando…"
+              : data?.ambiente === "sandbox"
+                ? "Emitir em homologação"
+                : "Emitir boleto"}
           </Button>
         </div>
       </DialogContent>
@@ -225,8 +265,11 @@ export function BoletoReconcileModal({
   async function run(liberar: boolean) {
     setBusy(true);
     try {
-      const out = await reconcile({ data: { id: boleto.id, liberarMotivo: liberar ? motivo : null } });
-      if (out.boleto.estado !== "incerto" && out.boleto.estado !== "enviando") onDone(out.boleto, out.mensagem);
+      const out = await reconcile({
+        data: { id: boleto.id, liberarMotivo: liberar ? motivo : null },
+      });
+      if (out.boleto.estado !== "incerto" && out.boleto.estado !== "enviando")
+        onDone(out.boleto, out.mensagem);
       else setMsg(out.mensagem);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Não foi possível conferir.");
@@ -253,8 +296,18 @@ export function BoletoReconcileModal({
           <Label htmlFor="boleto-motivo" className="text-xs">
             Tenho certeza de que não foi registrado (motivo)
           </Label>
-          <Textarea id="boleto-motivo" maxLength={200} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-          <Button variant="destructive" size="sm" disabled={busy || motivo.trim().length < 10} onClick={() => void run(true)}>
+          <Textarea
+            id="boleto-motivo"
+            maxLength={200}
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={busy || motivo.trim().length < 10}
+            onClick={() => void run(true)}
+          >
             Liberar para novo envio
           </Button>
         </div>

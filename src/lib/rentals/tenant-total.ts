@@ -46,7 +46,11 @@ export function tenantTotalSourceFor(
             Number.isFinite(a.valor) &&
             a.valor > 0,
         )
-        .map((a) => ({ tipo: a.tipo, descricao: String(a.descricao ?? "").slice(0, 120), valor: a.valor })),
+        .map((a) => ({
+          tipo: a.tipo,
+          descricao: String(a.descricao ?? "").slice(0, 120),
+          valor: a.valor,
+        })),
     };
   }
   return {

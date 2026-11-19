@@ -1,0 +1,11 @@
+# Boletos Sicredi (src/lib/boleto)
+
+- Every Sicredi call lives in `sicredi/*.server.ts` and is reached only from server functions in `boletos.functions.ts`; pure rules (`rules.ts`, `preview.ts`, `sicredi/body.ts`, `sicredi/linha-digitavel.ts`, `sicredi/seu-numero.ts`) stay browser-safe — why: credentials and tokens never reach the client bundle.
+- Credentials come only from `SICREDI_<BRAND>_*` secrets read inside handlers; the sandbox uses `SICREDI_SANDBOX_API_KEY` plus the public test data of the manual and never a brand secret; there is no fallback between brands — why: a missing secret must mean "not configured".
+- `rental_boletos` / `rental_boleto_events` / `billing_accounts*` are written only by the service role through `rental_boleto_prepare` (advisory lock + one live title per contract × competence × environment) and `rental_boleto_transition` (compare-and-set + event); the snapshot is immutable — why: double clicks and two tabs must yield one title.
+- The registration POST is never retried: timeout, network, 5xx or an unreadable answer become `incerto`, resolved only by `reconcileBoleto` (cadastrados by seuNumero in production, or manual release with a reason) — why: a lost answer may already be a real title.
+- `seuNumero` is base36 of SHA-256(contract:competence:occurrence) and is mirrored by `public.rental_boleto_seu_numero`; change both together — why: tests assert they match.
+- Issuance is admin/secretaria only, checked on the server (`boletoPermissions`); the brand comes from the contract on the server — why: the UI is not a security boundary.
+- Production issuance requires `emissao_habilitada`, which `releaseBillingAccount` sets only after a fresh live token + consulta test (also enforced by a CHECK and inside `rental_boleto_prepare`) — why: provisional keys must never enable real titles.
+- Liquidation evidence (`refreshBoleto`, `runLiquidadosDia`) never settles the rent in `rental_contracts`; the sandbox returns fixed demo data and never changes a boleto state — why: payment receipt stays a manual, audited action.
+- Sandbox lines are hidden from the UI projection and production rows are mirrored into `rental_emissions` (tipo `boleto`, browser writes blocked by policy) — why: a demo linha digitável must never be copied to a tenant.

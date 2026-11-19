@@ -11,7 +11,8 @@ export const ids = {
   contratoCordial: "00000000-0000-4000-8000-0000000000c1",
   contratoMorar: "00000000-0000-4000-8000-0000000000c2",
 };
-const mig = (f: string) => readFileSync(new URL(`../../drizzle/migrations/${f}`, import.meta.url), "utf8");
+const mig = (f: string) =>
+  readFileSync(new URL(`../../drizzle/migrations/${f}`, import.meta.url), "utf8");
 
 /** Real migrations 0099–0101 over minimal stubs of the pre-existing objects they reference. */
 export async function bootBoletoDb() {
@@ -38,14 +39,22 @@ export async function bootBoletoDb() {
     CREATE POLICY rental_emissions_insert ON public.rental_emissions FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid() AND EXISTS (SELECT 1 FROM public.rental_contracts c WHERE c.id = contract_id AND (c.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin'))));
     CREATE POLICY rental_emissions_update ON public.rental_emissions FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.rental_contracts c WHERE c.id = contract_id AND (c.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin')))) WITH CHECK (EXISTS (SELECT 1 FROM public.rental_contracts c WHERE c.id = contract_id AND (c.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin'))));
     CREATE POLICY rental_emissions_delete ON public.rental_emissions FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.rental_contracts c WHERE c.id = contract_id AND (c.created_by = auth.uid() OR public.has_role(auth.uid(), 'admin'))));`);
-  for (const f of ["0099_billing_accounts.sql", "0100_rental_boletos.sql", "0101_rental_emissions_boleto_guard.sql"])
+  for (const f of [
+    "0099_billing_accounts.sql",
+    "0100_rental_boletos.sql",
+    "0101_rental_emissions_boleto_guard.sql",
+  ])
     await db.exec(mig(f));
   return db;
 }
 
 /** Runs `fn` as an authenticated user (or anon when id is null), always resetting the role. */
 export async function asUser<T>(db: PGlite, id: string | null, fn: () => Promise<T>): Promise<T> {
-  await db.exec(id ? `SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${id}',false);` : "SET ROLE anon;");
+  await db.exec(
+    id
+      ? `SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${id}',false);`
+      : "SET ROLE anon;",
+  );
   try {
     return await fn();
   } finally {
@@ -53,7 +62,12 @@ export async function asUser<T>(db: PGlite, id: string | null, fn: () => Promise
   }
 }
 
-export async function seedAccount(db: PGlite, brand: "cordial" | "morar", ambiente: "sandbox" | "producao", habilitada = false) {
+export async function seedAccount(
+  db: PGlite,
+  brand: "cordial" | "morar",
+  ambiente: "sandbox" | "producao",
+  habilitada = false,
+) {
   const r = await db.query<{ id: string }>(
     `INSERT INTO public.billing_accounts (brand, ambiente, configurado, consulta_ok_em, emissao_habilitada, liberado_por, liberado_em)
      VALUES ($1,$2,true,${habilitada ? "now()" : "NULL"},$3,${habilitada ? `'${ids.admin}'` : "NULL"},${habilitada ? "now()" : "NULL"}) RETURNING id`,

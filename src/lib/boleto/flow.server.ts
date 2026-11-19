@@ -36,7 +36,11 @@ export type BoletoRow = {
   created_at: string;
   updated_at: string;
 };
-export type TransitionMeta = { http?: number | null; mensagem?: string; detalhe?: Record<string, unknown> };
+export type TransitionMeta = {
+  http?: number | null;
+  mensagem?: string;
+  detalhe?: Record<string, unknown>;
+};
 export interface BoletoStore {
   prepare(a: {
     contractId: string;
@@ -70,8 +74,9 @@ export type FlowDeps = {
 
 const errMessage = (e: unknown) =>
   e instanceof SicrediError ? e.message : "Falha inesperada ao falar com o Sicredi.";
-export const boletoPdfPath = (r: Pick<BoletoRow, "contract_id" | "competencia" | "seu_numero" | "ambiente">) =>
-  `${r.contract_id}/boletos/${r.competencia}-${r.seu_numero}-${r.ambiente}.pdf`;
+export const boletoPdfPath = (
+  r: Pick<BoletoRow, "contract_id" | "competencia" | "seu_numero" | "ambiente">,
+) => `${r.contract_id}/boletos/${r.competencia}-${r.seu_numero}-${r.ambiente}.pdf`;
 
 export async function storeBoletoPdf(deps: FlowDeps, row: BoletoRow): Promise<BoletoRow> {
   if (!row.linha_digitavel) return row;
@@ -80,16 +85,30 @@ export async function storeBoletoPdf(deps: FlowDeps, row: BoletoRow): Promise<Bo
     const path = boletoPdfPath(row);
     await deps.store.uploadPdf(path, bytes);
     return (
-      (await deps.store.transition(row.id, [row.estado], row.estado, { pdf_estado: "pronto", pdf_path: path, ultimo_erro: null }, deps.actor, {
-        mensagem: "PDF guardado",
-      })) ?? row
+      (await deps.store.transition(
+        row.id,
+        [row.estado],
+        row.estado,
+        { pdf_estado: "pronto", pdf_path: path, ultimo_erro: null },
+        deps.actor,
+        {
+          mensagem: "PDF guardado",
+        },
+      )) ?? row
     );
   } catch (e) {
     return (
-      (await deps.store.transition(row.id, [row.estado], row.estado, { pdf_estado: "erro", ultimo_erro: errMessage(e) }, deps.actor, {
-        http: e instanceof SicrediError ? e.status : null,
-        mensagem: "PDF pendente: o título continua registrado",
-      })) ?? row
+      (await deps.store.transition(
+        row.id,
+        [row.estado],
+        row.estado,
+        { pdf_estado: "erro", ultimo_erro: errMessage(e) },
+        deps.actor,
+        {
+          http: e instanceof SicrediError ? e.status : null,
+          mensagem: "PDF pendente: o título continua registrado",
+        },
+      )) ?? row
     );
   }
 }
@@ -102,9 +121,16 @@ export async function finishRegisteredBoleto(deps: FlowDeps, row: BoletoRow): Pr
       const emissionId = await deps.store.recordEmission(current, deps.actor);
       if (emissionId && emissionId !== current.emission_id)
         current =
-          (await deps.store.transition(current.id, [current.estado], current.estado, { emission_id: emissionId }, deps.actor, {
-            mensagem: "Registrado nas emissões do aluguel",
-          })) ?? current;
+          (await deps.store.transition(
+            current.id,
+            [current.estado],
+            current.estado,
+            { emission_id: emissionId },
+            deps.actor,
+            {
+              mensagem: "Registrado nas emissões do aluguel",
+            },
+          )) ?? current;
     } catch {
       /* the title stays registered; the emission mirror can be retried with the PDF */
     }
@@ -134,11 +160,19 @@ export async function issuePreparedBoleto(
   if (
     !prep.created &&
     row.estado === "preparando" &&
-    (row.total_centavos !== input.snapshot.total_centavos || row.vencimento !== input.snapshot.vencimento.data)
+    (row.total_centavos !== input.snapshot.total_centavos ||
+      row.vencimento !== input.snapshot.vencimento.data)
   ) {
-    await deps.store.transition(row.id, ["preparando"], "rejeitado", { ultimo_erro: "Preparação antiga descartada (valores mudaram)." }, deps.actor, {
-      mensagem: "Preparação antiga descartada antes do envio",
-    });
+    await deps.store.transition(
+      row.id,
+      ["preparando"],
+      "rejeitado",
+      { ultimo_erro: "Preparação antiga descartada (valores mudaram)." },
+      deps.actor,
+      {
+        mensagem: "Preparação antiga descartada antes do envio",
+      },
+    );
     prep = await deps.store.prepare(prepareArgs);
     row = await deps.store.get(prep.id);
     if (!row) throw new Error("Boleto preparado não encontrado.");
@@ -156,15 +190,23 @@ export async function issuePreparedBoleto(
       encargos: row.snapshot.encargos,
     });
   } catch (e) {
-    const rejected = await deps.store.transition(row.id, ["preparando"], "rejeitado", { ultimo_erro: e instanceof Error ? e.message : "Dados inválidos." }, deps.actor, {
-      mensagem: "Dados inválidos antes do envio",
-    });
+    const rejected = await deps.store.transition(
+      row.id,
+      ["preparando"],
+      "rejeitado",
+      { ultimo_erro: e instanceof Error ? e.message : "Dados inválidos." },
+      deps.actor,
+      {
+        mensagem: "Dados inválidos antes do envio",
+      },
+    );
     return { row: rejected ?? row, enviado: false, reaproveitado: false };
   }
   const sending = await deps.store.transition(row.id, ["preparando"], "enviando", {}, deps.actor, {
     mensagem: "Enviando ao Sicredi",
   });
-  if (!sending) return { row: (await deps.store.get(row.id)) ?? row, enviado: false, reaproveitado: true };
+  if (!sending)
+    return { row: (await deps.store.get(row.id)) ?? row, enviado: false, reaproveitado: true };
   try {
     const result = await deps.client.cadastrar(body);
     const registered = await deps.store.transition(
@@ -182,7 +224,11 @@ export async function issuePreparedBoleto(
       { http: 201, mensagem: "Título registrado no Sicredi" },
     );
     if (!registered) throw new Error("Estado do boleto mudou durante o envio.");
-    return { row: await finishRegisteredBoleto(deps, registered), enviado: true, reaproveitado: false };
+    return {
+      row: await finishRegisteredBoleto(deps, registered),
+      enviado: true,
+      reaproveitado: false,
+    };
   } catch (e) {
     const definite = e instanceof SicrediError && !e.incerto;
     const next = await deps.store.transition(
@@ -193,10 +239,16 @@ export async function issuePreparedBoleto(
       deps.actor,
       {
         http: e instanceof SicrediError ? e.status : null,
-        mensagem: definite ? "Sicredi recusou o título" : "Resultado incerto: conferir antes de qualquer novo envio",
+        mensagem: definite
+          ? "Sicredi recusou o título"
+          : "Resultado incerto: conferir antes de qualquer novo envio",
       },
     );
-    return { row: next ?? (await deps.store.get(row.id)) ?? row, enviado: true, reaproveitado: false };
+    return {
+      row: next ?? (await deps.store.get(row.id)) ?? row,
+      enviado: true,
+      reaproveitado: false,
+    };
   }
 }
 
@@ -237,7 +289,10 @@ export async function reconcileUncertainBoleto(
         { http: 200, mensagem: "Conciliado: título encontrado no Sicredi" },
       );
       if (!registered) return { row, mensagem: "O boleto mudou de estado; atualize a tela." };
-      return { row: await finishRegisteredBoleto(deps, registered), mensagem: "Título encontrado e registrado." };
+      return {
+        row: await finishRegisteredBoleto(deps, registered),
+        mensagem: "Título encontrado e registrado.",
+      };
     }
   }
   const motivo = (opts.liberarMotivo ?? "").trim();
@@ -249,20 +304,32 @@ export async function reconcileUncertainBoleto(
           ? "Nenhum título com este número nas últimas 48 h. Se tiver certeza, confirme com um motivo."
           : "A homologação do Sicredi não oferece esta consulta. Se tiver certeza, confirme com um motivo.",
     };
-  if (motivo.length < 10) return { row, mensagem: "Explique o motivo com pelo menos 10 caracteres." };
+  if (motivo.length < 10)
+    return { row, mensagem: "Explique o motivo com pelo menos 10 caracteres." };
   const released = await deps.store.transition(
     row.id,
     from,
     "rejeitado",
     { ultimo_erro: "Liberado manualmente: não registrado." },
     deps.actor,
-    { mensagem: "Liberado manualmente como não registrado", detalhe: { liberacao_manual: true, motivo: motivo.slice(0, 200) } },
+    {
+      mensagem: "Liberado manualmente como não registrado",
+      detalhe: { liberacao_manual: true, motivo: motivo.slice(0, 200) },
+    },
   );
-  return { row: released ?? row, mensagem: released ? "Liberado. Um novo boleto pode ser emitido." : "O boleto mudou de estado; atualize a tela." };
+  return {
+    row: released ?? row,
+    mensagem: released
+      ? "Liberado. Um novo boleto pode ser emitido."
+      : "O boleto mudou de estado; atualize a tela.",
+  };
 }
 
 /** Updates the bank situation. The sandbox answers fixed demo data, so it never changes state. */
-export async function refreshRegisteredBoleto(deps: FlowDeps, row: BoletoRow): Promise<{ row: BoletoRow; mensagem: string }> {
+export async function refreshRegisteredBoleto(
+  deps: FlowDeps,
+  row: BoletoRow,
+): Promise<{ row: BoletoRow; mensagem: string }> {
   if (!row.nosso_numero || !["registrado", "baixa_solicitada", "liquidado"].includes(row.estado))
     return { row, mensagem: "Este boleto ainda não está registrado." };
   let consulta;
@@ -290,10 +357,14 @@ export async function refreshRegisteredBoleto(deps: FlowDeps, row: BoletoRow): P
     };
   const updated = await deps.store.transition(row.id, [row.estado], to, patch, deps.actor, {
     http: 200,
-    mensagem: row.ambiente === "sandbox" ? "Situação consultada (retorno fixo da homologação)" : "Situação consultada",
+    mensagem:
+      row.ambiente === "sandbox"
+        ? "Situação consultada (retorno fixo da homologação)"
+        : "Situação consultada",
   });
   let current = updated ?? row;
-  if (current.pdf_estado !== "pronto" && current.linha_digitavel) current = await finishRegisteredBoleto(deps, current);
+  if (current.pdf_estado !== "pronto" && current.linha_digitavel)
+    current = await finishRegisteredBoleto(deps, current);
   return {
     row: current,
     mensagem:
@@ -344,7 +415,10 @@ export async function applyLiquidadosDia(
           },
         },
         deps.actor,
-        { http: 200, mensagem: "Liquidação encontrada (evidência; o aluguel não recebe baixa automática)" },
+        {
+          http: 200,
+          mensagem: "Liquidação encontrada (evidência; o aluguel não recebe baixa automática)",
+        },
       );
       if (done) conciliados++;
     }

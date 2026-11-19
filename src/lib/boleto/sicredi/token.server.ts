@@ -43,7 +43,11 @@ async function requestToken(c: SicrediCredentials, form: Record<string, string>,
   });
   const b = (res.body ?? {}) as Record<string, unknown>;
   if (typeof b.access_token !== "string" || !b.access_token)
-    throw new SicrediError("corpo_invalido", res.status, "O Sicredi não devolveu o token de acesso.");
+    throw new SicrediError(
+      "corpo_invalido",
+      res.status,
+      "O Sicredi não devolveu o token de acesso.",
+    );
   return {
     access: b.access_token,
     expiresIn: Number(b.expires_in) > 0 ? Number(b.expires_in) : 300,
@@ -57,7 +61,10 @@ export function sicrediUsername(c: Pick<SicrediCredentials, "codigoBeneficiario"
   return `${c.codigoBeneficiario}${c.cooperativa}`;
 }
 
-export async function getSicrediToken(c: SicrediCredentials, deps: TokenDeps = {}): Promise<string> {
+export async function getSicrediToken(
+  c: SicrediCredentials,
+  deps: TokenDeps = {},
+): Promise<string> {
   const now = deps.now ?? Date.now;
   const key = await cacheKey(c);
   const entry = cache.get(key) ?? {};
@@ -68,14 +75,23 @@ export async function getSicrediToken(c: SicrediCredentials, deps: TokenDeps = {
     let t: Awaited<ReturnType<typeof requestToken>> | null = null;
     if (entry.refresh && (entry.refreshExp ?? 0) - TOKEN_MARGIN_MS > now()) {
       try {
-        t = await requestToken(c, { grant_type: "refresh_token", refresh_token: entry.refresh }, deps);
+        t = await requestToken(
+          c,
+          { grant_type: "refresh_token", refresh_token: entry.refresh },
+          deps,
+        );
       } catch {
         entry.refresh = undefined;
       }
     }
     t ??= await requestToken(
       c,
-      { grant_type: "password", username: sicrediUsername(c), password: c.codigoAcesso, scope: "cobranca" },
+      {
+        grant_type: "password",
+        username: sicrediUsername(c),
+        password: c.codigoAcesso,
+        scope: "cobranca",
+      },
       deps,
     );
     const at = now();

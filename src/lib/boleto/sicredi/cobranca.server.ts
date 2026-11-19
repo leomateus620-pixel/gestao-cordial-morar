@@ -25,8 +25,14 @@ export type LiquidadoItem = {
   valorLiquidado: number | null;
 };
 
-const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : null);
-const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : typeof v === "string" && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null);
+const str = (v: unknown) =>
+  typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : null;
+const numOrNull = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v)
+    ? v
+    : typeof v === "string" && v.trim() && Number.isFinite(Number(v))
+      ? Number(v)
+      : null;
 const brDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 
 /**
@@ -51,7 +57,10 @@ export function parseCadastroResponse(body: unknown, strictDv = true): CadastroR
   return { nossoNumero, linhaDigitavel, codigoBarras };
 }
 
-export function sicrediCobranca(c: SicrediCredentials, deps: TokenDeps & { sleepImpl?: (ms: number) => Promise<void> } = {}) {
+export function sicrediCobranca(
+  c: SicrediCredentials,
+  deps: TokenDeps & { sleepImpl?: (ms: number) => Promise<void> } = {},
+) {
   const base = sicrediUrls(c.ambiente).cobranca;
   async function headers(json: boolean) {
     const token = await getSicrediToken(c, deps);
@@ -145,19 +154,32 @@ export function sicrediCobranca(c: SicrediCredentials, deps: TokenDeps & { sleep
       const res = await get("obter o PDF do boleto", "/boletos/pdf", { linhaDigitavel }, true);
       const bytes = res.bytes ?? new Uint8Array();
       if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-")
-        throw new SicrediError("corpo_invalido", res.status, "O Sicredi não devolveu um PDF válido.");
+        throw new SicrediError(
+          "corpo_invalido",
+          res.status,
+          "O Sicredi não devolveu um PDF válido.",
+        );
       if (bytes.length > 5 * 1024 * 1024)
-        throw new SicrediError("corpo_invalido", res.status, "PDF do boleto maior que o permitido.");
+        throw new SicrediError(
+          "corpo_invalido",
+          res.status,
+          "PDF do boleto maior que o permitido.",
+        );
       return bytes;
     },
-    async liquidadosDia(diaIso: string, pagina = 0): Promise<{ items: LiquidadoItem[]; hasNext: boolean }> {
+    async liquidadosDia(
+      diaIso: string,
+      pagina = 0,
+    ): Promise<{ items: LiquidadoItem[]; hasNext: boolean }> {
       const res = await get("consultar liquidados do dia", "/boletos/liquidados/dia", {
         codigoBeneficiario: c.codigoBeneficiario,
         dia: brDate(diaIso),
         pagina: String(pagina),
       });
       const b = (res.body ?? {}) as Record<string, unknown>;
-      const items = (Array.isArray(b.items) ? b.items : Array.isArray(res.body) ? (res.body as unknown[]) : [])
+      const items = (
+        Array.isArray(b.items) ? b.items : Array.isArray(res.body) ? (res.body as unknown[]) : []
+      )
         .map((i) => (i ?? {}) as Record<string, unknown>)
         .map((i) => ({
           nossoNumero: (str(i.nossoNumero) ?? "").replace(/\D/g, ""),

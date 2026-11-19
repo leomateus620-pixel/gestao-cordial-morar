@@ -1,6 +1,10 @@
 /** Pure boleto preview: validations, tenant total and the immutable snapshot. Browser-safe. */
 import type { RecurringAdjustment } from "@/lib/rentals/receipt-model";
-import { tenantTotal, tenantTotalSourceFor, type TenantTotalLine } from "@/lib/rentals/tenant-total";
+import {
+  tenantTotal,
+  tenantTotalSourceFor,
+  type TenantTotalLine,
+} from "@/lib/rentals/tenant-total";
 import {
   maskDocumento,
   normalizePagador,
@@ -63,7 +67,8 @@ export function buildBoletoPreview(args: {
   const bloqueios: string[] = [];
   const c = args.contract;
   const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
-  if (!brand) bloqueios.push("Defina a marca do contrato (Cordial ou Morar) antes de emitir o boleto.");
+  if (!brand)
+    bloqueios.push("Defina a marca do contrato (Cordial ou Morar) antes de emitir o boleto.");
   if (c.status === "encerrado" || c.status === "cancelado")
     bloqueios.push("Contrato encerrado ou cancelado: não é possível emitir boleto.");
   let vencimento: VencimentoResult | null = null;
@@ -89,9 +94,12 @@ export function buildBoletoPreview(args: {
   if (total.totalCentavos <= 0) bloqueios.push("O total do inquilino precisa ser maior que zero.");
   const pag = normalizePagador(args.pagador);
   const pendencias = pag.ok ? [] : pag.pendencias;
-  if (!args.account) bloqueios.push("Nenhuma conta de cobrança Sicredi configurada para esta marca.");
+  if (!args.account)
+    bloqueios.push("Nenhuma conta de cobrança Sicredi configurada para esta marca.");
   const ok = bloqueios.length === 0 && pendencias.length === 0;
-  const encargos: Encargos = args.account?.encargos.ativo ? args.account.encargos : { ativo: false };
+  const encargos: Encargos = args.account?.encargos.ativo
+    ? args.account.encargos
+    : { ativo: false };
   return {
     ok,
     bloqueios,

@@ -342,7 +342,12 @@ export function RentalEmissions({
         for (const a of input.ajustesProprietario ?? []) {
           const file = proofs[a.id];
           if (!file) {
-            ownerAdj.push({ id: a.id, tipo: a.tipo, descricao: a.descricao.trim(), valor: a.valor });
+            ownerAdj.push({
+              id: a.id,
+              tipo: a.tipo,
+              descricao: a.descricao.trim(),
+              valor: a.valor,
+            });
             continue;
           }
           const ext = (file.name.split(".").pop() ?? "").toLowerCase();
@@ -369,7 +374,11 @@ export function RentalEmissions({
           repassarProprietario: a.repassarProprietario,
           ...(a.recorrenteId ? { recorrenteId: a.recorrenteId } : {}),
         }));
-        const clean: ReceiptInput = { ...input, ajustesInquilino: tenantAdj, ajustesProprietario: ownerAdj };
+        const clean: ReceiptInput = {
+          ...input,
+          ajustesInquilino: tenantAdj,
+          ajustesProprietario: ownerAdj,
+        };
         const model = buildReceiptModel(contract, clean);
         const cnpj = await taxId({ data: { brand: input.brand } });
         const response = await fetch(model.company.logo);
@@ -514,16 +523,21 @@ export function RentalEmissions({
           }
           disabled={!podeEmitirBoleto || boletos.isLoading}
           disabledReason={
-            boletos.isLoading ? "Carregando…" : "Apenas a administração ou a secretaria emitem boletos."
+            boletos.isLoading
+              ? "Carregando…"
+              : "Apenas a administração ou a secretaria emitem boletos."
           }
           busy={boletoBusy}
           action={() => {
-            if (liveBoleto?.estado === "incerto" || liveBoleto?.estado === "enviando") setBoletoModal("conferir");
+            if (liveBoleto?.estado === "incerto" || liveBoleto?.estado === "enviando")
+              setBoletoModal("conferir");
             else if (liveBoleto) void boletoAction("refresh");
             else setBoletoModal("emitir");
           }}
           error={!liveBoleto && lastBoleto?.estado === "rejeitado" ? lastBoleto.ultimoErro : null}
-          emitted={Boolean(liveBoleto && liveBoleto.estado !== "incerto" && liveBoleto.estado !== "enviando")}
+          emitted={Boolean(
+            liveBoleto && liveBoleto.estado !== "incerto" && liveBoleto.estado !== "enviando",
+          )}
           seal={liveBoleto ? <AmbienteSeal ambiente={liveBoleto.ambiente} /> : undefined}
         >
           <FileSlot
@@ -533,7 +547,11 @@ export function RentalEmissions({
                 : null
             }
             date={liveBoleto?.createdAt}
-            open={liveBoleto?.pdfEstado === "pronto" ? () => void openBoletoPdf(liveBoleto.id) : undefined}
+            open={
+              liveBoleto?.pdfEstado === "pronto"
+                ? () => void openBoletoPdf(liveBoleto.id)
+                : undefined
+            }
             copy={
               liveBoleto?.linhaDigitavel ? async () => liveBoleto.linhaDigitavel ?? "" : undefined
             }

@@ -8,7 +8,9 @@ export async function boletoSeuNumero(
   competencia: string,
   ocorrencia: number,
 ): Promise<string> {
-  const bytes = new TextEncoder().encode(`${contractId.toLowerCase()}:${competencia}:${ocorrencia}`);
+  const bytes = new TextEncoder().encode(
+    `${contractId.toLowerCase()}:${competencia}:${ocorrencia}`,
+  );
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   const hex = Array.from(hash.slice(0, 7), (b) => b.toString(16).padStart(2, "0")).join("");
   const value = BigInt(`0x${hex.slice(0, 13)}`) >> 1n;

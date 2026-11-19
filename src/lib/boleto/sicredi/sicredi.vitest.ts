@@ -1,9 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { buildCadastroBody } from "./body";
 import { sicrediCobranca } from "./cobranca.server";
-import { readSicrediCredentials, SICREDI_SANDBOX_TEST_ACCOUNT, sicrediUrls, type SicrediCredentials } from "./config.server";
+import {
+  readSicrediCredentials,
+  SICREDI_SANDBOX_TEST_ACCOUNT,
+  sicrediUrls,
+  type SicrediCredentials,
+} from "./config.server";
 import { sicrediRequest, SicrediError, type FetchLike } from "./http.server";
-import { formatLinhaDigitavel, isValidBarcode, isValidLinhaDigitavel, linhaToBarcode } from "./linha-digitavel";
+import {
+  formatLinhaDigitavel,
+  isValidBarcode,
+  isValidLinhaDigitavel,
+  linhaToBarcode,
+} from "./linha-digitavel";
 import { boletoIdTituloEmpresa, boletoSeuNumero } from "./seu-numero";
 import { clearSicrediTokenCache, getSicrediToken, sicrediUsername } from "./token.server";
 import { normalizePagador } from "../rules";
@@ -21,7 +31,9 @@ const cred: SicrediCredentials = {
 const DOC_LINHA = "74891125110061420512803153351030188640000050000";
 const DOC_BARRAS = "74891886400000500001125100614205120315335103";
 type Call = { url: string; init: RequestInit };
-function fakeFetch(handler: (url: string, init: RequestInit, n: number) => Response | Promise<Response>) {
+function fakeFetch(
+  handler: (url: string, init: RequestInit, n: number) => Response | Promise<Response>,
+) {
   const calls: Call[] = [];
   const f: FetchLike = async (url, init = {}) => {
     calls.push({ url, init });
@@ -31,7 +43,12 @@ function fakeFetch(handler: (url: string, init: RequestInit, n: number) => Respo
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-const tokenBody = (n = 1) => ({ access_token: `access-${n}`, refresh_token: `refresh-${n}`, expires_in: 300, refresh_expires_in: 1800 });
+const tokenBody = (n = 1) => ({
+  access_token: `access-${n}`,
+  refresh_token: `refresh-${n}`,
+  expires_in: 300,
+  refresh_expires_in: 1800,
+});
 
 beforeEach(() => clearSicrediTokenCache());
 
@@ -52,14 +69,20 @@ describe("autenticação", () => {
     expect(calls[0].init.redirect).toBe("manual");
   });
   it("sandbox usa /sb e nunca as credenciais de marca", () => {
-    expect(sicrediUrls("sandbox").token).toBe("https://api-parceiro.sicredi.com.br/sb/auth/openapi/token");
-    expect(sicrediUrls("sandbox").cobranca).toBe("https://api-parceiro.sicredi.com.br/sb/cobranca/boleto/v1");
+    expect(sicrediUrls("sandbox").token).toBe(
+      "https://api-parceiro.sicredi.com.br/sb/auth/openapi/token",
+    );
+    expect(sicrediUrls("sandbox").cobranca).toBe(
+      "https://api-parceiro.sicredi.com.br/sb/cobranca/boleto/v1",
+    );
     const r = readSicrediCredentials("cordial", "sandbox", {
       SICREDI_SANDBOX_API_KEY: "sb-key",
       SICREDI_CORDIAL_CODIGO_BENEFICIARIO: "99999",
       SICREDI_CORDIAL_COOPERATIVA: "1111",
     });
-    expect(r.ok && r.credentials.codigoBeneficiario).toBe(SICREDI_SANDBOX_TEST_ACCOUNT.codigoBeneficiario);
+    expect(r.ok && r.credentials.codigoBeneficiario).toBe(
+      SICREDI_SANDBOX_TEST_ACCOUNT.codigoBeneficiario,
+    );
     expect(r.ok && r.credentials.cooperativa).toBe("6789");
     expect(r.ok && r.credentials.posto).toBe("03");
   });
@@ -86,7 +109,9 @@ describe("autenticação", () => {
   it("refresh recusado volta para usuário e senha", async () => {
     let now = 0;
     const { f, calls } = fakeFetch((_u, init, n) =>
-      new URLSearchParams(String(init.body)).get("grant_type") === "refresh_token" ? json({}, 401) : json(tokenBody(n)),
+      new URLSearchParams(String(init.body)).get("grant_type") === "refresh_token"
+        ? json({}, 401)
+        : json(tokenBody(n)),
     );
     await getSicrediToken(cred, { fetchImpl: f, now: () => now });
     now += 280_000;
@@ -101,7 +126,14 @@ describe("autenticação", () => {
 
 describe("erros e limites", () => {
   const req = (f: FetchLike, method: "GET" | "POST" = "GET") =>
-    sicrediRequest({ fetchImpl: f, op: "testar", method, url: "https://x", headers: {}, sleepImpl: async () => undefined });
+    sicrediRequest({
+      fetchImpl: f,
+      op: "testar",
+      method,
+      url: "https://x",
+      headers: {},
+      sleepImpl: async () => undefined,
+    });
   it.each([
     [400, "recusou os dados"],
     [401, "Autenticação recusada"],
@@ -126,11 +158,24 @@ describe("erros e limites", () => {
   });
   it("timeout é incerto e redirecionamento é recusado", async () => {
     const slow: FetchLike = (_u, init) =>
-      new Promise((_r, rej) => init?.signal?.addEventListener("abort", () => rej(Object.assign(new Error("x"), { name: "AbortError" }))));
-    const err = await sicrediRequest({ fetchImpl: slow, op: "cadastrar", method: "POST", url: "https://x", headers: {}, timeoutMs: 20 }).catch((e) => e);
+      new Promise((_r, rej) =>
+        init?.signal?.addEventListener("abort", () =>
+          rej(Object.assign(new Error("x"), { name: "AbortError" })),
+        ),
+      );
+    const err = await sicrediRequest({
+      fetchImpl: slow,
+      op: "cadastrar",
+      method: "POST",
+      url: "https://x",
+      headers: {},
+      timeoutMs: 20,
+    }).catch((e) => e);
     expect(err.kind).toBe("timeout");
     expect(err.incerto).toBe(true);
-    const { f } = fakeFetch(() => new Response(null, { status: 302, headers: { location: "https://evil" } }));
+    const { f } = fakeFetch(
+      () => new Response(null, { status: 302, headers: { location: "https://evil" } }),
+    );
     await expect(req(f)).rejects.toMatchObject({ kind: "redirect" });
   });
 });
@@ -140,14 +185,34 @@ describe("cobrança", () => {
     const pdf = new TextEncoder().encode("%PDF-1.4 fake");
     const { f, calls } = fakeFetch((url) => {
       if (url.includes("/auth/")) return json(tokenBody());
-      if (url.endsWith("/boletos")) return json({ nossoNumero: "251006142", linhaDigitavel: DOC_LINHA, codigoBarras: DOC_BARRAS }, 201);
+      if (url.endsWith("/boletos"))
+        return json(
+          { nossoNumero: "251006142", linhaDigitavel: DOC_LINHA, codigoBarras: DOC_BARRAS },
+          201,
+        );
       if (url.includes("/boletos/pdf")) return new Response(pdf, { status: 200 });
       return json({ situacao: "EM CARTEIRA", nossoNumero: "251006142" });
     });
     const client = sicrediCobranca(cred, { fetchImpl: f });
-    const pag = normalizePagador({ nome: "Fulano", documento: "123.456.789-09", logradouro: "Rua A", numero: "1", cidade: "Santa Rosa", uf: "rs", cep: "98780-000" });
+    const pag = normalizePagador({
+      nome: "Fulano",
+      documento: "123.456.789-09",
+      logradouro: "Rua A",
+      numero: "1",
+      cidade: "Santa Rosa",
+      uf: "rs",
+      cep: "98780-000",
+    });
     if (!pag.ok) throw new Error("pagador");
-    const body = buildCadastroBody({ codigoBeneficiario: "12345", seuNumero: "ABCDEFGH12", idTituloEmpresa: "ABCDEFGH12202611", vencimento: "2026-12-10", totalCentavos: 205000, pagador: pag.pagador, encargos: { ativo: false } });
+    const body = buildCadastroBody({
+      codigoBeneficiario: "12345",
+      seuNumero: "ABCDEFGH12",
+      idTituloEmpresa: "ABCDEFGH12202611",
+      vencimento: "2026-12-10",
+      totalCentavos: 205000,
+      pagador: pag.pagador,
+      encargos: { ativo: false },
+    });
     const r = await client.cadastrar(body);
     expect(r.nossoNumero).toBe("251006142");
     const post = calls.find((c) => c.url.endsWith("/boletos"))!;
@@ -161,14 +226,47 @@ describe("cobrança", () => {
     expect((await client.pdf(DOC_LINHA)).length).toBe(pdf.length);
   });
   it("PDF que não começa com %PDF- é recusado", async () => {
-    const { f } = fakeFetch((url) => (url.includes("/auth/") ? json(tokenBody()) : new Response("<html>", { status: 200 })));
-    await expect(sicrediCobranca(cred, { fetchImpl: f }).pdf(DOC_LINHA)).rejects.toThrow("PDF válido");
+    const { f } = fakeFetch((url) =>
+      url.includes("/auth/") ? json(tokenBody()) : new Response("<html>", { status: 200 }),
+    );
+    await expect(sicrediCobranca(cred, { fetchImpl: f }).pdf(DOC_LINHA)).rejects.toThrow(
+      "PDF válido",
+    );
   });
   it("cadastro sem linha válida em produção é tratado como incerto", async () => {
-    const { f } = fakeFetch((url) => (url.includes("/auth/") ? json(tokenBody()) : json({ nossoNumero: "1", linhaDigitavel: DOC_LINHA.replace(/0$/, "1"), codigoBarras: DOC_BARRAS }, 201)));
-    const err = await sicrediCobranca(cred, { fetchImpl: f }).cadastrar(
-      buildCadastroBody({ codigoBeneficiario: "12345", seuNumero: "ABCDEFGH12", idTituloEmpresa: "X", vencimento: "2026-12-10", totalCentavos: 100, pagador: { tipoPessoa: "PESSOA_FISICA", documento: "12345678909", nome: "A", endereco: "R", cidade: "C", uf: "RS", cep: "98780000" }, encargos: { ativo: false } }),
-    ).catch((e) => e);
+    const { f } = fakeFetch((url) =>
+      url.includes("/auth/")
+        ? json(tokenBody())
+        : json(
+            {
+              nossoNumero: "1",
+              linhaDigitavel: DOC_LINHA.replace(/0$/, "1"),
+              codigoBarras: DOC_BARRAS,
+            },
+            201,
+          ),
+    );
+    const err = await sicrediCobranca(cred, { fetchImpl: f })
+      .cadastrar(
+        buildCadastroBody({
+          codigoBeneficiario: "12345",
+          seuNumero: "ABCDEFGH12",
+          idTituloEmpresa: "X",
+          vencimento: "2026-12-10",
+          totalCentavos: 100,
+          pagador: {
+            tipoPessoa: "PESSOA_FISICA",
+            documento: "12345678909",
+            nome: "A",
+            endereco: "R",
+            cidade: "C",
+            uf: "RS",
+            cep: "98780000",
+          },
+          encargos: { ativo: false },
+        }),
+      )
+      .catch((e) => e);
     expect(err.incerto).toBe(true);
   });
 });
@@ -180,13 +278,30 @@ describe("linha digitável", () => {
     expect(linhaToBarcode(DOC_LINHA)).toBe(DOC_BARRAS);
     expect(isValidLinhaDigitavel(`${DOC_LINHA.slice(0, 9)}0${DOC_LINHA.slice(10)}`)).toBe(false);
     expect(isValidLinhaDigitavel(DOC_LINHA.slice(0, 46))).toBe(false);
-    expect(formatLinhaDigitavel(DOC_LINHA)).toBe("74891.12511 00614.205128 03153.351030 1 88640000050000");
+    expect(formatLinhaDigitavel(DOC_LINHA)).toBe(
+      "74891.12511 00614.205128 03153.351030 1 88640000050000",
+    );
   });
 });
 
 describe("corpo do boleto", () => {
-  const pagador = { tipoPessoa: "PESSOA_FISICA" as const, documento: "12345678909", nome: "A", endereco: "R", cidade: "C", uf: "RS", cep: "98780000" };
-  const base = { codigoBeneficiario: "12345", seuNumero: "ABCDEFGH12", idTituloEmpresa: "ABCDEFGH12202611", vencimento: "2026-12-10", totalCentavos: 205000, pagador };
+  const pagador = {
+    tipoPessoa: "PESSOA_FISICA" as const,
+    documento: "12345678909",
+    nome: "A",
+    endereco: "R",
+    cidade: "C",
+    uf: "RS",
+    cep: "98780000",
+  };
+  const base = {
+    codigoBeneficiario: "12345",
+    seuNumero: "ABCDEFGH12",
+    idTituloEmpresa: "ABCDEFGH12202611",
+    vencimento: "2026-12-10",
+    totalCentavos: 205000,
+    pagador,
+  };
   it("NORMAL + RECIBO fixos e valor = total do inquilino", () => {
     const b = buildCadastroBody({ ...base, encargos: { ativo: false, juros: 1, multa: 2 } });
     expect(b.tipoCobranca).toBe("NORMAL");
@@ -196,7 +311,17 @@ describe("corpo do boleto", () => {
     expect(b).not.toHaveProperty("multa");
   });
   it("encargos ativos vão como instrução a partir do dia seguinte, sem somar no valor", () => {
-    const b = buildCadastroBody({ ...base, encargos: { ativo: true, tipoJuros: "PERCENTUAL", tipoJurosPercentual: "MENSAL", juros: 1, tipoMulta: "PERCENTUAL", multa: 2 } });
+    const b = buildCadastroBody({
+      ...base,
+      encargos: {
+        ativo: true,
+        tipoJuros: "PERCENTUAL",
+        tipoJurosPercentual: "MENSAL",
+        juros: 1,
+        tipoMulta: "PERCENTUAL",
+        multa: 2,
+      },
+    });
     expect(b.valor).toBe(2050);
     expect(b.juros).toBe(1);
     expect(b.tipoJurosPercentual).toBe("MENSAL");
@@ -205,7 +330,9 @@ describe("corpo do boleto", () => {
     expect(b.dataInicioMulta).toBe("2026-12-11");
   });
   it("recusa total zero", () => {
-    expect(() => buildCadastroBody({ ...base, totalCentavos: 0, encargos: { ativo: false } })).toThrow();
+    expect(() =>
+      buildCadastroBody({ ...base, totalCentavos: 0, encargos: { ativo: false } }),
+    ).toThrow();
   });
 });
 

@@ -17,7 +17,14 @@ import {
   type FlowDeps,
 } from "./flow.server";
 import { buildBoletoPreview, type BoletoPreview } from "./preview";
-import { boletoPermissions, parseEncargos, todaySaoPaulo, type BillingAmbiente, type BoletoBrand, type BoletoEstado } from "./rules";
+import {
+  boletoPermissions,
+  parseEncargos,
+  todaySaoPaulo,
+  type BillingAmbiente,
+  type BoletoBrand,
+  type BoletoEstado,
+} from "./rules";
 import { sicrediCobranca } from "./sicredi/cobranca.server";
 import { readSicrediCredentials, sicrediSecretNames } from "./sicredi/config.server";
 import {
@@ -36,10 +43,14 @@ const isoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 async function roles(ctx: Ctx) {
   const ask = (role: string) =>
-    ctx.supabase.rpc("has_role", { _user_id: ctx.userId, _role: role }).then(
-      (r: { data: unknown; error: unknown }) => !r.error && r.data === true,
-    );
-  const [admin, secretaria, metaReviewer] = await Promise.all([ask("admin"), ask("secretaria"), ask("meta_reviewer")]);
+    ctx.supabase
+      .rpc("has_role", { _user_id: ctx.userId, _role: role })
+      .then((r: { data: unknown; error: unknown }) => !r.error && r.data === true);
+  const [admin, secretaria, metaReviewer] = await Promise.all([
+    ask("admin"),
+    ask("secretaria"),
+    ask("meta_reviewer"),
+  ]);
   return boletoPermissions({ admin, secretaria, metaReviewer });
 }
 async function assertOperator(ctx: Ctx) {
@@ -49,12 +60,14 @@ async function assertOperator(ctx: Ctx) {
   return r;
 }
 async function assertAdmin(ctx: Ctx) {
-  if (!(await roles(ctx)).podeGerenciarContas) throw new Error("Apenas o administrador pode gerenciar contas de cobrança.");
+  if (!(await roles(ctx)).podeGerenciarContas)
+    throw new Error("Apenas o administrador pode gerenciar contas de cobrança.");
 }
 
 function flowDeps(row: Pick<BoletoRow, "brand" | "ambiente">, actor: string): FlowDeps {
   const cred = readSicrediCredentials(row.brand as BoletoBrand, row.ambiente);
-  if (!cred.ok) throw new Error("A conta de cobrança deste boleto não está configurada no servidor.");
+  if (!cred.ok)
+    throw new Error("A conta de cobrança deste boleto não está configurada no servidor.");
   return {
     store: createBoletoStore(),
     client: sicrediCobranca(cred.credentials),
@@ -65,7 +78,10 @@ function flowDeps(row: Pick<BoletoRow, "brand" | "ambiente">, actor: string): Fl
 
 /** UI projection: sandbox lines are hidden so a demo title can never be copied to a tenant. */
 function publicBoleto(r: BoletoRow) {
-  const ev = (r.liquidacao_evidencia ?? null) as { dataPagamento?: string | null; valorLiquidado?: number | null } | null;
+  const ev = (r.liquidacao_evidencia ?? null) as {
+    dataPagamento?: string | null;
+    valorLiquidado?: number | null;
+  } | null;
   return {
     id: r.id,
     competencia: r.competencia,
@@ -80,7 +96,9 @@ function publicBoleto(r: BoletoRow) {
     linhaDigitavel: r.ambiente === "producao" ? r.linha_digitavel : null,
     situacaoBanco: r.situacao_banco,
     ultimoErro: r.ultimo_erro,
-    liquidacao: ev ? { dataPagamento: ev.dataPagamento ?? null, valorLiquidado: ev.valorLiquidado ?? null } : null,
+    liquidacao: ev
+      ? { dataPagamento: ev.dataPagamento ?? null, valorLiquidado: ev.valorLiquidado ?? null }
+      : null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -94,17 +112,32 @@ async function pickIssuingAccount(brand: BoletoBrand): Promise<BillingAccountRow
   return sandbox.configurado ? sandbox : null;
 }
 
-async function computePreview(ctx: Ctx, contractId: string, competencia: string, novoVencimento: string | null) {
+async function computePreview(
+  ctx: Ctx,
+  contractId: string,
+  competencia: string,
+  novoVencimento: string | null,
+) {
   const sb = ctx.supabase;
   const { data: c } = await sb
     .from("rental_contracts")
-    .select("id,brand,status,dia_vencimento,proximo_vencimento,valor_mensal,seguro_valor_mensal,tenant_id,property_id")
+    .select(
+      "id,brand,status,dia_vencimento,proximo_vencimento,valor_mensal,seguro_valor_mensal,tenant_id,property_id",
+    )
     .eq("id", contractId)
     .maybeSingle();
   if (!c) throw new Error("Aluguel indisponível.");
   const [tenant, property, receipt, recurring] = await Promise.all([
-    sb.from("rental_tenants").select("nome,cpf_cnpj,email,telefone").eq("id", c.tenant_id).maybeSingle(),
-    sb.from("rental_properties").select("logradouro,numero,complemento,bairro,cidade,uf,cep").eq("id", c.property_id).maybeSingle(),
+    sb
+      .from("rental_tenants")
+      .select("nome,cpf_cnpj,email,telefone")
+      .eq("id", c.tenant_id)
+      .maybeSingle(),
+    sb
+      .from("rental_properties")
+      .select("logradouro,numero,complemento,bairro,cidade,uf,cep")
+      .eq("id", c.property_id)
+      .maybeSingle(),
     sb
       .from("rental_emissions")
       .select("valores")
@@ -117,11 +150,14 @@ async function computePreview(ctx: Ctx, contractId: string, competencia: string,
       .maybeSingle(),
     sb
       .from("rental_contract_adjustments")
-      .select("id,tipo,descricao,valor,repassar_proprietario,inicio_competencia,fim_competencia,ativo")
+      .select(
+        "id,tipo,descricao,valor,repassar_proprietario,inicio_competencia,fim_competencia,ativo",
+      )
       .eq("contract_id", contractId)
       .eq("ativo", true),
   ]);
-  if (recurring.error || receipt.error) throw new Error("Não foi possível carregar os valores do aluguel.");
+  if (recurring.error || receipt.error)
+    throw new Error("Não foi possível carregar os valores do aluguel.");
   const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
   const account = brand ? await pickIssuingAccount(brand) : null;
   const t = tenant.data ?? {};
@@ -187,7 +223,12 @@ export const previewBoleto = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
     await assertOperator(ctx);
-    const { preview } = await computePreview(ctx, data.contractId, data.competencia, data.novoVencimento ?? null);
+    const { preview } = await computePreview(
+      ctx,
+      data.contractId,
+      data.competencia,
+      data.novoVencimento ?? null,
+    );
     return publicPreview(preview);
   });
 
@@ -201,21 +242,41 @@ export const issueBoleto = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
     await assertOperator(ctx);
-    const { preview, account } = await computePreview(ctx, data.contractId, data.competencia, data.novoVencimento ?? null);
+    const { preview, account } = await computePreview(
+      ctx,
+      data.contractId,
+      data.competencia,
+      data.novoVencimento ?? null,
+    );
     if (!preview.ok || !preview.snapshot || !account)
-      throw new Error(preview.bloqueios[0] ?? preview.pendencias.map((p) => `${p.campo} (${p.tela})`).join(", "));
-    if (preview.totalCentavos !== data.expectedTotalCentavos || preview.ambiente !== data.expectedAmbiente)
-      throw new Error("Os valores ou o ambiente mudaram desde a prévia. Revise e confirme de novo.");
+      throw new Error(
+        preview.bloqueios[0] ?? preview.pendencias.map((p) => `${p.campo} (${p.tela})`).join(", "),
+      );
+    if (
+      preview.totalCentavos !== data.expectedTotalCentavos ||
+      preview.ambiente !== data.expectedAmbiente
+    )
+      throw new Error(
+        "Os valores ou o ambiente mudaram desde a prévia. Revise e confirme de novo.",
+      );
     const out = await issuePreparedBoleto(flowDeps(account, ctx.userId), {
       contractId: data.contractId,
       accountId: account.id,
       snapshot: preview.snapshot,
     });
-    return { boleto: publicBoleto(out.row), enviado: out.enviado, reaproveitado: out.reaproveitado };
+    return {
+      boleto: publicBoleto(out.row),
+      enviado: out.enviado,
+      reaproveitado: out.reaproveitado,
+    };
   });
 
 async function readableBoleto(ctx: Ctx, id: string): Promise<BoletoRow> {
-  const { data: visible } = await ctx.supabase.from("rental_boletos").select("id").eq("id", id).maybeSingle();
+  const { data: visible } = await ctx.supabase
+    .from("rental_boletos")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
   if (!visible) throw new Error("Boleto indisponível.");
   const row = await createBoletoStore().get(id);
   if (!row) throw new Error("Boleto indisponível.");
@@ -241,9 +302,15 @@ export const retryBoletoPdf = createServerFn({ method: "POST" })
     const ctx = context as unknown as Ctx;
     await assertOperator(ctx);
     const row = await readableBoleto(ctx, data.id);
-    if (!row.linha_digitavel || !["registrado", "baixa_solicitada", "liquidado"].includes(row.estado))
+    if (
+      !row.linha_digitavel ||
+      !["registrado", "baixa_solicitada", "liquidado"].includes(row.estado)
+    )
       throw new Error("O PDF só existe para boletos registrados.");
-    const out = await finishRegisteredBoleto(flowDeps(row, ctx.userId), { ...row, pdf_estado: row.pdf_estado === "pronto" ? "erro" : row.pdf_estado });
+    const out = await finishRegisteredBoleto(flowDeps(row, ctx.userId), {
+      ...row,
+      pdf_estado: row.pdf_estado === "pronto" ? "erro" : row.pdf_estado,
+    });
     return { boleto: publicBoleto(out) };
   });
 
@@ -255,7 +322,9 @@ export const reconcileBoleto = createServerFn({ method: "POST" })
     const ctx = context as unknown as Ctx;
     await assertOperator(ctx);
     const row = await readableBoleto(ctx, data.id);
-    const out = await reconcileUncertainBoleto(flowDeps(row, ctx.userId), row, { liberarMotivo: data.liberarMotivo });
+    const out = await reconcileUncertainBoleto(flowDeps(row, ctx.userId), row, {
+      liberarMotivo: data.liberarMotivo,
+    });
     return { boleto: publicBoleto(out.row), mensagem: out.mensagem };
   });
 
@@ -269,10 +338,13 @@ export const getBoletoPdfUrl = createServerFn({ method: "GET" })
       .select("contract_id,pdf_path,pdf_estado")
       .eq("id", data.id)
       .maybeSingle();
-    if (!row?.pdf_path || row.pdf_estado !== "pronto") throw new Error("PDF do boleto indisponível.");
+    if (!row?.pdf_path || row.pdf_estado !== "pronto")
+      throw new Error("PDF do boleto indisponível.");
     if (!row.pdf_path.startsWith(`${row.contract_id}/boletos/`) || row.pdf_path.includes(".."))
       throw new Error("PDF do boleto indisponível.");
-    const { data: signed, error } = await ctx.supabase.storage.from("rental-documents").createSignedUrl(row.pdf_path, 600);
+    const { data: signed, error } = await ctx.supabase.storage
+      .from("rental-documents")
+      .createSignedUrl(row.pdf_path, 600);
     if (error || !signed) throw new Error("Não foi possível abrir o PDF do boleto.");
     return signed.signedUrl as string;
   });
@@ -325,9 +397,18 @@ export const testBillingConnection = createServerFn({ method: "POST" })
     if (!cred.ok) {
       const names = [...cred.missing, ...cred.invalid];
       const mensagem = `Conta não configurada: ${cred.missing.length ? "faltam" : "formato inválido em"} ${names.join(", ")}.`;
-      await updateBillingAccount(acc.id, { ultimo_teste_em: now, ultimo_teste_ok: false, ultimo_teste_mensagem: mensagem });
+      await updateBillingAccount(acc.id, {
+        ultimo_teste_em: now,
+        ultimo_teste_ok: false,
+        ultimo_teste_mensagem: mensagem,
+      });
       await billingAccountEvent(acc.id, "teste_conexao", false, ctx.userId, mensagem);
-      return { tokenOk: false, consultaOk: false, mensagem, account: publicAccount(await ensureBillingAccount(data.brand, data.ambiente)) };
+      return {
+        tokenOk: false,
+        consultaOk: false,
+        mensagem,
+        account: publicAccount(await ensureBillingAccount(data.brand, data.ambiente)),
+      };
     }
     const r = await testSicrediConnection(cred.credentials);
     const patch: Record<string, unknown> = {
@@ -338,12 +419,24 @@ export const testBillingConnection = createServerFn({ method: "POST" })
     if (r.tokenOk) patch.autenticado_em = now;
     if (r.tokenOk && r.consultaOk) patch.consulta_ok_em = now;
     const updated = await updateBillingAccount(acc.id, patch);
-    await billingAccountEvent(acc.id, "teste_conexao", r.tokenOk && r.consultaOk, ctx.userId, r.mensagem, {
+    await billingAccountEvent(
+      acc.id,
+      "teste_conexao",
+      r.tokenOk && r.consultaOk,
+      ctx.userId,
+      r.mensagem,
+      {
+        tokenOk: r.tokenOk,
+        consultaOk: r.consultaOk,
+        status: r.status,
+      },
+    );
+    return {
       tokenOk: r.tokenOk,
       consultaOk: r.consultaOk,
-      status: r.status,
-    });
-    return { tokenOk: r.tokenOk, consultaOk: r.consultaOk, mensagem: r.mensagem, account: publicAccount(updated) };
+      mensagem: r.mensagem,
+      account: publicAccount(updated),
+    };
   });
 
 const saveInput = accountKey.extend({ apelido: z.string().trim().max(80), encargos: z.unknown() });
@@ -360,7 +453,11 @@ export const saveBillingAccount = createServerFn({ method: "POST" })
     return publicAccount(updated);
   });
 
-const releaseInput = z.object({ brand: brandSchema, habilitar: z.boolean(), confirmo: z.literal(true) });
+const releaseInput = z.object({
+  brand: brandSchema,
+  habilitar: z.boolean(),
+  confirmo: z.literal(true),
+});
 /** Production only. Enabling re-runs the live connection test and refuses on any failure. */
 export const releaseBillingAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -371,7 +468,13 @@ export const releaseBillingAccount = createServerFn({ method: "POST" })
     const acc = await ensureBillingAccount(data.brand, "producao");
     if (!data.habilitar) {
       const updated = await updateBillingAccount(acc.id, { emissao_habilitada: false });
-      await billingAccountEvent(acc.id, "desligar", true, ctx.userId, "Emissão em produção desligada");
+      await billingAccountEvent(
+        acc.id,
+        "desligar",
+        true,
+        ctx.userId,
+        "Emissão em produção desligada",
+      );
       return publicAccount(updated);
     }
     const refuse = async (mensagem: string, detalhe: Record<string, unknown> = {}) => {
@@ -380,12 +483,21 @@ export const releaseBillingAccount = createServerFn({ method: "POST" })
     };
     const cred = readSicrediCredentials(data.brand, "producao");
     if (!cred.ok) return refuse("Conta de produção não configurada no servidor.");
-    if (!acc.consulta_ok_em) return refuse('Faça "Testar conexão" em produção com sucesso antes de liberar.');
+    if (!acc.consulta_ok_em)
+      return refuse('Faça "Testar conexão" em produção com sucesso antes de liberar.');
     const r = await testSicrediConnection(cred.credentials);
     const now = new Date().toISOString();
     if (!r.tokenOk || !r.consultaOk) {
-      await updateBillingAccount(acc.id, { ultimo_teste_em: now, ultimo_teste_ok: false, ultimo_teste_mensagem: r.mensagem.slice(0, 400) });
-      return refuse(`Liberação recusada: a revalidação falhou. ${r.mensagem}`, { tokenOk: r.tokenOk, consultaOk: r.consultaOk, status: r.status });
+      await updateBillingAccount(acc.id, {
+        ultimo_teste_em: now,
+        ultimo_teste_ok: false,
+        ultimo_teste_mensagem: r.mensagem.slice(0, 400),
+      });
+      return refuse(`Liberação recusada: a revalidação falhou. ${r.mensagem}`, {
+        tokenOk: r.tokenOk,
+        consultaOk: r.consultaOk,
+        status: r.status,
+      });
     }
     const updated = await updateBillingAccount(acc.id, {
       emissao_habilitada: true,
@@ -397,7 +509,13 @@ export const releaseBillingAccount = createServerFn({ method: "POST" })
       ultimo_teste_ok: true,
       ultimo_teste_mensagem: r.mensagem.slice(0, 400),
     });
-    await billingAccountEvent(acc.id, "liberar", true, ctx.userId, "Emissão em produção liberada após revalidação");
+    await billingAccountEvent(
+      acc.id,
+      "liberar",
+      true,
+      ctx.userId,
+      "Emissão em produção liberada após revalidação",
+    );
     return publicAccount(updated);
   });
 
@@ -410,8 +528,15 @@ export const runLiquidadosDia = createServerFn({ method: "POST" })
     await assertAdmin(ctx);
     if (data.dia > todaySaoPaulo()) throw new Error("Escolha um dia que já passou.");
     const acc = await ensureBillingAccount(data.brand, data.ambiente);
-    const deps = flowDeps({ brand: data.brand, ambiente: data.ambiente as BillingAmbiente }, ctx.userId);
-    const r = await applyLiquidadosDia(deps, { accountId: acc.id, ambiente: data.ambiente, dia: data.dia });
+    const deps = flowDeps(
+      { brand: data.brand, ambiente: data.ambiente as BillingAmbiente },
+      ctx.userId,
+    );
+    const r = await applyLiquidadosDia(deps, {
+      accountId: acc.id,
+      ambiente: data.ambiente,
+      dia: data.dia,
+    });
     return r;
   });
 
