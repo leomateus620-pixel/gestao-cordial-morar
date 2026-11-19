@@ -18,6 +18,7 @@ import {
 } from "./flow.server";
 import { buildBoletoPreview, type BoletoPreview } from "./preview";
 import {
+  boletoContractAccess,
   boletoPermissions,
   parseEncargos,
   todaySaoPaulo,
@@ -46,12 +47,43 @@ async function roles(ctx: Ctx) {
     ctx.supabase
       .rpc("has_role", { _user_id: ctx.userId, _role: role })
       .then((r: { data: unknown; error: unknown }) => !r.error && r.data === true);
-  const [admin, secretaria, metaReviewer] = await Promise.all([
+  const [admin, secretaria, metaReviewer, atendimentosViewer] = await Promise.all([
     ask("admin"),
     ask("secretaria"),
     ask("meta_reviewer"),
+    ask("atendimentos_viewer"),
   ]);
-  return boletoPermissions({ admin, secretaria, metaReviewer });
+  const perms = boletoPermissions({
+    admin,
+    secretaria,
+    metaReviewer: metaReviewer || atendimentosViewer,
+  });
+  return { ...perms, flags: { admin, secretaria, metaReviewer, atendimentosViewer } };
+}
+
+async function serviceDb() {
+  // Loaded only after the caller's role was verified with their own session.
+  return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
+}
+
+/**
+ * Role + brand gate for one contract. Contract data is read with the service client only
+ * after this passes, always filtered by the authorized contract id (rental RLS stays closed).
+ */
+async function authorizeContract(ctx: Ctx, contractId: string) {
+  const r = await roles(ctx);
+  if (!r.podeEmitir)
+    throw new Error("Apenas a administração ou a secretaria podem emitir e gerenciar boletos.");
+  const db = await serviceDb();
+  const [{ data: c }, { data: ag }] = await Promise.all([
+    db.from("rental_contracts").select("id,brand").eq("id", contractId).maybeSingle(),
+    db.from("user_agencies").select("agency").eq("user_id", ctx.userId),
+  ]);
+  if (!c) throw new Error("Aluguel indisponível.");
+  const agencies = ((ag ?? []) as { agency: string }[]).map((a) => a.agency);
+  if (!boletoContractAccess({ ...r.flags, agencies }, c.brand as string))
+    throw new Error("Aluguel indisponível para o seu perfil.");
+  return { db, roles: r };
 }
 async function assertOperator(ctx: Ctx) {
   const r = await roles(ctx);
@@ -118,7 +150,7 @@ async function computePreview(
   competencia: string,
   novoVencimento: string | null,
 ) {
-  const sb = ctx.supabase;
+  const { db: sb } = await authorizeContract(ctx, contractId);
   const { data: c } = await sb
     .from("rental_contracts")
     .select(
@@ -160,8 +192,8 @@ async function computePreview(
     throw new Error("Não foi possível carregar os valores do aluguel.");
   const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
   const account = brand ? await pickIssuingAccount(brand) : null;
-  const t = tenant.data ?? {};
-  const p = property.data ?? {};
+  const t = (tenant.data ?? {}) as Record<string, string | null>;
+  const p = (property.data ?? {}) as Record<string, string | null>;
   const preview = buildBoletoPreview({
     contract: {
       id: c.id,
@@ -173,6 +205,7 @@ async function computePreview(
       seguroValorMensal: c.seguro_valor_mensal == null ? null : Number(c.seguro_valor_mensal),
     },
     pagador: { nome: t.nome, documento: t.cpf_cnpj, email: t.email, telefone: t.telefone, ...p },
+    tenantId: c.tenant_id ?? null,
     competencia,
     today: todaySaoPaulo(),
     novoVencimento,
@@ -205,15 +238,20 @@ export const listRentalBoletos = createServerFn({ method: "GET" })
   .inputValidator((d: z.infer<typeof scope>) => scope.parse(d))
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
-    const { data: rows, error } = await ctx.supabase
+    const r0 = await roles(ctx);
+    if (!r0.podeEmitir) return { boletos: [], podeEmitir: false };
+    const { db } = await authorizeContract(ctx, data.contractId);
+    const { data: rows, error } = await db
       .from("rental_boletos")
       .select("*")
       .eq("contract_id", data.contractId)
       .eq("competencia", data.competencia)
       .order("created_at", { ascending: false });
     if (error) throw new Error("Não foi possível carregar os boletos.");
-    const r = await roles(ctx);
-    return { boletos: ((rows ?? []) as BoletoRow[]).map(publicBoleto), podeEmitir: r.podeEmitir };
+    return {
+      boletos: ((rows ?? []) as unknown as BoletoRow[]).map(publicBoleto),
+      podeEmitir: true,
+    };
   });
 
 const previewInput = scope.extend({ novoVencimento: isoSchema.nullable().optional() });
@@ -272,14 +310,9 @@ export const issueBoleto = createServerFn({ method: "POST" })
   });
 
 async function readableBoleto(ctx: Ctx, id: string): Promise<BoletoRow> {
-  const { data: visible } = await ctx.supabase
-    .from("rental_boletos")
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
-  if (!visible) throw new Error("Boleto indisponível.");
   const row = await createBoletoStore().get(id);
   if (!row) throw new Error("Boleto indisponível.");
+  await authorizeContract(ctx, row.contract_id);
   return row;
 }
 const idInput = z.object({ id: z.string().uuid() });
@@ -333,16 +366,13 @@ export const getBoletoPdfUrl = createServerFn({ method: "GET" })
   .inputValidator((d: z.infer<typeof idInput>) => idInput.parse(d))
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
-    const { data: row } = await ctx.supabase
-      .from("rental_boletos")
-      .select("contract_id,pdf_path,pdf_estado")
-      .eq("id", data.id)
-      .maybeSingle();
+    const row = await readableBoleto(ctx, data.id);
+    const db = await serviceDb();
     if (!row?.pdf_path || row.pdf_estado !== "pronto")
       throw new Error("PDF do boleto indisponível.");
     if (!row.pdf_path.startsWith(`${row.contract_id}/boletos/`) || row.pdf_path.includes(".."))
       throw new Error("PDF do boleto indisponível.");
-    const { data: signed, error } = await ctx.supabase.storage
+    const { data: signed, error } = await db.storage
       .from("rental-documents")
       .createSignedUrl(row.pdf_path, 600);
     if (error || !signed) throw new Error("Não foi possível abrir o PDF do boleto.");

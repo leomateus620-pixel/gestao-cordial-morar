@@ -715,6 +715,13 @@
       "when": 1795109880478,
       "tag": "0101_rental_emissions_boleto_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1795115047639,
+      "tag": "0102_boleto_tighten_grants",
+      "breakpoints": true
     }
   ]
 }

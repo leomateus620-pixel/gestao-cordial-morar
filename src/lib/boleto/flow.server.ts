@@ -4,7 +4,7 @@
  */
 import type { BoletoSnapshot } from "./preview";
 import { estadoFromSituacao, type BillingAmbiente, type BoletoEstado } from "./rules";
-import { buildCadastroBody } from "./sicredi/body";
+import { buildCadastroBody, pagadorParaEnvio } from "./sicredi/body";
 import type { SicrediCobrancaClient } from "./sicredi/cobranca.server";
 import { SicrediError } from "./sicredi/http.server";
 
@@ -186,7 +186,7 @@ export async function issuePreparedBoleto(
       idTituloEmpresa: row.id_titulo_empresa,
       vencimento: row.vencimento,
       totalCentavos: row.total_centavos,
-      pagador: row.snapshot.pagador,
+      pagador: pagadorParaEnvio(row.ambiente, row.snapshot.pagador),
       encargos: row.snapshot.encargos,
     });
   } catch (e) {

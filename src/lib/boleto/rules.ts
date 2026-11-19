@@ -256,3 +256,26 @@ export function boletoPermissions(flags: {
   const secretaria = flags.secretaria && !flags.metaReviewer;
   return { podeEmitir: admin || secretaria, podeGerenciarContas: admin };
 }
+
+/**
+ * Who may operate boletos of one contract. Admin: any brand. Secretaria: only brands linked
+ * in user_agencies (an "ambas" contract counts when she has any brand). Restricted roles never.
+ */
+export function boletoContractAccess(
+  flags: {
+    admin: boolean;
+    secretaria: boolean;
+    metaReviewer: boolean;
+    atendimentosViewer: boolean;
+    agencies: string[];
+  },
+  contractBrand: string | null | undefined,
+): boolean {
+  if (flags.metaReviewer || flags.atendimentosViewer) return false;
+  if (flags.admin) return true;
+  if (!flags.secretaria) return false;
+  const mine = flags.agencies.filter((a) => a === "cordial" || a === "morar");
+  if (mine.length === 0) return false;
+  if (contractBrand === "ambas") return true;
+  return (mine as string[]).includes(String(contractBrand));
+}

@@ -158,6 +158,11 @@ export function BoletoConfirmModal({
                 {data.pagador
                   ? `${data.pagador.nome} · ${data.pagador.documento} · ${data.pagador.cidadeUf}`
                   : "Incompleto"}
+                {data.pagadorFicticio && (
+                  <span className="block text-[11px] text-muted-foreground">
+                    Homologação: será enviado um pagador fictício de teste, não o inquilino.
+                  </span>
+                )}
               </dd>
               <dt className="text-muted-foreground">Vencimento</dt>
               <dd>
@@ -200,6 +205,16 @@ export function BoletoConfirmModal({
                   A alteração fica registrada no histórico do boleto.
                 </p>
               </div>
+            )}
+            {data.avisos?.length > 0 && (
+              <ul className="space-y-1 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                {data.avisos.map((p) => (
+                  <li key={p.campo} className="flex gap-1">
+                    <AlertTriangle className="mt-0.5 size-3 shrink-0" />
+                    Aviso: falta {p.campo} no inquilino ({p.tela}). Em produção isso bloqueia.
+                  </li>
+                ))}
+              </ul>
             )}
             {(data.bloqueios.length > 0 || data.pendencias.length > 0) && (
               <ul

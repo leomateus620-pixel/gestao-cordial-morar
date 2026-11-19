@@ -4,6 +4,25 @@ import { addDays, type Encargos, type PagadorNormalizado } from "../rules";
 export const SICREDI_TIPO_COBRANCA = "NORMAL" as const;
 export const SICREDI_ESPECIE_DOCUMENTO = "RECIBO" as const;
 
+/** Fixed fictitious payer for the sandbox: real tenant data only ever goes to production. */
+export const SANDBOX_PAGADOR: PagadorNormalizado = Object.freeze({
+  tipoPessoa: "PESSOA_FISICA",
+  documento: "12345678909",
+  nome: "PAGADOR TESTE HOMOLOGACAO",
+  endereco: "RUA TESTE 1",
+  cidade: "SANTA ROSA",
+  uf: "RS",
+  cep: "98780000",
+}) as PagadorNormalizado;
+
+/** The payer actually sent to the bank for an environment. */
+export function pagadorParaEnvio(
+  ambiente: "sandbox" | "producao",
+  real: PagadorNormalizado,
+): PagadorNormalizado {
+  return ambiente === "sandbox" ? { ...SANDBOX_PAGADOR } : real;
+}
+
 export type CadastroBody = {
   codigoBeneficiario: string;
   tipoCobranca: typeof SICREDI_TIPO_COBRANCA;

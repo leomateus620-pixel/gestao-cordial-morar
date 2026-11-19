@@ -164,7 +164,7 @@ describe("prévia e bloqueios", () => {
       pagador: { ...pagador, cep: "" },
       competencia: "2026-11",
       today: "2026-11-19",
-      account,
+      account: { ...account, ambiente: "producao" },
     });
     expect(semCep.pendencias).toEqual([{ campo: "CEP", tela: "Imóvel do aluguel" }]);
     expect(
