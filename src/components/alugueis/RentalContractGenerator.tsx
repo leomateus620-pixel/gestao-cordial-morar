@@ -26,6 +26,7 @@ import {
 } from "@/lib/rentals/contract-generator";
 import { CONTRACT_TEMPLATES } from "@/lib/rentals/contract-templates";
 import { contractTextToDocx } from "@/lib/rentals/contract-docx";
+import { useRentalDocuments } from "@/hooks/useRentalDocuments";
 
 const GUARANTEE_LABEL: Record<ContractGuarantee, string> = {
   fiador: "Fiador",
@@ -168,19 +169,28 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
     ],
   );
   const missing = missingFields(text);
+  const { uploadFile } = useRentalDocuments(contract.id);
 
   async function download() {
     if (missing.length) return;
     setBusy(true);
     try {
       const blob = await contractTextToDocx(text);
+      const stamp = new Date().toISOString().slice(0, 16).replace("T", " ").replace(":", "h");
+      const fileName = `Contrato gerado (nao assinado) - ${brand} - ${GUARANTEE_LABEL[guarantee]} - ${stamp}.docx`;
+      const docxType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      try {
+        await uploadFile(new File([blob], fileName, { type: docxType }), "contrato_aluguel");
+      } catch {
+        toast.error("O arquivo foi gerado, mas não consegui anexar ao aluguel. Baixe e anexe manualmente.");
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `Contrato de locação - ${GUARANTEE_LABEL[guarantee]} - ${contract.tenant.nome}.docx`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Contrato gerado. Revise no Word antes de enviar para assinatura.");
+      toast.success("Contrato gerado e anexado aos documentos do aluguel. Revise no Word antes de enviar para assinatura.");
     } catch {
       toast.error("Não foi possível gerar o arquivo. Tente de novo.");
     } finally {

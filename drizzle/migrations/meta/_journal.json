@@ -750,6 +750,13 @@
       "when": 1795458775485,
       "tag": "0106_rental_insurers",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1795460215510,
+      "tag": "0107_rental_insurers_secretaria_edit",
+      "breakpoints": true
     }
   ]
 }

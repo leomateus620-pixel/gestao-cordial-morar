@@ -115,7 +115,11 @@ export function useRentalDocuments(contractId: string | null) {
   const review = useServerFn(setRentalContractDocumentReviewed);
   const reviewMutation = useMutation({
     mutationFn: (args: { documentId: string; reviewed: boolean }) => review({ data: args }),
-    onSuccess: invalidateAll,
+    onSuccess: () =>
+      Promise.all([
+        invalidateAll(),
+        qc.invalidateQueries({ queryKey: ["rental-entry-inspection", contractId] }),
+      ]),
   });
 
   return {

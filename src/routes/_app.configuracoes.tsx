@@ -50,7 +50,8 @@ function GuardedPage() {
 
 function Page() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todos");
-  const isAdmin = isAdminUser(useSession());
+  const session = useSession();
+  const isAdmin = isAdminUser(session);
   const configuracoes = useFiltered(useApp((s) => s.configuracoes));
   const corretores = useFiltered(useApp((s) => s.corretores));
   const list = configuracoes.filter((c) => filter === "Todos" || c.grupo === filter);
@@ -190,7 +191,7 @@ function Page() {
 
       <section className="mb-5">
         <SectionHeader title="Seguradoras parceiras" />
-        <RentalInsurersSettings canEdit={isAdmin} />
+        <RentalInsurersSettings canEdit={isAdmin || session?.perfil === "secretaria"} />
       </section>
 
       <section>

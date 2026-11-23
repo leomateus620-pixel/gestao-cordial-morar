@@ -13342,6 +13342,10 @@ export type Database = {
         Args: { _attendance_id: string }
         Returns: boolean
       }
+      can_edit_rental_insurer: {
+        Args: { _brands: Database["public"]["Enums"]["rental_brand"][] }
+        Returns: boolean
+      }
       cordial_site_can_publish: { Args: { _actor: string }; Returns: boolean }
       cordial_site_claim_video: { Args: never; Returns: Json }
       cordial_site_content_hash: {
