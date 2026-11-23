@@ -1,5 +1,9 @@
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertContractEntryInspectionStart } from "@/lib/rentals/entry-inspection.server";
+import {
+  assertContractEntryInspectionStart,
+  loadContractInspectionProperty,
+  type ContractInspectionProperty,
+} from "@/lib/rentals/entry-inspection.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { createServerFn } from "@tanstack/react-start";
@@ -112,6 +116,31 @@ export const getInspectionPropertyById = createServerFn({ method: "GET" })
     fail(error);
     if (!row) throw new Error("Imóvel não encontrado ou sem acesso.");
     return row as PropertyForInspection;
+  });
+
+/**
+ * The rental property of a contract, for a vistoria opened from that contract:
+ * the contract already knows its own property, so the operator does not have to
+ * search for it. The contract is checked with the caller's access rules first.
+ */
+export const getContractInspectionProperty = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ contractId: uuid }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await requireInspectionRole(sb, context.userId);
+    const { data: contract, error } = await sb
+      .from("rental_contracts")
+      .select("id,property_id")
+      .eq("id", data.contractId)
+      .maybeSingle();
+    fail(error);
+    if (!contract) throw new Error("Contrato não encontrado ou sem acesso.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return await loadContractInspectionProperty(
+      supabaseAdmin as never,
+      String(contract.property_id),
+    );
   });
 
 export type PropertyForInspection = {
@@ -299,16 +328,26 @@ export const createInspection = createServerFn({ method: "POST" })
       ? await assertContractEntryInspectionStart(sb, data.contractId)
       : null;
 
-    const { data: prop, error: pe } = await sb
-      .from("properties")
-      .select(PROPERTY_COLS)
-      .eq("id", data.propertyId)
-      .maybeSingle();
-    fail(pe);
-    if (!prop) throw new Error("Imóvel não encontrado ou sem acesso.");
-    if (contractLink && contractLink.propertyId !== data.propertyId) {
-      throw new Error("A vistoria de entrada precisa ser do imóvel do contrato.");
+    // Vistoria de contrato: o imóvel é o do próprio contrato (cadastro de aluguel),
+    // lido pelo servidor depois de conferido o acesso ao contrato.
+    let prop: PropertyForInspection | ContractInspectionProperty;
+    if (contractLink) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      prop = await loadContractInspectionProperty(
+        supabaseAdmin as never,
+        contractLink.rentalPropertyId,
+      );
+    } else {
+      const { data: catalogProp, error: pe } = await sb
+        .from("properties")
+        .select(PROPERTY_COLS)
+        .eq("id", data.propertyId)
+        .maybeSingle();
+      fail(pe);
+      if (!catalogProp) throw new Error("Imóvel não encontrado ou sem acesso.");
+      prop = catalogProp;
     }
+    const rentalListing = contractLink !== null;
     const responsibleId = all ? data.responsibleId || context.userId : context.userId;
     const { data: profile } = await sb
       .from("profiles")
@@ -328,6 +367,7 @@ export const createInspection = createServerFn({ method: "POST" })
         prop.codigo,
         prop.codigo_cordial,
         prop.codigo_morar,
+        "locacao",
         prop.logradouro,
         prop.numero,
         prop.bairro,
@@ -339,7 +379,8 @@ export const createInspection = createServerFn({ method: "POST" })
     };
     const inspection = {
       id: data.id,
-      property_id: data.propertyId,
+      property_id: rentalListing ? null : data.propertyId,
+      rental_property_id: rentalListing ? data.propertyId : null,
       agency: data.agency,
       kind: contractLink ? "entrada" : data.kind,
       responsible_id: responsibleId,

@@ -22,7 +22,7 @@ import { useFieldViewport } from "@/lib/vistoria/use-field-viewport";
 import { getContractEntryInspectionState } from "@/lib/rentals/rentals.functions";
 import {
   createInspection,
-  getInspectionPropertyById,
+  getContractInspectionProperty,
   listInspectionResponsibles,
   searchInspectionProperties,
   type PropertyForInspection,
@@ -67,7 +67,7 @@ export function CreationWorkspace() {
   // tipo vêm do contrato, e a criação fica travada em "entrada".
   const contractId = useSearch({ from: "/_app/vistorias/nova" }).contrato;
   const entryStateFn = useServerFn(getContractEntryInspectionState);
-  const propertyByIdFn = useServerFn(getInspectionPropertyById);
+  const contractPropertyFn = useServerFn(getContractInspectionProperty);
   const draft = useCreationDraft(session?.id, () => ({
     id: crypto.randomUUID(),
     step: 0,
@@ -155,14 +155,13 @@ export function CreationWorkspace() {
   });
 
   const contractProperty = useQuery({
-    queryKey: ["inspection-entry-property", entry.data?.propertyId ?? null],
-    enabled: Boolean(entry.data?.propertyId),
+    queryKey: ["inspection-entry-property", contractId ?? null],
+    enabled: Boolean(contractId),
     // Imóvel que não existe mais deve aparecer na hora, sem nova tentativa.
     retry: false,
     queryFn: () => {
-      const propertyId = entry.data?.propertyId;
-      if (!propertyId) throw new Error("Imóvel do contrato indisponível.");
-      return propertyByIdFn({ data: { propertyId } });
+      if (!contractId) throw new Error("Contrato inválido.");
+      return contractPropertyFn({ data: { contractId } });
     },
   });
 
@@ -227,7 +226,18 @@ export function CreationWorkspace() {
 
   function choose(p: PropertyForInspection) {
     setProp(p);
-    setAgency(p.codigo_cordial ? "cordial" : p.codigo_morar ? "morar" : "cordial");
+    const brand = (p as { brand?: string | null }).brand;
+    setAgency(
+      brand === "morar"
+        ? "morar"
+        : brand === "cordial"
+          ? "cordial"
+          : p.codigo_cordial
+            ? "cordial"
+            : p.codigo_morar
+              ? "morar"
+              : "cordial",
+    );
     const c = {
       tipo: p.tipo ?? "",
       dormitorios: p.dormitorios == null ? "" : String(p.dormitorios),
@@ -379,8 +389,8 @@ export function CreationWorkspace() {
             </p>
           ) : contractProperty.isError ? (
             <p role="alert" className="font-semibold text-destructive">
-              Este contrato ainda não está ligado a um imóvel do catálogo. Escolha o imóvel
-              abaixo para começar a vistoria.
+              Este contrato ainda não tem um imóvel de aluguel ligado. Escolha o imóvel abaixo para
+              começar a vistoria.
             </p>
           ) : contractProp && prop && prop.id === contractProp.id ? (
             <p className="font-semibold text-primary">

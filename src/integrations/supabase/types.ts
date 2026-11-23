@@ -4447,10 +4447,11 @@ export type Database = {
           numero: number
           participants: Json
           plan_confirmed: boolean
-          property_id: string
+          property_id: string | null
           property_snapshot: Json
           rental_contract_id: string | null
           rental_kind: string | null
+          rental_property_id: string | null
           responsible_id: string
           responsible_name: string | null
           revision: number
@@ -4475,10 +4476,11 @@ export type Database = {
           numero?: never
           participants?: Json
           plan_confirmed?: boolean
-          property_id: string
+          property_id?: string | null
           property_snapshot: Json
           rental_contract_id?: string | null
           rental_kind?: string | null
+          rental_property_id?: string | null
           responsible_id: string
           responsible_name?: string | null
           revision?: number
@@ -4503,10 +4505,11 @@ export type Database = {
           numero?: never
           participants?: Json
           plan_confirmed?: boolean
-          property_id?: string
+          property_id?: string | null
           property_snapshot?: Json
           rental_contract_id?: string | null
           rental_kind?: string | null
+          rental_property_id?: string | null
           responsible_id?: string
           responsible_name?: string | null
           revision?: number
@@ -4568,6 +4571,13 @@ export type Database = {
             columns: ["rental_contract_id"]
             isOneToOne: false
             referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_rental_property_id_fkey"
+            columns: ["rental_property_id"]
+            isOneToOne: false
+            referencedRelation: "rental_properties"
             referencedColumns: ["id"]
           },
         ]
