@@ -39,3 +39,4 @@
 - Re-finalizing a registration merges into the existing agenciamento via src/lib/agenciamentos/agency-merge.ts (checked items and description never downgrade) and the wizard hydrates the agency step from it — why: an empty resumed step was overwriting the broker's work.
 - `atendimentos_viewer` is deny-dominant like `meta_reviewer` (RESTRICTIVE block except read-only attendance tables, RPC guard) — why: new tables/RPCs need it.
 - Public bot IP = `cf-connecting-ip` (edge-validated); retest before changing.
+- Owner payouts (repasse): pure rules in src/lib/rentals/payout-model.ts (integer cents, line origin/sign/recipient/rule; never negative, never above received, destination version change voids approval, only `confirmado` shows as "Repassado"); rental_payouts* tables are service-role-write only — why: finance must audit every line and no double or premature payout.

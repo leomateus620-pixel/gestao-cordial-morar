@@ -1,56 +1,8 @@
-# Roadmap
-
-- [x] Emissões como primeira visão; Detalhes preservados e NF reutilizada
-- [x] Recibo de três vias: modelo, PDF, armazenamento protegido e cópia do link
-- [x] Boleto sem provedor: abstração e estado indisponível
-- [x] Validar tela, PDF, permissões e testes sem publicar (lint dos arquivos alterados limpo; lint global tem erros anteriores)
-
-- [x] Sidebar "Editorial premium" (Sora + Manrope, itens sem descrição)
-- [x] Cartão em volta de cada grupo de menu da sidebar
-- [x] Navegação fluida: pílula ativa deslizante + transição de página
-- [x] Ícones da sidebar mais vivos e atraentes, com cor por grupo
-- [x] Busca e Integrações dentro de Configurações, somente para administrador
-- [x] Fotos travadas: (a) checkpoint, (b) órfãs, (c) vaga x falha, (d) unknown múltiplo/clean_rebuild, (e) limite sem progresso, (f) Reenviar fotos admin
-- [x] Fotos travadas (a)–(f) — entregue
-- [x] Fotos: parar perda (enviar antes de apagar, limite 2/rodada, disjuntor 80%), destravar envios (delivery_unknown por evidência), ordem crescente + conferência real
-- [x] Recuperação 1401C, 3398M, 3384M, 1277C, 1404C, 3380M, 1350C, 1349C (bloqueada: a rotina de fotos roda no app publicado; aguarda publish autorizado)
-- [x] Relatório de fotos a mais: 1353, 3349, 1373, 3372, 1308, 781
-
-## Seleções compartilhadas — correções Leonardo (14/10)
-- [x] Excluir imóvel volta preservando a busca
-- [x] Referência pública sem código interno
-- [x] REVOKE anon/PUBLIC nas tabelas e funções auxiliares
-- [x] Respeitar localização/valor ocultos no link público
-- [x] Limite de tentativas + Cache-Control no-store no link público
-- [x] Teste do retorno público sem dados internos
-- [x] (opcional) sem id interno no link público
-
-## Cordial Bot — plano de 16/10/2026
-- [x] Etapa 1.3: modelos por configuração e limite de tokens adaptável (1200/4000)
-- [x] Etapa 1.1–1.2: histórico real, retomada de escolhas, paridade de ferramentas com MCP
-- [x] Adaptador Claude (anthropic/claude-sonnet-5) como modelo de análise
-- [x] Etapa 2: roteador, teto de chamadas, filtros de search_properties
-- [ ] Etapa 2.4: busca por significado (embeddings)
-- [ ] Etapa 3: pesquisa externa — pausada pelo Leonardo
-- [x] Etapa 4: resumo das 8h (com NFS-e pendentes), assistant_facts
-- [x] Etapa 5: Estúdio de Conteúdo (tela, regras, banco)
-
-## Sincronização do site próprio Cordial
-- [x] Aplicar a correção existente de leitura do identificador no gatilho (Drizzle 0023)
-- [x] Conferir regressões com dados fictícios e recuperar publicações pendentes (29 testes; recuperação executada sem falhas)
-
-## Incidente 19/10 (tela branca / banco)
-- [x] Tela resiliente, repetição curta de leituras, mensagens em português
-- [ ] Migrações: status conflito, limpeza do histórico de rotinas, índice de recuperação de fotos — bloqueado: banco inacessível
-- [ ] Reescalonar rotinas automáticas — bloqueado: banco inacessível
-- [ ] Diagnóstico de pressão do banco e custo de instância maior (pedido do Leonardo)
-
-- [x] Vistoria inteligente: menu/permissões, criação, checklist, fotos com fila local, relatos voz/texto, revisão, PDF versionado, histórico
-- [ ] Vistoria: ligar transcrição (VISTORIA_VOZ_ATIVA) e GPT-Live — aguarda ativação pelo usuário
-
-## Home do site Cordial (plano 2026-11-03)
-- [x] Fase 1: cabeçalho claro, abertura imersiva, 5 destaques + bairros, 15 mais imóveis, modo de destaques no painel
-- [x] Fase 2: imagem semanal editada por IA (registro, worker, agendamento)
-- [x] Fase 3: área "Vitrine do site" no painel
-- [ ] Comprovar a primeira troca automática real (domingo 18h / segunda 06h) — depende de publicar
-- [ ] Piloto tratamento fiel: 3 fotos Cordial 1441 (lote 71049acb), aguardar conferência antes das 27 restantes
+# Roadmap — Aluguéis, vistoria e anúncios
+- [x] 1A base: regras de cálculo do repasse (centavos, linhas, aprovação, transições) + testes
+- [x] 1A base: registros de repasse/linhas/eventos e vínculo vistoria↔contrato (0103)
+- [ ] 1A tela "Repasse ao proprietário", dados bancários mascarados, comprovante — aguarda respostas 1, 2, 5
+- [ ] 1B checklist + gerar contrato — aguarda modelos de contrato aprovados (pergunta 3)
+- [ ] 1C botão "Iniciar vistoria de entrada" — aguarda pergunta 4
+- [ ] Entrega 2 mensagens — aguarda canal/número oficial
+- [ ] Entrega 3 Marketing Morar — aguarda aprovação da etapa

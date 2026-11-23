@@ -722,6 +722,13 @@
       "when": 1795115047639,
       "tag": "0102_boleto_tighten_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1795453374998,
+      "tag": "0103_rental_payouts_manual",
+      "breakpoints": true
     }
   ]
 }

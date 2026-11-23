@@ -4449,6 +4449,8 @@ export type Database = {
           plan_confirmed: boolean
           property_id: string
           property_snapshot: Json
+          rental_contract_id: string | null
+          rental_kind: string | null
           responsible_id: string
           responsible_name: string | null
           revision: number
@@ -4475,6 +4477,8 @@ export type Database = {
           plan_confirmed?: boolean
           property_id: string
           property_snapshot: Json
+          rental_contract_id?: string | null
+          rental_kind?: string | null
           responsible_id: string
           responsible_name?: string | null
           revision?: number
@@ -4501,6 +4505,8 @@ export type Database = {
           plan_confirmed?: boolean
           property_id?: string
           property_snapshot?: Json
+          rental_contract_id?: string | null
+          rental_kind?: string | null
           responsible_id?: string
           responsible_name?: string | null
           revision?: number
@@ -4555,6 +4561,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_rental_contract_id_fkey"
+            columns: ["rental_contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
             referencedColumns: ["id"]
           },
         ]
@@ -11167,6 +11180,162 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "rental_nfse_service_references_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_payout_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          dados: Json
+          de: string | null
+          id: string
+          motivo: string | null
+          para: string
+          payout_id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          dados?: Json
+          de?: string | null
+          id?: string
+          motivo?: string | null
+          para: string
+          payout_id: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          dados?: Json
+          de?: string | null
+          id?: string
+          motivo?: string | null
+          para?: string
+          payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_payout_events_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "rental_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_payout_lines: {
+        Row: {
+          created_at: string
+          descricao: string
+          destinatario: string
+          id: string
+          origem: string
+          payout_id: string
+          regra: string
+          revision: number
+          sinal: number
+          valor_centavos: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          destinatario: string
+          id?: string
+          origem: string
+          payout_id: string
+          regra: string
+          revision: number
+          sinal: number
+          valor_centavos: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          destinatario?: string
+          id?: string
+          origem?: string
+          payout_id?: string
+          regra?: string
+          revision?: number
+          sinal?: number
+          valor_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_payout_lines_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "rental_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_payouts: {
+        Row: {
+          aprovado_centavos: number | null
+          brand: string
+          cobrado_centavos: number
+          competencia: string
+          comprovante_path: string | null
+          contract_id: string
+          created_at: string
+          destino_versao: number | null
+          id: string
+          ocorrencia: number
+          previsto_centavos: number
+          recebido_centavos: number | null
+          referencia_externa: string | null
+          regras_validadas: boolean
+          revision: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_centavos?: number | null
+          brand: string
+          cobrado_centavos?: number
+          competencia: string
+          comprovante_path?: string | null
+          contract_id: string
+          created_at?: string
+          destino_versao?: number | null
+          id?: string
+          ocorrencia?: number
+          previsto_centavos?: number
+          recebido_centavos?: number | null
+          referencia_externa?: string | null
+          regras_validadas?: boolean
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_centavos?: number | null
+          brand?: string
+          cobrado_centavos?: number
+          competencia?: string
+          comprovante_path?: string | null
+          contract_id?: string
+          created_at?: string
+          destino_versao?: number | null
+          id?: string
+          ocorrencia?: number
+          previsto_centavos?: number
+          recebido_centavos?: number | null
+          referencia_externa?: string | null
+          regras_validadas?: boolean
+          revision?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_payouts_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "rental_contracts"
