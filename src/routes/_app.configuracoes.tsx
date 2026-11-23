@@ -11,6 +11,7 @@ import { PropertyDriveRootCard } from "@/components/configuracoes/PropertyDriveR
 import { PushDiagnosticsCard } from "@/components/notifications/PushDiagnosticsCard";
 import { PushDeliveryHealthCard } from "@/components/notifications/PushDeliveryHealthCard";
 import { AssistantAdminPanel } from "@/components/configuracoes/AssistantAdminPanel";
+import { RentalInsurersSettings } from "@/components/configuracoes/RentalInsurersSettings";
 import { BillingAccountsSettings } from "@/components/configuracoes/BillingAccountsSettings";
 import { useSession } from "@/lib/auth-mock";
 import { isAdminUser } from "@/lib/access-control";
@@ -185,6 +186,11 @@ function Page() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mb-5">
+        <SectionHeader title="Seguradoras parceiras" />
+        <RentalInsurersSettings canEdit={isAdmin} />
       </section>
 
       <section>

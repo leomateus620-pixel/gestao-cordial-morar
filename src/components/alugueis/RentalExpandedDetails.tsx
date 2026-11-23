@@ -41,6 +41,7 @@ import type {
   RentalTenant,
 } from "@/types/rental";
 import { RentalDocuments } from "./RentalDocuments";
+import { RentalContractGenerator } from "./RentalContractGenerator";
 import { RentalEntryInspection } from "./RentalEntryInspection";
 import { RentalNfseSection } from "./RentalNfseSection";
 import { useSession } from "@/lib/auth-mock";
@@ -752,7 +753,11 @@ export function RentalExpandedDetails({
                   className="xl:col-span-5"
                 >
                   <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                    <DetailField label="Valor mensal" value={brlCents(contract.valorMensal)} emphasis />
+                    <DetailField
+                      label="Valor mensal"
+                      value={brlCents(contract.valorMensal)}
+                      emphasis
+                    />
                     <DetailField
                       label="Comissão mensal"
                       value={
@@ -937,6 +942,10 @@ export function RentalExpandedDetails({
                 contractId={contract.id}
                 sectionId={sectionId("vistoria-entrada")}
               />
+
+              <div className="flex justify-end">
+                <RentalContractGenerator key={contract.id} contract={contract} />
+              </div>
 
               <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
             </div>

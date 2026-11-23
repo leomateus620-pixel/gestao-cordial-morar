@@ -10934,6 +10934,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_insurers: {
+        Row: {
+          active: boolean
+          brands: Database["public"]["Enums"]["rental_brand"][]
+          clause_template: string
+          cnpj: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          brands?: Database["public"]["Enums"]["rental_brand"][]
+          clause_template: string
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          brands?: Database["public"]["Enums"]["rental_brand"][]
+          clause_template?: string
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rental_nfse_emission_events: {
         Row: {
           actor: string | null

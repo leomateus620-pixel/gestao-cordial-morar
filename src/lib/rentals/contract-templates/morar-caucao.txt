@@ -1,0 +1,123 @@
+CONTRATO DE LOCAÇÃO DE IMÓVEL
+
+{{locador}}
+
+{{locatarios}}
+
+As partes acima qualificadas têm justo e acertado celebrar o presente Contrato de Locação de Imóvel, o qual reger-se-á pelas cláusulas e condições que seguem:
+
+CLÁUSULA PRIMEIRA – DO OBJETO
+
+1.1 O presente instrumento tem por finalidade a locação do imóvel localizado na {{imovel_endereco}}, registrado na Matrícula nº {{matricula}}, do Cartório de Registro de Imóveis de Santa Rosa, RS, livre e desonerado, de propriedade do(a) LOCADOR(A), para fim exclusivamente residencial/comercial.
+
+1.2 O imóvel locado possui instalações elétricas e hidráulicas em perfeito estado de funcionamento, bem como as portas e acessórios funcionando, conforme especificado no termo de vistoria que integra o presente contrato, devendo o(a) LOCATÁRIO(A) mantê-lo desta forma.
+
+1.3 O(A) LOCATÁRIO(A) declara ter vistoriado o imóvel objeto desta locação, aceitando-o nas condições em que se encontra.
+
+CLÁUSULA SEGUNDA – DO PRAZO
+
+2.1 A vigência do presente contrato de locação é de 12 (doze) meses, contados a partir de {{data_inicio}}.
+
+2.2 Decorrido o prazo de vigência do contrato de locação, o imóvel deverá ser devolvido nas condições recebidas, efetivando-se com a entrega das chaves, independentemente de aviso ou qualquer outra medida judicial ou extrajudicial.
+
+2.3 Havendo interesse de ambas as partes, o contrato será prorrogado automaticamente, por prazo indeterminado, sendo que a denúncia de qualquer uma das partes deverá ser por escrito, com antecedência mínima de 30 dias.
+
+CLÁUSULA TERCEIRA – DO VALOR DA LOCAÇÃO E DO INADIMPLEMENTO
+
+3.1 O(A) LOCATÁRIO(A) pagará mensalmente ao(a) LOCADOR(A) o valor de {{valor_aluguel}} a título de aluguel.
+
+3.2 O valor da locação será pago para a imobiliária MORAR IMÓVEIS, administradora do imóvel, sempre até o quinto dia útil de cada mês, por meio de depósito bancário, em conta a ser indicada posteriormente, ou por meio de pagamento em dinheiro, direto para a imobiliária, percebendo o devido recibo de quitação.
+
+3.3 O valor da locação será reajustado anualmente pela variação positiva do IGP-M/FGV ou outro índice que venha a substituí-lo.
+
+3.4 O(A) LOCATÁRIO(A) ainda é responsável pelo pagamento de todas as despesas relacionados ao uso do imóvel, como IPTU, energia elétrica, água, condomínio, internet, gás, entre outros. Excetua-se das responsabilidades do(a) LOCATÁRIO(A) o pagamento das despesas extraordinárias de condomínio, especialmente fundo de reserva. (tirar o que está em VERMELHO neste item quando não for apartamento)
+
+Parágrafo único: O(A) LOCATÁRIO(A) possui o prazo de até 15 dias após a assinatura do presente instrumento para assumir a titularidade das contas de energia elétrica e água perante a RGE e a Corsan.
+
+3.5 Em caso de mora no pagamento do aluguel será aplicada multa de 10% (dez por cento) sobre o valor, acrescida de juros moratórios de 1% (um por cento) ao mês e correção monetária pelo IGP-M/FGV ou outro índice que venha a substituí-lo.
+
+3.6 Ocorrendo o inadimplemento, fica o(a) LOCATÁRIO(A) ciente de que o(a) LOCADOR(A) poderá promover a cobrança do presente contrato, seja por meio extrajudicial ou judicial, conforme previsão legal, sendo que mera tolerância referente ao atraso no pagamento do aluguel e demais despesas não configurará novação ou adição às cláusulas do presente contrato.
+
+CLÁUSULA QUARTA – DA CAUÇÃO
+
+4.1 O(A) LOCATÁRIO(A) pagará a título de caução o valor de {{valor_caucao}}, mediante depósito bancário na seguinte conta corrente: Banco: Sicredi, Agência 0307, Conta no 71734-6, de titularidade da imobiliária MORAR IMÓVEIS, inscrita no CNPJ nº 35.080.386/0001-73.
+
+4.2 A entrega das chaves do imóvel somente se realizará após o depósito da caução.
+
+4.3 O valor da caução será usado em todas as hipóteses que forem necessários recursos provenientes do(a) LOCATÁRIO(A), sendo que em caso de utilização desse valor, a caução deverá ser imediatamente reposta.
+
+4.4 Ao fim da locação, com a concretização da entrega das chaves e observados os requisitos constantes neste contrato, o(a) LOCATÁRIO(A) receberá o montante que foi depositado com os rendimentos que forem apurados.
+
+CLÁUSULA QUINTA – DA RESCISÃO
+
+5.1 O atraso no pagamento do aluguel, bem como de IPTU, energia elétrica, água e condomínio por um mês ou mais poderão ser causa de rescisão do contrato de locação por descumprimento das cláusulas contratuais por parte do(a) LOCATÁRIO(A).
+
+5.2 Qualquer uma das partes poderá rescindir o contrato de locação antes do término do prazo inicialmente contratado, mediante o envio de notificação prévia por escrito para a parte contrária, com antecedência mínima de 30 (trinta) dias, e o pagamento de multa compensatória no valor equivalente a 03 (três) meses de aluguéis proporcionais.
+
+Parágrafo único: Fica o(a) LOCADOR(A) dispensado de pagar a multa referida acima caso ocorra: a) rescisão por inadimplemento das obrigações por parte do(a) LOCATÁRIO(A), prevalecendo o disposto na Cláusula Oitava; b) necessidade do(a) LOCADOR(A) utilizar o imóvel para moradia própria ou de parente próximo.
+
+5.3 O(A) LOCATÁRIO(A) não poderá sublocar ou ceder o imóvel, sob pena de imediata rescisão por justo motivo do presente contrato, sendo considerada infração contratual.
+
+5.4 Caso o imóvel seja utilizado de forma diversa da locação residencial/comercial, salvo autorização expressa do(a) LOCADOR(A), ou caso seja constatada infração ao dever de conservar o imóvel, restará facultado ao(à) LOCADOR(A) rescindir o presente contrato de plano, sem gerar direito a indenização ou qualquer ônus por parte do(a) LOCADOR(A) e sem prejuízo da obrigação do(a) LOCATÁRIO(A) de efetuar o pagamento das multas e despesas eventualmente existentes.
+
+5.5 Havendo rescisão antes do término do prazo de locação, a caução será devolvida conforme o disposto na Cláusula Quarta, após os devidos descontos de todas as despesas eventualmente inadimplentes e após vistoria do imóvel, sem qualquer correção monetária.
+
+5.6 Havendo rescisão por infração contratual, será o(a) LOCATÁRIO(A) notificado a desocupar o imóvel no prazo de até 30 (trinta) dias, contados da notificação, que será realizada pessoalmente, por correio ou outros meios eletrônicos disponíveis, como telefone e aplicativo WhatsApp.
+
+CLÁUSULA SEXTA - DAS BENFEITORIAS
+
+6.1 As benfeitorias, acessões e melhoramentos eventualmente realizados no imóvel locado pelo(a) LOCATÁRIO(A) até a data do término da locação e/ou de eventual inadimplemento, não gerarão direito a indenização ou retenção na hipótese de resolução do presente contrato.
+
+6.2 A realização de benfeitorias, modificações e alterações deverão ser previamente e expressamente autorizadas pelo(a) LOCADOR(A) e serão incorporadas ao imóvel.
+
+6.3 Eventuais gastos ou despesas efetuadas pelo(a) LOCATÁRIO(A) em prol do imóvel locado não ensejarão qualquer direito a ressarcimento ou indenização.
+
+CLÁUSULA SÉTIMA – DAS OBRIGAÇÕES
+
+7.1 O(A) LOCATÁRIO(A) recebe o imóvel em boas condições e em perfeito estado de conservação, assumindo o compromisso de mantê-lo assim e realizando as melhorias necessárias à sua perfeita utilização, incluindo a limpeza e conservação periódica das áreas interna e externa.
+
+7.2 O(A) LOCATÁRIO(A) é responsável por eventuais prejuízos, danos e avarias causadas no imóvel, mesmo que atribua o fato à ocorrência de força maior ou caso fortuito.
+
+7.3 O(A) LOCATÁRIO(A) deverá permitir que o(a) LOCADOR(A) examine, vistorie e adentre no imóvel locado sempre que entender conveniente, desde que haja comunicação prévia e hora marcada.
+
+7.4 Ao final do contrato o(a) LOCATÁRIO(A) restituirá o imóvel locado nas mesmas condições em que o recebeu, conforme previsão do laudo de vistoria, salvo as deteriorações decorrentes do uso normal e habitual do imóvel, sendo que todos os tributos e despesas correlatas ao período de ocupação do imóvel deverão estar quitados no ato de entrega das chaves.
+
+7.5 Deve o(a) LOCATÁRIO(A) comunicar imediatamente o(a) LOCADOR(A) quanto ao surgimento de qualquer dano ou defeito cuja reparação incumba ao(a) LOCADOR(A), bem como eventuais turbações de terceiros.
+
+7.6 O(A) LOCATÁRIO(A) também é obrigado a realizar a contratação de seguro contra incêndios, no prazo de até 10 dias do início da locação, sendo que na ausência deste seguro o(a) LOCATÁRIO(A) ficará sujeito ao pagamento de multa por infração contratual e/ou rescisão da locação, bem como o(a) LOCATÁRIO(A) ainda será responsabilizado por todo e qualquer dano advindo de eventual incêndio, independentemente se resultante de conduta culposa ou dolosa.
+
+7.7 Qualquer acidente que porventura venha a ocorrer no imóvel por culpa ou dolo do(a) LOCATÁRIO(A), o mesmo ficará obrigado a pagar todas as despesas por danos causados ao imóvel, além da multa prevista na Cláusula Oitava, devendo restituir o imóvel no estado em que o encontrou no momento da vistoria.
+
+7.8 Caso o imóvel seja colocado à venda, e o(a) LOCATÁRIO(A) não exerça o direito de preferência, fica o(a) LOCATÁRIO(A) obrigado(a) a permitir a visitação de terceiros interessados na compra do imóvel ora locado, desde que com hora marcada, sendo que em caso de apresentar qualquer empecilho às visitações poderá ser rescindido o presente contrato, nos termos da Cláusula Oitava.
+
+7.8 O(A) LOCATÁRIO(A) tem pleno conhecimento de que o imóvel locado está disponível para venda, sendo o(a) LOCATÁRIO(A) obrigado(a) a permitir a visitação de terceiros interessados na compra do imóvel, desde que com hora marcada, sendo que em caso de apresentar qualquer empecilho às visitações poderá ser rescindido o presente contrato, nos termos da Cláusula Oitava.
+
+CLÁUSULA OITAVA – DA INFRAÇÃO CONTRATUAL
+
+8.1 Em caso de violação de quaisquer das cláusulas deste instrumento por parte do(a) LOCATÁRIO(A), este(a) se sujeitará à multa equivalente a 03 (três) meses de aluguéis proporcionais em vigor na ocasião, sem prejuízo das demais previsões ajustadas neste instrumento.
+
+8.2 A presente cláusula não se aplica no caso de atraso de aluguel devendo prevalecer o disposto na Cláusula Terceira, item 3.5.
+
+CLÁUSULA NONA – DAS DISPOSIÇÕES GERAIS
+
+9.1 Os direitos e obrigações decorrentes deste contrato não poderão, em nenhuma hipótese, ser cedidos ou transferidos a terceiros, sem o prévio e expresso consentimento da outra parte.
+
+9.2 A destinação do imóvel locado pelo(a) LOCATÁRIO(A) deve ser exclusivamente para fins residenciais/comerciais, restando proibido ao(a) LOCATÁRIO(A), sublocá-lo ou usá-lo de forma diferente do previsto, salvo autorização expressa do(a) LOCADOR(A).
+
+9.3 Nenhuma tolerância a qualquer inadimplemento ou em fazer valer o disposto no contrato será considerada novação. O contrato apenas poderá ser modificado ou alterado mediante instrumento escrito firmado por ambas as partes contratantes.
+
+9.4 Fica expressamente ajustado que o(a) LOCADOR(A) não possui qualquer responsabilidade por débitos, dívidas, ou quaisquer atos praticados pelo(a) LOCATÁRIO(A).
+
+9.5 Este contrato reger-se-á pelos artigos do Código Civil e da Lei de Locações, no caso de descumprimento de qualquer de suas cláusulas responderá a parte culpada pelo ressarcimento das perdas e danos à parte inocente.
+
+9.6 Havendo necessidade de procedimento judicial, a parte culpada ficará obrigada ao pagamento de despesas processuais e honorários advocatícios.
+
+CLÁUSULA DÉCIMA– DO FORO
+
+10.1 Fica eleito o Foro da Comarca de Santa Rosa, RS, como competente para dirimir quaisquer questões oriundas deste contrato.
+
+E, por estarem assim justas e contratadas, as partes assinam o contrato em 02 (duas) vias de igual teor e forma, na presença das testemunhas abaixo.
+
+Santa Rosa, {{data_assinatura}}.
+
+{{assinaturas}}

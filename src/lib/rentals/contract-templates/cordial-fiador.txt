@@ -1,0 +1,127 @@
+CONTRATO DE LOCAÇÃO DE IMÓVEL COMERCIAL
+
+{{locador}}
+
+{{locatarios}}
+
+{{fiadores}}
+
+As partes acima qualificadas têm justo e acertado celebrar o presente contrato de locação de imóvel, o qual reger-se-á pelas cláusulas e condições a seguir descritas:
+
+CLÁUSULA PRIMEIRA – DO OBJETO
+
+1.1 A locação de imóvel comercial situado na {{imovel_endereco}}, na cidade de Santa Rosa, RS, para fim exclusivamente comercial, com instalações elétricas e hidráulicas em perfeito estado de funcionamento, sendo que portas e acessórios se encontram também em funcionamento correto, devendo o locatário mantêlo desta forma.
+
+1.2 O(A) LOCATÁRIO(A) declara ter vistoriado o imóvel objeto desta locação, aceitando- nas condições em se encontra.
+
+CLÁUSULA SEGUNDA – DO PRAZO
+
+A vigência do presente contrato de locação é de 12 (doze) meses, contados a partir de {{data_inicio}}.
+
+Decorrido o prazo de vigência do contrato de locação, o imóvel deverá ser devolvido nas condições recebidas, efetivando-se com a entrega das chaves, independentemente de aviso ou qualquer outra medida judicial ou extrajudicial.
+
+Havendo interesse de ambas as partes, o contrato será prorrogado automaticamente, por prazo indeterminado, sendo que a denúncia de qualquer uma das partes deverá ser por escrito, com antecedência mínima de 30 dias.
+
+CLÁUSULA TERCEIRA – DO VALOR DA LOCAÇÃO E DO INADIMPLEMENTO
+
+O(A) LOCATÁRIO(A) pagará mensalmente ao LOCADOR o valor de {{valor_aluguel}} a título de aluguel.
+
+O valor da locação será pago para a imobiliária CORDIAL IMÓVEIS LTDA, administradora do imóvel, sempre até o quinto dia útil de cada mês, por meio de boleto bancário, sendo de responsabilidade do(a) LOCATÁRIO(A) o pagamento das respectivas taxas e despesas operacionais bancárias.
+
+O valor da locação será reajustado anualmente pela variação positiva do IGP-M/FGV ou outro índice que venha a substituí-lo.
+
+3.4 O(A) LOCATÁRIO(A) ainda é responsável pelo pagamento de IPTU, energia elétrica, água, iptu, seguro contra incêndios, internet, sendo que deverá comprovar os pagamentos destas despesas para a imobiliária administradora, mediante envio mensal dos comprovantes para a imobiliária (o envio pode ser por meio de foto dos comprovantes pelo aplicativo WhatsApp).
+
+Parágrafo único: O(A) LOCATÁRIO(A) possui o prazo de até 15 dias após a assinatura do presente instrumento para assumir a titularidade das contas de energia elétrica e água perante a RGE e a Corsan. A mesma autoriza o responsável da Imobiliária Cordial Imóveis, Ricardo Carpenedo Caetano, incristo no CPF n° 004.733.710-90, e RG n° 02705064504 a fazer a troca da titutalidade ou o cancelamento se necessário.
+
+3.5 Em caso de mora no pagamento do aluguel será aplicada multa de 10% (dez por cento) sobre o valor, acrescida de juros moratórios de 5% (cinco por cento) ao mês e correção monetária pelo IGP-M/FGV ou outro índice que venha a substituí-lo.
+
+3.6 Ainda em caso de mora, além dos encargos descritos no item 3.5, sendo necessário o encaminhamento para advogado habilitado realizar a cobrança, judicial ou não, serão acrescidos também honorários advocatícios extrajudiciais fixados em 20% (vinte por cento) sobre o débito total, bem como custas e honorários judiciais, se existentes.
+
+3.7 Ocorrendo inadimplência de quaisquer valores devidos em função da locação, fica LOCATÁRIO(A) ciente que poderá ter seu nome inscrito nos cadastros restritivos e órgãos de proteção ao crédito.
+
+CLÁUSULA QUARTA – DA FIANÇA
+
+O(S) FIADOR(ES) assumem a qualidade de devedores solidários, renunciando expressamente a quaisquer benefícios de ordem e divisão, especialmente aqueles previstos no artigo 827 e seguintes do Código Civil, de todas as obrigações assumidas neste contrato, incluindo a obrigação principal e as acessórias pactuadas, perdurando essa fiança por todo o tempo em que existirem as responsabilidades do(a) LOCATÁRIO(A) perante ao LOCADOR.
+
+O(S) FIADOR(ES) oferecem como forma de garantia do presente contrato os seguintes bens de que são proprietários:
+
+{{bens_fiadores}}
+
+No caso de concordata, falência, estado de insolvência ou falecimento do(s) FIADOR(ES), o(a) LOCATÁRIO(A) deverá substituí-la em 30 (trinta) dias, sob pena de rescisão contratual.
+
+CLÁUSULA QUINTA – DA RESCISÃO
+
+O atraso no pagamento do aluguel, bem como de energia elétrica, água por um mês ou mais serão causa de rescisão do contrato de locação por descumprimento das cláusulas contratuais por parte do(a) LOCATÁRIO(A).
+
+Qualquer uma das partes poderá rescindir o contrato de locação antes do término do prazo inicialmente contratado, mediante o envio de notificação prévia por escrito para a parte contrária, com antecedência mínima de 30 (trinta) dias, e o pagamento de multa compensatória no valor equivalente a 03 (três) meses de aluguéis.
+
+Parágrafo único: Fica o LOCADOR dispensado de pagar a multa referida acima caso ocorra:
+
+a) rescisão por inadimplemento das obrigações por parte do(a) LOCATÁRIO(A), prevalecendo o disposto na Cláusula Oitava;
+
+b) necessidade do LOCADOR utilizar o imóvel para uso próprio ou de parente próximo.
+
+O(A) LOCATÁRIO(A) não poderá sublocar ou ceder o imóvel, sob pena de imediata rescisão por justo motivo do presente contrato.
+
+Caso o imóvel seja utilizado de forma diversa da locação residencial, salvo autorização expressa do LOCADOR, restará facultado o LOCADOR rescindir o presente contrato de plano, sem gerar direito a indenização ou qualquer ônus por parte do LOCADOR e sem prejuízo da obrigação do(a) LOCATÁRIO(A) de efetuar o pagamento das multas e despesas existentes.
+
+Havendo rescisão por infração contratual, será o(a) LOCATÁRIO(A) notificada a desocupar o imóvel no prazo de até 15 (quinze) dias, contados da notificação, que será realizada pessoalmente, por correio ou outros meios eletrônicos disponíveis, como telefone e aplicativo WhatsApp.
+
+CLÁUSULA SEXTA - DAS BENFEITORIAS
+
+As benfeitorias, acessões e melhoramentos eventualmente realizados no imóvel locado pelo(a) LOCATÁRIO(A) até a data do término da locação e/ou de eventual inadimplemento, não gerarão direito a indenização ou retenção na hipótese de resolução do presente contrato.
+
+A realização de benfeitorias, modificações e alterações deverão ser previamente e expressamente autorizadas pelo LOCADOR e serão incorporadas ao imóvel.
+
+Eventuais gastos ou despesas efetuadas pelo(a) LOCATÁRIO(A) em prol do imóvel locado não ensejarão qualquer direito a ressarcimento ou indenização.
+
+CLÁUSULA SÉTIMA – DAS OBRIGAÇÕES
+
+O(A) LOCATÁRIO(A) recebe o imóvel em boas condições e em perfeito estado de conservação, assumindo o compromisso de mantê-lo assim e realizando as melhorias necessárias à sua perfeita utilização, incluindo a limpeza e conservação periódica das áreas interna e externa.
+
+O(A) LOCATÁRIO(A) é responsável por eventuais prejuízos, danos e avarias causadas no imóvel, mesmo que atribua o fato à ocorrência de força maior ou caso fortuito.
+
+O(A) LOCATÁRIO(A) deverá permitir que o LOCADOR examine, vistorie e adentre no imóvel locado sempre que entender conveniente, desde que haja comunicação prévia.
+
+O(A) LOCATÁRIO(A) restituirá o imóvel locado nas mesmas condições em que o recebeu, salvo as deteriorações decorrentes do uso normal e habitual do imóvel.
+
+Deve o(a) LOCATÁRIO(A) comunicar imediatamente o LOCADOR quanto ao surgimento de qualquer dano ou defeito cuja reparação incumba o LOCADOR, bem como eventuais turbações de terceiros.
+
+O(A) LOCATÁRIO(A) também é responsável por realizar a contratação de seguro contra incêndios, no prazo de até 15 dias do início da locação.
+
+Qualquer acidente que porventura venha a ocorrer no imóvel por culpa ou dolo do(a) LOCATÁRIO(A), a mesma ficará obrigada a pagar todas as despesas por danos causados ao imóvel, além da multa prevista na Cláusula Oitava, devendo restituir o imóvel no estado em que encontrou no momento da vistoria.
+
+Quando ocorrer a devolução do imóvel para o LOCADOR, a pintura nova e eventuais reparos de obrigação do(a) LOCATÁRIO(A) devem ser realizados por meio de profissionais indicados pela imobiliária CORDIAL IMÓVEIS LTDA.
+
+O imóvel está à venda, e caso o(a) LOCATÁRIO(A) não exerça o direito de preferência, fica o(a) LOCATÁRIO(A) obrigada a permitir a visitação de terceiros interessados na compra do imóvel ora locado, desde que com hora marcada, sendo que em caso de apresentar qualquer empecilho às visitações poderá ser rescindido o presente contrato, nos termos da Cláusula Oitava.
+
+CLÁUSULA OITAVA – DA INFRAÇÃO CONTRATUAL
+
+Em caso de violação de quaisquer das cláusulas deste instrumento por parte do(a) LOCATÁRIO(A), esta se sujeitará à multa equivalente a 03 (três) meses de aluguéis, em vigor na ocasião, sem prejuízo das demais previsões ajustadas neste instrumento.
+
+A presente cláusula não se aplica no caso de atraso de aluguel devendo prevalecer o disposto na Cláusula Terceira, item 3.5.
+
+CLÁUSULA NONA – DAS DISPOSIÇÕES GERAIS
+
+Os direitos e obrigações decorrentes deste contrato não poderão, em nenhuma hipótese, ser cedidos ou transferidos a terceiros, sem o prévio e expresso consentimento da outra parte.
+
+A destinação do imóvel locado pelo(a) LOCATÁRIO(A) deve ser exclusivamente para fins comerciais, restando proibida o(a) LOCATÁRIO(A), sublocá-lo ou usá-lo de forma diferente do previsto, salvo autorização expressa do LOCADOR.
+
+Nenhuma tolerância a qualquer inadimplemento ou em fazer valer o disposto no contrato será considerada novação. O contrato apenas poderá ser modificado ou alterado mediante instrumento escrito firmado por ambas as partes contratantes.
+
+Fica expressamente ajustado que o LOCADOR não possui qualquer responsabilidade por débitos, dívidas, ou quaisquer atos praticados pelo(a) LOCATÁRIO(A).
+
+Este contrato reger-se-á pelos artigos do Código Civil e da Lei de Locações, no caso de descumprimento de qualquer de suas cláusulas responderá a parte culpada pelo ressarcimento das perdas e danos à parte inocente.
+
+Havendo necessidade de procedimento judicial, a parte culpada ficará obrigada ao pagamento de custas judiciais, despesas processuais e honorários advocatícios.
+
+CLÁUSULA DÉCIMA– DO FORO
+
+Fica eleito o Foro da Comarca de Santa Rosa, RS, como competente para dirimir quaisquer questões oriundas deste contrato.
+
+E, por estarem assim justas e contratadas, as partes assinam o contrato em 03 (três) vias de igual teor e forma, na presença das testemunhas abaixo.
+
+Santa Rosa, {{data_assinatura}}.
+
+{{assinaturas}}

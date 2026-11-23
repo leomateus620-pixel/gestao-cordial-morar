@@ -743,6 +743,13 @@
       "when": 1795456853354,
       "tag": "0105_inspection_rental_property",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795458775485,
+      "tag": "0106_rental_insurers",
+      "breakpoints": true
     }
   ]
 }

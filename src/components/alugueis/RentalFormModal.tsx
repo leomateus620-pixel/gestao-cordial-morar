@@ -1,6 +1,8 @@
 import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
 import { rentalStorageDeps } from "@/lib/rentals/upload-storage";
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Home,
   User,
@@ -106,9 +108,7 @@ function SectionCard({
             <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground">
               {title}
             </h3>
-            {subtitle && (
-              <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
         {action}
@@ -129,8 +129,7 @@ function ModeToggle({
   onChange: (m: Mode) => void;
   disableExisting?: boolean;
 }) {
-  const baseBtn =
-    "relative flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition";
+  const baseBtn = "relative flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition";
   return (
     <div className="inline-flex w-full max-w-[220px] rounded-full bg-muted/70 p-1">
       <button
@@ -277,9 +276,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
 
     return {
       tipo: "fiador",
-      guarantor: g.guarantorId
-        ? { existingId: g.guarantorId, data }
-        : { data },
+      guarantor: g.guarantorId ? { existingId: g.guarantorId, data } : { data },
     };
   }
   if (g.tipo === "caucao") {
@@ -340,9 +337,7 @@ export function RentalFormModal({
   const [propEmail, setPropEmail] = useState("");
   const [propTelefone, setPropTelefone] = useState("");
 
-  const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([
-    newTenantEntry(),
-  ]);
+  const [tenantEntries, setTenantEntries] = useState<TenantEntry[]>([newTenantEntry()]);
   const [guaranteeEntries, setGuaranteeEntries] = useState<GuaranteeEntry[]>([]);
 
   const [valor, setValor] = useState("");
@@ -367,9 +362,7 @@ export function RentalFormModal({
   const savedContractIdRef = useRef<string | null>(null);
 
   function updateTenant(key: string, patch: Partial<TenantEntry>) {
-    setTenantEntries((prev) =>
-      prev.map((t) => (t.key === key ? { ...t, ...patch } : t)),
-    );
+    setTenantEntries((prev) => prev.map((t) => (t.key === key ? { ...t, ...patch } : t)));
   }
   function removeTenant(key: string) {
     setTenantEntries((prev) => (prev.length <= 1 ? prev : prev.filter((t) => t.key !== key)));
@@ -379,9 +372,7 @@ export function RentalFormModal({
   }
 
   function updateGuarantee(key: string, patch: Partial<GuaranteeEntry>) {
-    setGuaranteeEntries((prev) =>
-      prev.map((g) => (g.key === key ? { ...g, ...patch } : g)),
-    );
+    setGuaranteeEntries((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
   function removeGuarantee(key: string) {
     setGuaranteeEntries((prev) => prev.filter((g) => g.key !== key));
@@ -492,12 +483,9 @@ export function RentalFormModal({
     setDataInicio(c.dataInicio.slice(0, 10));
     setDataFim(c.dataFim.slice(0, 10));
     setDia(String(c.diaVencimento));
-    setStatus(
-      c.status === "ativo" || c.status === "pendente_assinatura" ? c.status : "ativo",
-    );
+    setStatus(c.status === "ativo" || c.status === "pendente_assinatura" ? c.status : "ativo");
     setObs(c.observacoes ?? "");
     setBrand(c.brand ?? "cordial");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -594,7 +582,11 @@ export function RentalFormModal({
                 ),
               );
             } catch (e) {
-              remaining.push({ ...doc, path: filePath, failed: friendlyUploadError(doc.file.name, e) });
+              remaining.push({
+                ...doc,
+                path: filePath,
+                failed: friendlyUploadError(doc.file.name, e),
+              });
             }
           }
         } finally {
@@ -609,7 +601,6 @@ export function RentalFormModal({
         }
       }
 
-
       reset();
       onOpenChange(false);
     } catch (err) {
@@ -619,6 +610,7 @@ export function RentalFormModal({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      <InsurerSuggestions />
       <SheetContent
         side="right"
         className="flex w-full flex-col gap-0 border-l border-border/60 bg-background p-0 sm:max-w-[680px]"
@@ -905,9 +897,7 @@ export function RentalFormModal({
                         </Field>
                         <button
                           type="button"
-                          onClick={() =>
-                            updateTenant(t.key, { editExisting: !t.editExisting })
-                          }
+                          onClick={() => updateTenant(t.key, { editExisting: !t.editExisting })}
                           disabled={!t.existingId}
                           className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground/80 transition hover:bg-muted/60 disabled:opacity-40"
                         >
@@ -931,9 +921,7 @@ export function RentalFormModal({
                             required
                             placeholder="(00) 00000-0000"
                             value={t.telefone}
-                            onChange={(e) =>
-                              updateTenant(t.key, { telefone: e.target.value })
-                            }
+                            onChange={(e) => updateTenant(t.key, { telefone: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
@@ -948,18 +936,14 @@ export function RentalFormModal({
                         <Field label="CPF / CNPJ">
                           <input
                             value={t.cpfCnpj}
-                            onChange={(e) =>
-                              updateTenant(t.key, { cpfCnpj: e.target.value })
-                            }
+                            onChange={(e) => updateTenant(t.key, { cpfCnpj: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
                         <Field label="Profissão">
                           <input
                             value={t.profissao}
-                            onChange={(e) =>
-                              updateTenant(t.key, { profissao: e.target.value })
-                            }
+                            onChange={(e) => updateTenant(t.key, { profissao: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
@@ -976,9 +960,7 @@ export function RentalFormModal({
                         <Field label="Endereço atual" className="sm:col-span-2">
                           <input
                             value={t.endereco}
-                            onChange={(e) =>
-                              updateTenant(t.key, { endereco: e.target.value })
-                            }
+                            onChange={(e) => updateTenant(t.key, { endereco: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
@@ -1050,9 +1032,7 @@ export function RentalFormModal({
                           <input
                             required
                             value={g.guarNome}
-                            onChange={(e) =>
-                              updateGuarantee(g.key, { guarNome: e.target.value })
-                            }
+                            onChange={(e) => updateGuarantee(g.key, { guarNome: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
@@ -1068,20 +1048,15 @@ export function RentalFormModal({
                         <Field label="Telefone">
                           <input
                             value={g.guarTel}
-                            onChange={(e) =>
-                              updateGuarantee(g.key, { guarTel: e.target.value })
-                            }
+                            onChange={(e) => updateGuarantee(g.key, { guarTel: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
                         <Field label="E-mail">
-
                           <input
                             type="email"
                             value={g.guarEmail}
-                            onChange={(e) =>
-                              updateGuarantee(g.key, { guarEmail: e.target.value })
-                            }
+                            onChange={(e) => updateGuarantee(g.key, { guarEmail: e.target.value })}
                             className={inputCls}
                           />
                         </Field>
@@ -1105,9 +1080,7 @@ export function RentalFormModal({
                           required
                           placeholder="0,00"
                           value={g.valorCaucao}
-                          onChange={(e) =>
-                            updateGuarantee(g.key, { valorCaucao: e.target.value })
-                          }
+                          onChange={(e) => updateGuarantee(g.key, { valorCaucao: e.target.value })}
                           className={inputCls}
                         />
                       </Field>
@@ -1117,7 +1090,8 @@ export function RentalFormModal({
                         <Field label="Seguradora" className="sm:col-span-2">
                           <input
                             required
-                            placeholder="Ex.: Porto Seguro"
+                            list="rental-insurers-list"
+                            placeholder="Ex.: S8 Garante"
                             value={g.seguroSeguradora}
                             onChange={(e) =>
                               updateGuarantee(g.key, { seguroSeguradora: e.target.value })
@@ -1201,7 +1175,9 @@ export function RentalFormModal({
                       )}
                       title="Percentual da comissão sobre o valor mensal"
                     >
-                      {comissaoPct === null ? "--%" : `${comissaoPct.toFixed(2).replace(".", ",")}%`}
+                      {comissaoPct === null
+                        ? "--%"
+                        : `${comissaoPct.toFixed(2).replace(".", ",")}%`}
                     </span>
                   </div>
                 </Field>
@@ -1254,9 +1230,7 @@ export function RentalFormModal({
                 <Field label="Status" className="sm:col-span-3">
                   <select
                     value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as "ativo" | "pendente_assinatura")
-                    }
+                    onChange={(e) => setStatus(e.target.value as "ativo" | "pendente_assinatura")}
                     className={inputCls}
                   >
                     <option value="ativo">Ativo</option>
@@ -1348,14 +1322,14 @@ export function RentalFormModal({
                                 {p.file.name}
                               </span>
                               <span className="shrink-0 text-foreground/55">
-                                {p.failed ? "Não enviado" : `${(p.file.size / 1024 / 1024).toFixed(2)} MB`}
+                                {p.failed
+                                  ? "Não enviado"
+                                  : `${(p.file.size / 1024 / 1024).toFixed(2)} MB`}
                               </span>
                               <button
                                 type="button"
                                 onClick={() =>
-                                  setPendingDocs((prev) =>
-                                    prev.filter((d) => d.key !== p.key),
-                                  )
+                                  setPendingDocs((prev) => prev.filter((d) => d.key !== p.key))
                                 }
                                 className="grid size-6 shrink-0 place-items-center rounded-md text-rose-600 hover:bg-rose-500/10"
                                 aria-label="Remover"
@@ -1371,7 +1345,6 @@ export function RentalFormModal({
                 })}
               </div>
             </SectionCard>
-
 
             {error && (
               <div
@@ -1404,12 +1377,35 @@ export function RentalFormModal({
                   : pendingDocs.some((d) => d.failed)
                     ? "Tentar novamente"
                     : isEdit
-                    ? "Salvar alterações"
-                    : "Cadastrar aluguel"}
+                      ? "Salvar alterações"
+                      : "Cadastrar aluguel"}
             </button>
           </div>
         </form>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function InsurerSuggestions() {
+  const { data } = useQuery({
+    queryKey: ["rental-insurers", "names"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rental_insurers")
+        .select("id,nome,active")
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+  return (
+    <datalist id="rental-insurers-list">
+      {(data ?? [])
+        .filter((i) => i.active)
+        .map((i) => (
+          <option key={i.id} value={i.nome} />
+        ))}
+    </datalist>
   );
 }
