@@ -10,7 +10,8 @@ export type ContractGuarantee = "fiador" | "caucao" | "seguro_fianca";
 
 export const MISSING_PREFIX = "[PREENCHER:";
 
-export type ContractParty = { label: string; qualificacao: string };
+export type ContractSpouse = { papel: "esposa" | "conjuge"; nome: string; qualificacao: string };
+export type ContractParty = { label: string; qualificacao: string; conjuge?: ContractSpouse | null };
 
 export type ContractInsurer = {
   id: string;
@@ -82,6 +83,28 @@ export function qualify(p: {
   ].join(", ");
 }
 
+/** Qualificação do cônjuge anuente de um fiador (dados do cadastro do fiador). */
+export function qualifySpouse(c: {
+  papel: "esposa" | "conjuge";
+  nome: string;
+  cpf: string;
+  rg: string;
+  profissao: string;
+}): ContractSpouse {
+  const nome = c.nome.trim().toUpperCase();
+  return {
+    papel: c.papel,
+    nome: nome || need("nome do cônjuge"),
+    qualificacao: [
+      orNeed(nome, "nome do cônjuge"),
+      orNeed(c.profissao, "profissão do cônjuge"),
+      `inscrito(a) no CPF nº ${orNeed(c.cpf, "CPF do cônjuge")} e no RG nº ${orNeed(c.rg, "RG do cônjuge")}`,
+    ].join(", "),
+  };
+}
+
+const spouseRole = (c: ContractSpouse) => (c.papel === "esposa" ? "esposa" : "cônjuge");
+
 /** Seguradoras que podem ser escolhidas para a marca (só ativas). */
 export function insurersForBrand(list: ContractInsurer[], brand: ContractBrand): ContractInsurer[] {
   return list.filter((i) => i.active && (i.brands ?? []).includes(brand));
@@ -104,6 +127,9 @@ function partyBlock(parties: ContractParty[], heading: string, suffix: string): 
     .map(
       (p, i) =>
         (i === 0 ? `${heading}: ${p.qualificacao}` : p.qualificacao) +
+        (p.conjuge
+          ? `, e sua ${spouseRole(p.conjuge)}, ${p.conjuge.qualificacao}, que comparece como anuente`
+          : "") +
         (i === parties.length - 1 ? `, doravante denominado(a) “${suffix}”.` : ";"),
     )
     .join("\n\n");
@@ -111,13 +137,19 @@ function partyBlock(parties: ContractParty[], heading: string, suffix: string): 
 
 function signatures(d: ContractData): string {
   const line = "____________________________________";
-  const names = [d.locador, ...d.locatarios, ...d.fiadores];
-  const roles = [
-    "Locador(a)",
-    ...d.locatarios.map(() => "Locatário(a)"),
-    ...d.fiadores.map(() => "Fiador(a)"),
+  const rows: [string, string][] = [
+    [d.locador.qualificacao.split(",")[0] ?? "", "Locador(a)"],
+    ...d.locatarios.map((p): [string, string] => [p.qualificacao.split(",")[0] ?? "", "Locatário(a)"]),
   ];
-  const blocks = names.map((p, i) => `${line}\n${p.qualificacao.split(",")[0]}\n${roles[i]}`);
+  for (const f of d.fiadores) {
+    const nome = f.qualificacao.split(",")[0] ?? "";
+    rows.push([nome, "Fiador(a)"]);
+    if (f.conjuge) {
+      const role = f.conjuge.papel === "esposa" ? "Esposa anuente" : "Cônjuge anuente";
+      rows.push([f.conjuge.nome, `${role} do(a) fiador(a) ${nome}`]);
+    }
+  }
+  const blocks = rows.map(([n, r]) => `${line}\n${n}\n${r}`);
   return [...blocks, "Testemunhas:", `${line}\nNome:\nCPF:`, `${line}\nNome:\nCPF:`].join("\n\n");
 }
 

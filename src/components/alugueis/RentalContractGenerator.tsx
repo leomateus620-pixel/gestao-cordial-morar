@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { RentalContractFull } from "@/types/rental";
 import {
+  qualifySpouse,
   fillContract,
   insurersForBrand,
   missingFields,
@@ -82,6 +83,13 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
   const [locador, setLocador] = useState("");
   const [locatarios, setLocatarios] = useState<string[]>([]);
   const [fiadores, setFiadores] = useState<string[]>([]);
+  const spouses = useMemo(
+    () =>
+      contract.guarantees
+        .filter((g) => g.tipo === "fiador" && g.guarantor)
+        .map((g) => (g.conjuge?.enabled ? qualifySpouse(g.conjuge) : null)),
+    [contract.guarantees],
+  );
   const [endereco, setEndereco] = useState("");
   const [matricula, setMatricula] = useState("");
   const [bens, setBens] = useState("");
@@ -137,7 +145,11 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
         locador: { label: "Locador", qualificacao: locador },
         locatarios: locatarios.map((q) => ({ label: "Locatário", qualificacao: q })),
         fiadores:
-          guarantee === "fiador" ? fiadores.map((q) => ({ label: "Fiador", qualificacao: q })) : [],
+          guarantee === "fiador" ? fiadores.map((q, i) => ({
+                label: "Fiador",
+                qualificacao: q,
+                conjuge: spouses[i] ?? null,
+              })) : [],
         imovelEndereco: endereco,
         matricula,
         bensFiadores: bens,
@@ -155,6 +167,7 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
       locador,
       locatarios,
       fiadores,
+      spouses,
       endereco,
       matricula,
       bens,
@@ -169,32 +182,54 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
     ],
   );
   const missing = missingFields(text);
-  const { uploadFile } = useRentalDocuments(contract.id);
+  const { saveGeneratedContract, setDocumentReviewed } = useRentalDocuments(contract.id);
+  // Uma chave por versão do texto: clique duplo e nova tentativa reaproveitam o mesmo arquivo.
+  const versionKey = useMemo(() => stableKey(`${contract.id}|${brand}|${guarantee}|${text}`), [contract.id, brand, guarantee, text]);
+  const [saved, setSaved] = useState<{ key: string; documentId: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const isSaved = saved?.key === versionKey;
+  const inFlight = useRef(false);
+
+  async function buildFile() {
+    const blob = await contractTextToDocx(text);
+    const fileName = `Contrato gerado - ${brand} - ${GUARANTEE_LABEL[guarantee]} - v${versionKey.slice(0, 8)}.docx`;
+    return new File([blob], fileName, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+
+  async function confirmAndSave() {
+    if (missing.length || busy || isSaved || inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setSaveError(null);
+    try {
+      const file = await buildFile();
+      const doc = (await saveGeneratedContract(file, versionKey)) as { id?: string } | null;
+      if (!doc?.id) throw new Error("O arquivo não foi registrado no aluguel.");
+      await setDocumentReviewed(doc.id, true);
+      setSaved({ key: versionKey, documentId: doc.id });
+      toast.success("Contrato salvo nos documentos do aluguel e marcado como conferido.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha ao salvar.";
+      setSaveError(msg);
+      toast.error("Não consegui salvar o contrato no aluguel. Seus dados continuam aqui — tente de novo.");
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
 
   async function download() {
     if (missing.length) return;
-    setBusy(true);
     try {
-      const blob = await contractTextToDocx(text);
-      const stamp = new Date().toISOString().slice(0, 16).replace("T", " ").replace(":", "h");
-      const fileName = `Contrato gerado (nao assinado) - ${brand} - ${GUARANTEE_LABEL[guarantee]} - ${stamp}.docx`;
-      const docxType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-      try {
-        await uploadFile(new File([blob], fileName, { type: docxType }), "contrato_aluguel");
-      } catch {
-        toast.error("O arquivo foi gerado, mas não consegui anexar ao aluguel. Baixe e anexe manualmente.");
-      }
-      const url = URL.createObjectURL(blob);
+      const file = await buildFile();
+      const url = URL.createObjectURL(file);
       const a = document.createElement("a");
       a.href = url;
       a.download = `Contrato de locação - ${GUARANTEE_LABEL[guarantee]} - ${contract.tenant.nome}.docx`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Contrato gerado e anexado aos documentos do aluguel. Revise no Word antes de enviar para assinatura.");
     } catch {
       toast.error("Não foi possível gerar o arquivo. Tente de novo.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -384,9 +419,27 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
               >
                 {text}
               </div>
+              {saveError && (
+                <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                  Não foi salvo no aluguel: {saveError}
+                </p>
+              )}
+              {isSaved && (
+                <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm" data-testid="contract-saved">
+                  Esta versão está salva nos documentos do aluguel e conferida. Vistoria de entrada liberada.
+                </p>
+              )}
               <Button
                 className="w-full gap-2"
-                disabled={missing.length > 0 || busy}
+                disabled={missing.length > 0 || busy || isSaved}
+                onClick={confirmAndSave}
+              >
+                {saveError ? "Tentar salvar de novo" : isSaved ? "Contrato salvo" : "Confirmar e salvar contrato"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                disabled={missing.length > 0}
                 onClick={download}
               >
                 <Download className="h-4 w-4" /> Baixar contrato (Word)
@@ -397,4 +450,16 @@ export function RentalContractGenerator({ contract }: { contract: RentalContract
       </Dialog>
     </>
   );
+}
+
+/** Hash curto e determinístico (FNV-1a) para a chave da versão. */
+function stableKey(input: string): string {
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < input.length; i++) {
+    const c = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619);
+    h2 = Math.imul(h2 ^ c, 2246822519);
+  }
+  const hex = (n: number) => (n >>> 0).toString(16).padStart(8, "0");
+  return `gen-${hex(h1)}${hex(h2)}`;
 }

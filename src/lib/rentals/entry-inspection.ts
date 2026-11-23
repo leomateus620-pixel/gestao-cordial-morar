@@ -89,3 +89,43 @@ export function entryInspectionAction(input: {
     reason: ENTRY_INSPECTION_BLOCKED_REASON[input.gate.missing ?? "not_reviewed"],
   };
 }
+
+// ============================ VISTORIA DE SAÍDA ============================
+
+export type RentalInspectionKind = "entrada" | "saida";
+
+export type ExitInspectionMissing = "no_entry" | "entry_not_finished" | "entry_no_document";
+
+export const EXIT_INSPECTION_BLOCKED_REASON: Record<ExitInspectionMissing, string> = {
+  no_entry: "A vistoria de saída é liberada depois que a vistoria de entrada for concluída.",
+  entry_not_finished:
+    "Conclua a vistoria de entrada (com o termo gerado) para liberar a vistoria de saída.",
+  entry_no_document:
+    "A vistoria de entrada ainda não tem o termo em PDF registrado. Gere o termo para liberar a saída.",
+};
+
+/**
+ * Saída só libera com a entrada concluída E com o termo (PDF) registrado.
+ * Rascunho, revisão, transcrição pendente ou PDF não gerado não liberam.
+ */
+export function exitInspectionGate(entry: {
+  id: string | null;
+  status: string | null;
+  hasDocument: boolean;
+}): { unlocked: boolean; missing: ExitInspectionMissing | null } {
+  if (!entry.id) return { unlocked: false, missing: "no_entry" };
+  if (entry.status !== "concluida") return { unlocked: false, missing: "entry_not_finished" };
+  if (!entry.hasDocument) return { unlocked: false, missing: "entry_no_document" };
+  return { unlocked: true, missing: null };
+}
+
+export function exitInspectionAction(input: {
+  contractId: string;
+  entry: { id: string | null; status: string | null; hasDocument: boolean };
+  existingExitId: string | null;
+}): EntryInspectionAction {
+  if (input.existingExitId) return { kind: "open", inspectionId: input.existingExitId };
+  const gate = exitInspectionGate(input.entry);
+  if (gate.unlocked) return { kind: "start", contractId: input.contractId };
+  return { kind: "blocked", reason: EXIT_INSPECTION_BLOCKED_REASON[gate.missing ?? "no_entry"] };
+}

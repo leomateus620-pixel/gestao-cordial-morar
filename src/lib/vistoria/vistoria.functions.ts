@@ -283,6 +283,7 @@ const createSchema = z.object({
   id: uuid,
   propertyId: uuid,
   contractId: uuid.nullable().optional(),
+  rentalKind: z.enum(["entrada", "saida"]).optional(),
   kind: z.enum(INSPECTION_KINDS),
   agency: z.enum(["cordial", "morar"]),
   responsibleId: uuid.nullable().optional(),
@@ -325,7 +326,7 @@ export const createInspection = createServerFn({ method: "POST" })
     // Vistoria de entrada ligada a um contrato: o contrato precisa estar visível
     // para quem cria, ter o contrato anexado conferido e ainda não ter vistoria.
     const contractLink = data.contractId
-      ? await assertContractEntryInspectionStart(sb, data.contractId)
+      ? await assertContractEntryInspectionStart(sb, data.contractId, data.rentalKind ?? "entrada")
       : null;
 
     // Vistoria de contrato: o imóvel é o do próprio contrato (cadastro de aluguel),
@@ -382,7 +383,7 @@ export const createInspection = createServerFn({ method: "POST" })
       property_id: rentalListing ? null : data.propertyId,
       rental_property_id: rentalListing ? data.propertyId : null,
       agency: data.agency,
-      kind: contractLink ? "entrada" : data.kind,
+      kind: contractLink ? (data.rentalKind ?? "entrada") : data.kind,
       responsible_id: responsibleId,
       responsible_name: profile?.nome ?? null,
       created_by: context.userId,
@@ -395,10 +396,29 @@ export const createInspection = createServerFn({ method: "POST" })
       property_snapshot: snapshot,
       plan_confirmed: data.planConfirmed,
       rental_contract_id: contractLink ? contractLink.contractId : null,
-      rental_kind: contractLink ? "entrada" : null,
+      rental_kind: contractLink ? (data.rentalKind ?? "entrada") : null,
     };
+    // Vistoria de aluguel começa vazia (cômodos criados pela equipe). Na saída,
+    // sugere só os NOMES dos cômodos da entrada — sem fotos, áudios ou textos.
+    let rentalPlan: { name: string; kind: string; items: never[] }[] | null = null;
+    if (contractLink && !data.rooms) {
+      rentalPlan = [];
+      if ((data.rentalKind ?? "entrada") === "saida" && contractLink.existingInspectionId) {
+        const { data: entryRooms } = await sb
+          .from("inspection_rooms" as never)
+          .select("name, kind, position")
+          .eq("inspection_id", contractLink.existingInspectionId)
+          .order("position");
+        rentalPlan = ((entryRooms ?? []) as { name: string; kind: string }[]).map((r) => ({
+          name: r.name,
+          kind: r.kind,
+          items: [],
+        }));
+      }
+    }
     const plan =
       data.rooms ??
+      rentalPlan ??
       buildRoomPlan({
         ...data.confirmed,
         furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado",
@@ -411,7 +431,15 @@ export const createInspection = createServerFn({ method: "POST" })
       } as never,
     );
     fail(error);
-    return result as unknown as { id: string; reused: boolean };
+    const created = result as unknown as { id: string; reused: boolean };
+    if (contractLink && data.rentalKind === "saida" && contractLink.existingInspectionId) {
+      const { error: linkErr } = await sb
+        .from("inspections" as never)
+        .update({ entry_inspection_id: contractLink.existingInspectionId } as never)
+        .eq("id", created.id);
+      fail(linkErr);
+    }
+    return created;
   });
 
 /* ---------------- Leitura completa ---------------- */

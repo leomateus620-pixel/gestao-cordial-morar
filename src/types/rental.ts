@@ -117,6 +117,7 @@ export type RentalContractGuaranteeItem = {
   seguroApolice: string | null;
   seguroValorMensal: number | null;
   isPrimary: boolean;
+  conjuge?: import("@/lib/rentals/guarantor-spouse").GuarantorSpouse | null;
 };
 
 export type RentalContractFull = RentalContract & {
@@ -143,6 +144,7 @@ export type RentalContractGuaranteeInput = {
   seguroSeguradora?: string | null;
   seguroApolice?: string | null;
   seguroValorMensal?: number | null;
+  conjuge?: import("@/lib/rentals/guarantor-spouse").GuarantorSpouse | null;
 };
 
 export type RentalContractInput = {
@@ -202,13 +204,13 @@ export const RENTAL_DOCUMENT_CATEGORIES: {
   },
   {
     id: "termo_vistoria",
-    label: "Termo de vistoria",
-    description: "Vistoria inicial ou final do imóvel.",
+    label: "Termos de vistoria anexados",
+    description: "Termos anexados à mão (os gerados ficam nas vistorias de entrada e saída).",
   },
   {
     id: "checklist_aluguel",
-    label: "Check-list aluguel",
-    description: "Roteiro de conferência da locação.",
+    label: "Check-list (arquivos antigos)",
+    description: "Check-lists anexados antes do check-list do contrato.",
   },
   {
     id: "apolice_seguro_fianca",

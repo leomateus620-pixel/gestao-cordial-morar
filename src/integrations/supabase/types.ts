@@ -4437,6 +4437,7 @@ export type Database = {
           created_at: string
           created_by: string
           current_version: number
+          entry_inspection_id: string | null
           furnished: string
           general_notes: string | null
           id: string
@@ -4466,6 +4467,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_version?: number
+          entry_inspection_id?: string | null
           furnished?: string
           general_notes?: string | null
           id?: string
@@ -4495,6 +4497,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           current_version?: number
+          entry_inspection_id?: string | null
           furnished?: string
           general_notes?: string | null
           id?: string
@@ -4517,6 +4520,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inspections_entry_inspection_id_fkey"
+            columns: ["entry_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inspections_property_id_fkey"
             columns: ["property_id"]
@@ -10445,8 +10455,10 @@ export type Database = {
           file_path: string
           id: string
           mime_type: string | null
+          origin: string
           reviewed_at: string | null
           reviewed_by: string | null
+          signed_at: string | null
           size_bytes: number | null
           updated_by: string | null
           uploaded_by: string | null
@@ -10465,8 +10477,10 @@ export type Database = {
           file_path: string
           id?: string
           mime_type?: string | null
+          origin?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          signed_at?: string | null
           size_bytes?: number | null
           updated_by?: string | null
           uploaded_by?: string | null
@@ -10485,8 +10499,10 @@ export type Database = {
           file_path?: string
           id?: string
           mime_type?: string | null
+          origin?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
+          signed_at?: string | null
           size_bytes?: number | null
           updated_by?: string | null
           uploaded_by?: string | null
@@ -10503,6 +10519,7 @@ export type Database = {
       }
       rental_contract_guarantors: {
         Row: {
+          conjuge: Json | null
           contract_id: string
           created_at: string
           guarantor_id: string | null
@@ -10517,6 +10534,7 @@ export type Database = {
           valor_caucao: number | null
         }
         Insert: {
+          conjuge?: Json | null
           contract_id: string
           created_at?: string
           guarantor_id?: string | null
@@ -10531,6 +10549,7 @@ export type Database = {
           valor_caucao?: number | null
         }
         Update: {
+          conjuge?: Json | null
           contract_id?: string
           created_at?: string
           guarantor_id?: string | null

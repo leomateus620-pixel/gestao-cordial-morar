@@ -57,14 +57,20 @@ export function useRentalDocuments(contractId: string | null) {
     ]);
 
   const uploadMutation = useMutation({
-    mutationFn: async (args: { file: File; category?: RentalDocumentCategory }) => {
-      const { file, category } = args;
+    mutationFn: async (args: {
+      file: File;
+      category?: RentalDocumentCategory;
+      /** Mesma chave = mesmo arquivo: nova tentativa ou clique duplo não duplicam. */
+      idempotencyKey?: string;
+      origin?: "gerado" | "externo";
+    }) => {
+      const { file, category, idempotencyKey, origin } = args;
       if (!contractId) throw new Error("Contrato inválido.");
       if (file.size <= 0) throw new Error("Arquivo vazio.");
       if (file.size > MAX_BYTES) throw new Error("Arquivo excede 50 MB.");
 
       const safeName = sanitize(file.name);
-      const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
+      const filePath = `${contractId}/${idempotencyKey ?? crypto.randomUUID()}-${safeName}`;
       const contentType = file.type || "application/octet-stream";
 
       try {
@@ -74,7 +80,7 @@ export function useRentalDocuments(contractId: string | null) {
           contentType,
           rentalStorageDeps((p) =>
             register({
-              data: { contractId, fileName: file.name, filePath: p, mimeType: contentType, sizeBytes: file.size, category },
+              data: { contractId, fileName: file.name, filePath: p, mimeType: contentType, sizeBytes: file.size, category, ...(origin ? { origin } : {}) },
             }),
           ),
         ) as Awaited<ReturnType<typeof register>>;
@@ -131,6 +137,8 @@ export function useRentalDocuments(contractId: string | null) {
     isFolderLoading: folderQuery.isLoading,
     uploadFile: (file: File, category?: RentalDocumentCategory) =>
       uploadMutation.mutateAsync({ file, category }),
+    saveGeneratedContract: (file: File, idempotencyKey: string) =>
+      uploadMutation.mutateAsync({ file, category: "contrato_aluguel", idempotencyKey, origin: "gerado" }),
     deleteFile: (id: string, scope: "both" | "cloud" | "drive" = "both") =>
       deleteMutation.mutateAsync({ id, scope }),
     enableDriveSync: () => enableSyncMutation.mutateAsync(),

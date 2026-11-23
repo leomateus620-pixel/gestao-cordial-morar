@@ -52,6 +52,7 @@ import { RentalEmissions } from "./RentalEmissions";
 import { currentRentalCompetence } from "@/lib/rentals/receipt-model";
 
 type DetailSection =
+  | "vistoria-saida"
   | "resumo"
   | "contrato"
   | "locatarios"
@@ -937,15 +938,26 @@ export function RentalExpandedDetails({
                 emissionRequest={nfRequest}
               />
 
+              <section className="rounded-[1.35rem] border border-foreground/[0.07] bg-card/60 p-4 sm:p-5">
+                <h3 className="text-[15px] font-extrabold text-foreground">Contrato de aluguel</h3>
+                <p className="mt-0.5 mb-3 text-[11px] text-foreground/55">
+                  Gere pelo modelo da imobiliária (com check-list das pendências) e confirme para salvar. Contrato externo: anexe abaixo e marque como conferido.
+                </p>
+                <RentalContractGenerator key={contract.id} contract={contract} />
+              </section>
+
               <RentalEntryInspection
-                key={contract.id}
+                key={`${contract.id}-entrada`}
                 contractId={contract.id}
                 sectionId={sectionId("vistoria-entrada")}
               />
 
-              <div className="flex justify-end">
-                <RentalContractGenerator key={contract.id} contract={contract} />
-              </div>
+              <RentalEntryInspection
+                key={`${contract.id}-saida`}
+                contractId={contract.id}
+                kind="saida"
+                sectionId={sectionId("vistoria-saida")}
+              />
 
               <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
             </div>

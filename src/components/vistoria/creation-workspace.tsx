@@ -65,7 +65,9 @@ export function CreationWorkspace() {
   const responsiblesFn = useServerFn(listInspectionResponsibles);
   // A vistoria pode ser aberta a partir de um contrato (?contrato=…): o imóvel e o
   // tipo vêm do contrato, e a criação fica travada em "entrada".
-  const contractId = useSearch({ from: "/_app/vistorias/nova" }).contrato;
+  const routeSearch = useSearch({ from: "/_app/vistorias/nova" });
+  const contractId = routeSearch.contrato;
+  const rentalKind: "entrada" | "saida" = routeSearch.tipo === "saida" ? "saida" : "entrada";
   const entryStateFn = useServerFn(getContractEntryInspectionState);
   const contractPropertyFn = useServerFn(getContractInspectionProperty);
   const draft = useCreationDraft(session?.id, () => ({
@@ -168,12 +170,22 @@ export function CreationWorkspace() {
   // Vistoria aberta pelo contrato: entra com o imóvel do contrato e o tipo em entrada.
   useEffect(() => {
     const p = contractProperty.data;
-    if (!p || prop) return;
+    if (!p || prop || (rentalKind === "saida" && !entry.data)) return;
     choose(p);
-    setKind("entrada");
+    setKind(rentalKind);
+    // Vistoria de aluguel começa vazia; na saída sugere só os nomes da entrada.
+    setRooms(
+      rentalKind === "saida"
+        ? (entry.data?.entryRooms ?? []).map((r) => ({
+            name: r.name,
+            kind: r.kind as PlanRoom["kind"],
+            items: [],
+          }))
+        : [],
+    );
     if (step === 0) setStep(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractProperty.data, prop, step]);
+  }, [contractProperty.data, prop, step, entry.data]);
 
   const contractProp = contractProperty.data ?? null;
 
@@ -274,8 +286,12 @@ export function CreationWorkspace() {
     if (!prop || !session) return;
     if (!when) return toast.error("Informe data e hora.");
     if (busy) return;
-    if (contractId && entry.data?.existingInspectionId) {
+    if (contractId && rentalKind === "entrada" && entry.data?.existingInspectionId) {
       toast.error("Este contrato já tem uma vistoria de entrada.");
+      return;
+    }
+    if (contractId && rentalKind === "saida" && entry.data?.exitInspectionId) {
+      toast.error("Este contrato já tem uma vistoria de saída.");
       return;
     }
     setBusy(true);
@@ -287,6 +303,7 @@ export function CreationWorkspace() {
           id,
           propertyId: prop.id,
           contractId: contractId ?? null,
+          ...(contractId ? { rentalKind } : {}),
           kind,
           agency,
           responsibleId: responsibleId || null,
@@ -376,7 +393,7 @@ export function CreationWorkspace() {
             <p role="alert" className="text-destructive">
               Não foi possível conferir o contrato. Volte ao contrato e abra a vistoria por lá.
             </p>
-          ) : entry.data?.existingInspectionId ? (
+          ) : rentalKind === "entrada" && entry.data?.existingInspectionId ? (
             <p role="alert" className="font-semibold text-amber-900">
               Este contrato já tem uma vistoria de entrada.{" "}
               <Link
@@ -394,7 +411,7 @@ export function CreationWorkspace() {
             </p>
           ) : contractProp && prop && prop.id === contractProp.id ? (
             <p className="font-semibold text-primary">
-              Vistoria de entrada do contrato — o imóvel já foi selecionado.
+              Vistoria de {rentalKind === "saida" ? "saída" : "entrada"} do contrato — o imóvel já foi selecionado.
             </p>
           ) : (
             <p className="flex items-center gap-2 font-semibold text-primary">
@@ -414,7 +431,7 @@ export function CreationWorkspace() {
             className="mt-1 min-h-11 text-primary underline"
             onClick={() => {
               choose(contractProp);
-              setKind("entrada");
+              setKind(rentalKind);
             }}
           >
             Usar o imóvel do contrato
@@ -624,7 +641,7 @@ export function CreationWorkspace() {
                 </div>
                 {contractId && (
                   <p className="mt-1 text-xs text-foreground/60">
-                    Tipo travado em entrada: esta vistoria pertence a um contrato.
+                    Tipo travado em {rentalKind === "saida" ? "saída" : "entrada"}: esta vistoria pertence a um contrato.
                   </p>
                 )}
               </div>

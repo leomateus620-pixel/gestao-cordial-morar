@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { sanitizeSpouse } from "./guarantor-spouse";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertPaymentReferenceRecorded, nextPaymentDueDate } from "@/lib/rentals/payment-reference";
 import { canReviewContractDocument } from "@/lib/rentals/entry-inspection";
@@ -188,6 +189,13 @@ function tenantPayload(input: RentalTenantInput) {
     observacoes: orNull(input.observacoes),
   };
 }
+function safeSpouse(v: unknown) {
+  try {
+    return sanitizeSpouse(v);
+  } catch {
+    return null;
+  }
+}
 function guarantorPayload(input: RentalGuarantorInput) {
   return {
     nome: input.nome.trim(),
@@ -237,6 +245,7 @@ type RcgRow = {
   seguro_valor_mensal: number | null;
   is_primary: boolean;
   position: number;
+  conjuge?: unknown;
 };
 
 type EnrichmentRows = {
@@ -379,6 +388,7 @@ async function enrichContracts(
         seguroApolice: x.seguro_apolice,
         seguroValorMensal: x.seguro_valor_mensal !== null ? Number(x.seguro_valor_mensal) : null,
         isPrimary: x.is_primary,
+        conjuge: x.tipo === "fiador" ? safeSpouse(x.conjuge) : null,
       }));
     } else if (r.garantia_tipo && r.garantia_tipo !== "sem_garantia") {
       guaranteeList = [
@@ -551,6 +561,7 @@ function validateInput(input: RentalContractInput) {
     if (g.tipo === "fiador") {
       if (!g.guarantor?.existingId && !g.guarantor?.data?.nome?.trim())
         throw new Error("Informe o nome de todos os fiadores.");
+      sanitizeSpouse(g.conjuge);
     } else if (g.tipo === "caucao") {
       if (!g.valorCaucao || Number(g.valorCaucao) <= 0)
         throw new Error("Informe o valor da caução.");
@@ -722,6 +733,7 @@ export const createRentalContract = createServerFn({ method: "POST" })
       seguro_seguradora: g.tipo === "seguro_fianca" ? orNull(g.seguroSeguradora) : null,
       seguro_apolice: g.tipo === "seguro_fianca" ? orNull(g.seguroApolice) : null,
       seguro_valor_mensal: g.tipo === "seguro_fianca" ? numOrNull(g.seguroValorMensal) : null,
+      conjuge: g.tipo === "fiador" ? sanitizeSpouse(g.conjuge) : null,
       is_primary: i === 0,
       position: i,
     }));
@@ -1133,6 +1145,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
       mimeType: string;
       sizeBytes: number;
       category?: RentalDocCategory;
+      origin?: "gerado" | "externo";
     }) => d,
   )
   .handler(async ({ data, context }) => {
@@ -1202,6 +1215,7 @@ export const registerRentalContractDocument = createServerFn({ method: "POST" })
         mime_type: mime,
         size_bytes: data.sizeBytes,
         category,
+        origin: data.origin === "gerado" && category === "contrato_aluguel" ? "gerado" : "externo",
         uploaded_by: context.userId,
       } as never)
       .select("id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at")
@@ -1540,6 +1554,7 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
       seguro_seguradora: g.tipo === "seguro_fianca" ? orNull(g.seguroSeguradora) : null,
       seguro_apolice: g.tipo === "seguro_fianca" ? orNull(g.seguroApolice) : null,
       seguro_valor_mensal: g.tipo === "seguro_fianca" ? numOrNull(g.seguroValorMensal) : null,
+      conjuge: g.tipo === "fiador" ? sanitizeSpouse(g.conjuge) : null,
       is_primary: i === 0,
       position: i,
     }));

@@ -1,4 +1,6 @@
 import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
+import { SpouseFields } from "./SpouseFields";
+import { emptySpouse, type GuarantorSpouse } from "@/lib/rentals/guarantor-spouse";
 import { rentalStorageDeps } from "@/lib/rentals/upload-storage";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -242,6 +244,7 @@ type GuaranteeEntry = {
   seguroSeguradora: string;
   seguroApolice: string;
   seguroValor: string;
+  conjuge: GuarantorSpouse;
 };
 
 function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
@@ -258,6 +261,7 @@ function newGuaranteeEntry(tipo: GuaranteeTipo = "fiador"): GuaranteeEntry {
     seguroSeguradora: "",
     seguroApolice: "",
     seguroValor: "",
+    conjuge: emptySpouse(),
   };
 }
 
@@ -277,6 +281,7 @@ function guaranteeEntryToInput(g: GuaranteeEntry): RentalContractGuaranteeInput 
     return {
       tipo: "fiador",
       guarantor: g.guarantorId ? { existingId: g.guarantorId, data } : { data },
+      conjuge: g.conjuge.enabled ? g.conjuge : null,
     };
   }
   if (g.tipo === "caucao") {
@@ -475,6 +480,7 @@ export function RentalFormModal({
         seguroApolice: g.seguroApolice ?? "",
         seguroValor:
           g.seguroValorMensal != null ? String(g.seguroValorMensal).replace(".", ",") : "",
+        conjuge: g.conjuge ? { ...emptySpouse(), ...g.conjuge, enabled: true } : emptySpouse(),
       })),
     );
 
@@ -1070,6 +1076,10 @@ export function RentalFormModal({
                             className={inputCls}
                           />
                         </Field>
+                        <SpouseFields
+                          value={g.conjuge}
+                          onChange={(conjuge) => updateGuarantee(g.key, { conjuge })}
+                        />
                       </div>
                     )}
                     {g.tipo === "caucao" && (

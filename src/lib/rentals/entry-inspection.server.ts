@@ -8,6 +8,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import {
   entryInspectionGate,
+  exitInspectionGate,
+  type ExitInspectionMissing,
+  type RentalInspectionKind,
   type EntryInspectionDocument,
   type EntryInspectionMissing,
 } from "./entry-inspection";
@@ -22,6 +25,14 @@ export type ContractEntryInspectionState = {
   missing: EntryInspectionMissing | null;
   existingInspectionId: string | null;
   existingInspectionStatus: string | null;
+  entryHasDocument: boolean;
+  exitUnlocked: boolean;
+  exitMissing: ExitInspectionMissing | null;
+  exitInspectionId: string | null;
+  exitInspectionStatus: string | null;
+  exitHasDocument: boolean;
+  /** Só nomes/tipos dos cômodos da entrada, para sugerir na saída. */
+  entryRooms: { name: string; kind: string }[];
 };
 
 export async function loadContractEntryInspectionState(
@@ -46,11 +57,10 @@ export async function loadContractEntryInspectionState(
       .eq("contract_id", contractId),
     supabase
       .from("inspections")
-      .select("id,status")
+      .select("id,status,rental_kind")
       .eq("rental_contract_id", contractId)
-      .eq("rental_kind", "entrada")
-      .order("created_at")
-      .limit(1),
+      .in("rental_kind", ["entrada", "saida"])
+      .order("created_at"),
   ]);
   if (documentError) throw new Error(documentError.message);
   if (inspectionError) throw new Error(inspectionError.message);
@@ -61,7 +71,35 @@ export async function loadContractEntryInspectionState(
     reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
   }));
   const gate = entryInspectionGate(documents);
-  const existing = (inspectionRows ?? [])[0];
+  const rows = inspectionRows ?? [];
+  const existing = rows.find((r) => r.rental_kind === "entrada");
+  const exit = rows.find((r) => r.rental_kind === "saida");
+  const ids = [existing?.id, exit?.id].filter(Boolean) as string[];
+  const withDoc = new Set<string>();
+  if (ids.length) {
+    const { data: docs, error: docErr } = await supabase
+      .from("inspection_documents")
+      .select("inspection_id")
+      .in("inspection_id", ids);
+    if (docErr) throw new Error(docErr.message);
+    for (const d of docs ?? []) withDoc.add(String(d.inspection_id));
+  }
+  let entryRooms: { name: string; kind: string }[] = [];
+  if (existing) {
+    const { data: rr, error: rrErr } = await supabase
+      .from("inspection_rooms")
+      .select("name,kind,position")
+      .eq("inspection_id", existing.id)
+      .order("position");
+    if (rrErr) throw new Error(rrErr.message);
+    entryRooms = (rr ?? []).map((r) => ({ name: String(r.name), kind: String(r.kind) }));
+  }
+  const entryHasDocument = existing ? withDoc.has(String(existing.id)) : false;
+  const exitGate = exitInspectionGate({
+    id: existing ? String(existing.id) : null,
+    status: existing ? String(existing.status) : null,
+    hasDocument: entryHasDocument,
+  });
 
   return {
     contractId,
@@ -71,6 +109,13 @@ export async function loadContractEntryInspectionState(
     missing: gate.missing,
     existingInspectionId: existing ? String(existing.id) : null,
     existingInspectionStatus: existing ? String(existing.status) : null,
+    entryHasDocument,
+    exitUnlocked: exitGate.unlocked,
+    exitMissing: exitGate.missing,
+    exitInspectionId: exit ? String(exit.id) : null,
+    exitInspectionStatus: exit ? String(exit.status) : null,
+    exitHasDocument: exit ? withDoc.has(String(exit.id)) : false,
+    entryRooms,
   };
 }
 
@@ -82,8 +127,16 @@ export async function loadContractEntryInspectionState(
 export async function assertContractEntryInspectionStart(
   supabase: Client,
   contractId: string,
+  kind: RentalInspectionKind = "entrada",
 ): Promise<ContractEntryInspectionState> {
   const state = await loadContractEntryInspectionState(supabase, contractId);
+  if (kind === "saida") {
+    if (state.exitInspectionId)
+      throw new Error("Este contrato já tem uma vistoria de saída. Abra a existente.");
+    if (!state.exitUnlocked)
+      throw new Error("A vistoria de saída só é liberada depois da entrada concluída com o termo registrado.");
+    return state;
+  }
   if (state.existingInspectionId) {
     throw new Error(
       "Este contrato já tem uma vistoria de entrada. Abra a vistoria existente em vez de criar outra.",
