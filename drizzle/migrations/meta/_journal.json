@@ -729,6 +729,13 @@
       "when": 1795453374998,
       "tag": "0103_rental_payouts_manual",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1795454804837,
+      "tag": "0104_rental_contract_entry_inspection",
+      "breakpoints": true
     }
   ]
 }

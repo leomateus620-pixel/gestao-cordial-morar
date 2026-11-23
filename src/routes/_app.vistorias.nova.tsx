@@ -2,6 +2,9 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { CreationWorkspace } from "@/components/vistoria/creation-workspace";
 import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/_app/vistorias/nova")({
+  validateSearch: (search: Record<string, unknown>): { contrato?: string } => ({
+    contrato: typeof search.contrato === "string" && search.contrato.trim() ? search.contrato : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Nova vistoria — Gestão Cordial" },

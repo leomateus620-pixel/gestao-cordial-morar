@@ -6,6 +6,7 @@ import {
   deleteRentalContractDocument,
   listRentalContractDocuments,
   registerRentalContractDocument,
+  setRentalContractDocumentReviewed,
 } from "@/lib/rentals/rentals.functions";
 import {
   enableRentalDriveSync,
@@ -111,6 +112,12 @@ export function useRentalDocuments(contractId: string | null) {
     onSuccess: invalidateAll,
   });
 
+  const review = useServerFn(setRentalContractDocumentReviewed);
+  const reviewMutation = useMutation({
+    mutationFn: (args: { documentId: string; reviewed: boolean }) => review({ data: args }),
+    onSuccess: invalidateAll,
+  });
+
   return {
     documents: query.data ?? [],
     isLoading: query.isLoading,
@@ -127,6 +134,9 @@ export function useRentalDocuments(contractId: string | null) {
     syncDocumentToDrive: (documentId: string) => syncOneMutation.mutateAsync(documentId),
     syncAllToDrive: () => syncAllMutation.mutateAsync(),
     trashDriveCopy: (documentId: string) => trashDriveOnlyMutation.mutateAsync(documentId),
+    setDocumentReviewed: (documentId: string, reviewed: boolean) =>
+      reviewMutation.mutateAsync({ documentId, reviewed }),
+    isReviewing: reviewMutation.isPending,
     isUploading: uploadMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isEnablingSync: enableSyncMutation.isPending,

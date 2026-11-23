@@ -19,14 +19,16 @@ import {
 } from "@/lib/vistoria/model";
 import { useCreationDraft } from "@/lib/vistoria/use-creation-draft";
 import { useFieldViewport } from "@/lib/vistoria/use-field-viewport";
+import { getContractEntryInspectionState } from "@/lib/rentals/rentals.functions";
 import {
   createInspection,
+  getInspectionPropertyById,
   listInspectionResponsibles,
   searchInspectionProperties,
   type PropertyForInspection,
 } from "@/lib/vistoria/vistoria.functions";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDown, ArrowLeft, ArrowUp, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -61,6 +63,11 @@ export function CreationWorkspace() {
   const search = useServerFn(searchInspectionProperties);
   const create = useServerFn(createInspection);
   const responsiblesFn = useServerFn(listInspectionResponsibles);
+  // A vistoria pode ser aberta a partir de um contrato (?contrato=…): o imóvel e o
+  // tipo vêm do contrato, e a criação fica travada em "entrada".
+  const contractId = useSearch({ from: "/_app/vistorias/nova" }).contrato;
+  const entryStateFn = useServerFn(getContractEntryInspectionState);
+  const propertyByIdFn = useServerFn(getInspectionPropertyById);
   const draft = useCreationDraft(session?.id, () => ({
     id: crypto.randomUUID(),
     step: 0,
@@ -137,6 +144,39 @@ export function CreationWorkspace() {
     queryKey: ["inspection-responsibles", session?.id],
     queryFn: () => responsiblesFn(),
   });
+
+  const entry = useQuery({
+    queryKey: ["inspection-entry-contract", contractId ?? null],
+    enabled: Boolean(contractId),
+    queryFn: () => {
+      if (!contractId) throw new Error("Contrato inválido.");
+      return entryStateFn({ data: { contractId } });
+    },
+  });
+
+  const contractProperty = useQuery({
+    queryKey: ["inspection-entry-property", entry.data?.propertyId ?? null],
+    enabled: Boolean(entry.data?.propertyId),
+    // Imóvel que não existe mais deve aparecer na hora, sem nova tentativa.
+    retry: false,
+    queryFn: () => {
+      const propertyId = entry.data?.propertyId;
+      if (!propertyId) throw new Error("Imóvel do contrato indisponível.");
+      return propertyByIdFn({ data: { propertyId } });
+    },
+  });
+
+  // Vistoria aberta pelo contrato: entra com o imóvel do contrato e o tipo em entrada.
+  useEffect(() => {
+    const p = contractProperty.data;
+    if (!p || prop) return;
+    choose(p);
+    setKind("entrada");
+    if (step === 0) setStep(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractProperty.data, prop, step]);
+
+  const contractProp = contractProperty.data ?? null;
 
   useEffect(() => {
     const term = q.trim();
@@ -224,6 +264,10 @@ export function CreationWorkspace() {
     if (!prop || !session) return;
     if (!when) return toast.error("Informe data e hora.");
     if (busy) return;
+    if (contractId && entry.data?.existingInspectionId) {
+      toast.error("Este contrato já tem uma vistoria de entrada.");
+      return;
+    }
     setBusy(true);
     try {
       await draft.flush();
@@ -232,6 +276,7 @@ export function CreationWorkspace() {
         data: {
           id,
           propertyId: prop.id,
+          contractId: contractId ?? null,
           kind,
           agency,
           responsibleId: responsibleId || null,
@@ -310,6 +355,62 @@ export function CreationWorkspace() {
           ))}
         </ol>
       </header>
+      {contractId && (
+        <div className="mb-4 rounded-xl border border-primary/18 bg-primary/[0.07] p-3 text-sm">
+          {entry.isLoading ? (
+            <p className="flex items-center gap-2 text-foreground/70">
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+              Conferindo o contrato…
+            </p>
+          ) : entry.isError ? (
+            <p role="alert" className="text-destructive">
+              Não foi possível conferir o contrato. Volte ao contrato e abra a vistoria por lá.
+            </p>
+          ) : entry.data?.existingInspectionId ? (
+            <p role="alert" className="font-semibold text-amber-900">
+              Este contrato já tem uma vistoria de entrada.{" "}
+              <Link
+                to="/vistorias/$vistoriaId"
+                params={{ vistoriaId: entry.data.existingInspectionId }}
+                className="underline"
+              >
+                Abrir a vistoria existente
+              </Link>
+            </p>
+          ) : contractProperty.isError ? (
+            <p role="alert" className="font-semibold text-destructive">
+              Este contrato ainda não está ligado a um imóvel do catálogo. Escolha o imóvel
+              abaixo para começar a vistoria.
+            </p>
+          ) : contractProp && prop && prop.id === contractProp.id ? (
+            <p className="font-semibold text-primary">
+              Vistoria de entrada do contrato — o imóvel já foi selecionado.
+            </p>
+          ) : (
+            <p className="flex items-center gap-2 font-semibold text-primary">
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+              Carregando o imóvel do contrato…
+            </p>
+          )}
+        </div>
+      )}
+      {contractId && contractProp && prop && prop.id !== contractProp.id && (
+        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-3 text-sm">
+          <p className="font-semibold text-amber-900">
+            A criação aberta está em outro imóvel. Esta vistoria é do imóvel do contrato.
+          </p>
+          <button
+            type="button"
+            className="mt-1 min-h-11 text-primary underline"
+            onClick={() => {
+              choose(contractProp);
+              setKind("entrada");
+            }}
+          >
+            Usar o imóvel do contrato
+          </button>
+        </div>
+      )}
       {draft.recoveries.length > 0 && (
         <details className="mb-4 rounded-xl border p-3">
           <summary className="min-h-11 cursor-pointer text-sm font-semibold">
@@ -499,16 +600,23 @@ export function CreationWorkspace() {
                       key={k}
                       type="button"
                       aria-pressed={kind === k}
+                      disabled={Boolean(contractId)}
                       onClick={() => setKind(k)}
                       className={cn(
                         "min-h-11 rounded-xl border text-sm font-medium",
                         kind === k ? "border-primary bg-primary/10 text-primary" : "border-input",
+                        contractId && "disabled:opacity-60",
                       )}
                     >
                       {KIND_LABEL[k]}
                     </button>
                   ))}
                 </div>
+                {contractId && (
+                  <p className="mt-1 text-xs text-foreground/60">
+                    Tipo travado em entrada: esta vistoria pertence a um contrato.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label>

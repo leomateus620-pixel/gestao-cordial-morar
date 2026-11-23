@@ -250,6 +250,8 @@ export type RentalContractDocument = {
   driveSyncStatus?: RentalDriveSyncStatus | string | null;
   driveLastError?: string | null;
   driveLastSyncedAt?: string | null;
+  /** When the attached contract was reviewed ("conferido"); null while unreviewed. */
+  reviewedAt?: string | null;
 };
 
 export type RentalFilter =

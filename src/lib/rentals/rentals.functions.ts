@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertPaymentReferenceRecorded, nextPaymentDueDate } from "@/lib/rentals/payment-reference";
+import { canReviewContractDocument } from "@/lib/rentals/entry-inspection";
+import { loadContractEntryInspectionState } from "@/lib/rentals/entry-inspection.server";
 import {
   RENTAL_PROPERTY_COLUMNS,
   mapRentalPropertyRow,
@@ -985,6 +987,7 @@ type DocRow = {
   drive_sync_status?: string | null;
   drive_last_error?: string | null;
   drive_last_synced_at?: string | null;
+  reviewed_at?: string | null;
 };
 
 type RentalDocCategory =
@@ -1019,7 +1022,7 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("rental_contract_documents")
       .select(
-        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at",
+        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at,reviewed_at",
       )
       .eq("contract_id", data.contractId)
       .order("created_at", { ascending: false });
@@ -1041,6 +1044,7 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
         driveSyncStatus: (r.drive_sync_status ?? "not_enabled") as string,
         driveLastError: r.drive_last_error ?? null,
         driveLastSyncedAt: r.drive_last_synced_at ?? null,
+        reviewedAt: r.reviewed_at ?? null,
       })),
     );
     return withUrls;
@@ -1548,4 +1552,58 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
 
     const full = await enrichContracts(supabase as unknown as SupabaseCtx, [contractRow]);
     return full[0];
+  });
+
+// ============================ VISTORIA DE ENTRADA ============================
+
+/**
+ * Situation of a contract's entry inspection: whether the attached contract was
+ * reviewed, and whether an entry inspection was already opened. Read with the
+ * caller's own access rules — no contract becomes visible here that was not
+ * visible before.
+ */
+export const getContractEntryInspectionState = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { contractId: string }) => d)
+  .handler(async ({ data, context }) => {
+    if (!data.contractId) throw new Error("Contrato inválido.");
+    return loadContractEntryInspectionState(context.supabase, data.contractId);
+  });
+
+/** Marks the attached rental-contract document as reviewed (or undoes the mark). */
+export const setRentalContractDocumentReviewed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { documentId: string; reviewed: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase;
+    const { data: row, error: readError } = await supabase
+      .from("rental_contract_documents")
+      .select("id,contract_id,category")
+      .eq("id", data.documentId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!row) throw new Error("Documento não encontrado.");
+    if (!canReviewContractDocument(row.category)) {
+      throw new Error("Só o documento do contrato de aluguel pode ser marcado como conferido.");
+    }
+
+    const { error: updateError } = await supabase
+      .from("rental_contract_documents")
+      .update({
+        reviewed_at: data.reviewed ? new Date().toISOString() : null,
+        reviewed_by: data.reviewed ? context.userId : null,
+      } as never)
+      .eq("id", data.documentId);
+    if (updateError) throw new Error(updateError.message);
+
+    const { data: saved, error: savedError } = await supabase
+      .from("rental_contract_documents")
+      .select("id,reviewed_at")
+      .eq("id", data.documentId)
+      .maybeSingle();
+    if (savedError) throw new Error(savedError.message);
+    return {
+      id: data.documentId,
+      reviewedAt: saved?.reviewed_at ? String(saved.reviewed_at) : null,
+    };
   });

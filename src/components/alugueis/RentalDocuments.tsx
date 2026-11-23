@@ -10,6 +10,7 @@ import {
   Loader2,
   Paperclip,
   RefreshCw,
+  ShieldCheck,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -183,6 +184,8 @@ export function RentalDocuments({
     isDisablingSync,
     isSyncing,
     driveError,
+    setDocumentReviewed,
+    isReviewing,
   } = useRentalDocuments(contractId);
   const [localError, setLocalError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<RentalDocumentCategory | null>(null);
@@ -357,6 +360,11 @@ export function RentalDocuments({
                   <p className="mt-0.5 break-words text-[11px] leading-4 text-foreground/55 [overflow-wrap:anywhere]">
                     {category.description}
                   </p>
+                  {category.id === "contrato_aluguel" && (
+                    <p className="mt-1 break-words text-[11px] font-semibold leading-4 text-primary/80 [overflow-wrap:anywhere]">
+                      Marque o contrato anexado como conferido para liberar a vistoria de entrada.
+                    </p>
+                  )}
                 </div>
                 {category.id !== "nota_fiscal" && (
                 <button
@@ -402,6 +410,7 @@ export function RentalDocuments({
                     {items.map((document) => {
                       const isImage = (document.mimeType ?? "").startsWith("image/");
                       const driveStatus = document.driveSyncStatus ?? "not_enabled";
+                      const canReview = category.id === "contrato_aluguel";
 
                       return (
                         <li
@@ -451,7 +460,35 @@ export function RentalDocuments({
                                 hasCloud={Boolean(document.filePath)}
                                 driveStatus={driveStatus}
                               />
+                              {document.reviewedAt && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                  <ShieldCheck className="size-3" />
+                                  Conferido em{" "}
+                                  {new Date(document.reviewedAt).toLocaleDateString("pt-BR")}
+                                </span>
+                              )}
                             </div>
+                            {canReview && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  runDocumentAction(() =>
+                                    setDocumentReviewed(document.id, !document.reviewedAt),
+                                  )
+                                }
+                                disabled={isReviewing}
+                                className="mt-1.5 inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-primary/9 px-2.5 text-[11px] font-bold text-primary transition duration-200 hover:bg-primary/14 disabled:pointer-events-none disabled:opacity-55 motion-reduce:transition-none"
+                              >
+                                {isReviewing ? (
+                                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                                ) : (
+                                  <ShieldCheck className="size-3.5" />
+                                )}
+                                {document.reviewedAt
+                                  ? "Desmarcar conferência"
+                                  : "Marcar como conferido"}
+                              </button>
+                            )}
                             {document.driveLastError && (
                               <p
                                 className="mt-1 line-clamp-2 break-words text-[10px] font-medium leading-4 text-amber-800 [overflow-wrap:anywhere]"

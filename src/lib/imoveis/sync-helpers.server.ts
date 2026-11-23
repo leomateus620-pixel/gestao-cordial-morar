@@ -1,4 +1,3 @@
-import { getRequest } from "@tanstack/react-start/server";
 import type { ImobiProvider } from "@/lib/imobibrasil/providers";
 import { workerCallerSecret } from "@/lib/workers/hook-auth";
 
@@ -28,13 +27,36 @@ export async function assertProviderScope(
   return { isAdmin: false };
 }
 
-export async function kickWorker() {
+/**
+ * Origem pública do app, lida de `app_settings.site_media_worker_origin`.
+ *
+ * A leitura é feita com um cliente privilegiado porque o RLS de `app_settings`
+ * não tem política permissiva: o cliente do usuário não enxerga a linha.
+ */
+type OriginClient = {
+  from: (t: "app_settings") => {
+    select: (c: string) => {
+      eq: (c: string, v: string) => Promise<{ data: Array<{ value: unknown }> | null }>;
+    };
+  };
+};
+
+async function workerOrigin(supabase: OriginClient): Promise<string | null> {
+  const { data } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "site_media_worker_origin");
+  const value = data?.[0]?.value;
+  const origin = typeof value === "string" ? value.trim() : "";
+  return /^https:\/\/[^/?#]+\/?$/.test(origin) ? origin.replace(/\/$/, "") : null;
+}
+
+export async function kickWorker(supabase: OriginClient) {
   try {
     const secret =
       workerCallerSecret();
     if (!secret) return;
-    const request = getRequest();
-    const origin = request?.url ? new URL(request.url).origin : null;
+    const origin = await workerOrigin(supabase);
     if (!origin) return;
     // Lote maior + drenagem: o worker repete o ciclo enquanto sobrar job
     // pendente, para a fila não ficar parada esperando o pg_cron.

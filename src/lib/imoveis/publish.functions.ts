@@ -183,7 +183,7 @@ export async function enqueuePropertySyncCore(context: { supabase: any; userId: 
         agency = { status: "error", reason: (err as Error)?.message };
       }
     }
-    await kickWorker();
+    await kickWorker(supabaseAdmin as never);
     return { enqueued: providers, durable: true, agency };
 }
 

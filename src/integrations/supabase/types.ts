@@ -10435,6 +10435,8 @@ export type Database = {
           file_path: string
           id: string
           mime_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           size_bytes: number | null
           updated_by: string | null
           uploaded_by: string | null
@@ -10453,6 +10455,8 @@ export type Database = {
           file_path: string
           id?: string
           mime_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           size_bytes?: number | null
           updated_by?: string | null
           uploaded_by?: string | null
@@ -10471,6 +10475,8 @@ export type Database = {
           file_path?: string
           id?: string
           mime_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           size_bytes?: number | null
           updated_by?: string | null
           uploaded_by?: string | null

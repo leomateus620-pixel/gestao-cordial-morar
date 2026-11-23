@@ -916,7 +916,7 @@ export const archiveImovel = createServerFn({ method: "POST" })
     if (finalized.status === "archived") {
       return { status: "archived", providers, alreadyRequested: result.alreadyRequested };
     }
-    await kickWorker();
+    await kickWorker(supabaseAdmin as never);
     return { status: "pending_archive", providers, alreadyRequested: result.alreadyRequested };
   });
 

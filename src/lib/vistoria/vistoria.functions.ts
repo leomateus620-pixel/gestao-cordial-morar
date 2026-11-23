@@ -1,4 +1,5 @@
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertContractEntryInspectionStart } from "@/lib/rentals/entry-inspection.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { createServerFn } from "@tanstack/react-start";
@@ -90,6 +91,27 @@ export const searchInspectionProperties = createServerFn({ method: "POST" })
       .limit(15);
     fail(error);
     return (rows ?? []) as PropertyForInspection[];
+  });
+
+/**
+ * One property by id, for a vistoria started from a contract: the contract
+ * already knows the property, so the operator does not have to search for it.
+ * Same role check and the same row-level access rules as the search above.
+ */
+export const getInspectionPropertyById = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ propertyId: uuid }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await requireInspectionRole(sb, context.userId);
+    const { data: row, error } = await sb
+      .from("properties")
+      .select(PROPERTY_COLS)
+      .eq("id", data.propertyId)
+      .maybeSingle();
+    fail(error);
+    if (!row) throw new Error("Imóvel não encontrado ou sem acesso.");
+    return row as PropertyForInspection;
   });
 
 export type PropertyForInspection = {
@@ -231,6 +253,7 @@ const keysSchema = z
 const createSchema = z.object({
   id: uuid,
   propertyId: uuid,
+  contractId: uuid.nullable().optional(),
   kind: z.enum(INSPECTION_KINDS),
   agency: z.enum(["cordial", "morar"]),
   responsibleId: uuid.nullable().optional(),
@@ -270,6 +293,12 @@ export const createInspection = createServerFn({ method: "POST" })
     const sb = context.supabase;
     const { all } = await requireInspectionRole(sb, context.userId);
 
+    // Vistoria de entrada ligada a um contrato: o contrato precisa estar visível
+    // para quem cria, ter o contrato anexado conferido e ainda não ter vistoria.
+    const contractLink = data.contractId
+      ? await assertContractEntryInspectionStart(sb, data.contractId)
+      : null;
+
     const { data: prop, error: pe } = await sb
       .from("properties")
       .select(PROPERTY_COLS)
@@ -277,6 +306,9 @@ export const createInspection = createServerFn({ method: "POST" })
       .maybeSingle();
     fail(pe);
     if (!prop) throw new Error("Imóvel não encontrado ou sem acesso.");
+    if (contractLink && contractLink.propertyId !== data.propertyId) {
+      throw new Error("A vistoria de entrada precisa ser do imóvel do contrato.");
+    }
     const responsibleId = all ? data.responsibleId || context.userId : context.userId;
     const { data: profile } = await sb
       .from("profiles")
@@ -309,7 +341,7 @@ export const createInspection = createServerFn({ method: "POST" })
       id: data.id,
       property_id: data.propertyId,
       agency: data.agency,
-      kind: data.kind,
+      kind: contractLink ? "entrada" : data.kind,
       responsible_id: responsibleId,
       responsible_name: profile?.nome ?? null,
       created_by: context.userId,
@@ -321,6 +353,8 @@ export const createInspection = createServerFn({ method: "POST" })
       meters: data.meters,
       property_snapshot: snapshot,
       plan_confirmed: data.planConfirmed,
+      rental_contract_id: contractLink ? contractLink.contractId : null,
+      rental_kind: contractLink ? "entrada" : null,
     };
     const plan =
       data.rooms ??

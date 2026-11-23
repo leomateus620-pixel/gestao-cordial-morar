@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleDollarSign,
+  ClipboardCheck,
   FileText,
   Home,
   Mail,
@@ -40,6 +41,7 @@ import type {
   RentalTenant,
 } from "@/types/rental";
 import { RentalDocuments } from "./RentalDocuments";
+import { RentalEntryInspection } from "./RentalEntryInspection";
 import { RentalNfseSection } from "./RentalNfseSection";
 import { useSession } from "@/lib/auth-mock";
 import { canSeeFinancialInsights } from "@/lib/access-control";
@@ -55,6 +57,7 @@ type DetailSection =
   | "garantias"
   | "imovel"
   | "nfse"
+  | "vistoria-entrada"
   | "documentos";
 
 type PendingAction = "paid" | "renew" | "close" | "delete" | null;
@@ -70,6 +73,7 @@ const SECTION_NAVIGATION: {
   { id: "garantias", label: "Garantias", icon: ShieldCheck },
   { id: "imovel", label: "Imóvel e proprietário", icon: Building2 },
   { id: "nfse", label: "NFS-e", icon: Receipt },
+  { id: "vistoria-entrada", label: "Vistoria de entrada", icon: ClipboardCheck },
   { id: "documentos", label: "Documentos", icon: WalletCards },
 ];
 
@@ -926,6 +930,12 @@ export function RentalExpandedDetails({
                 canEmit={canEmitNfse}
                 sectionId={sectionId("nfse")}
                 emissionRequest={nfRequest}
+              />
+
+              <RentalEntryInspection
+                key={contract.id}
+                contractId={contract.id}
+                sectionId={sectionId("vistoria-entrada")}
               />
 
               <RentalDocuments contractId={contract.id} sectionId={sectionId("documentos")} />
