@@ -1,44 +1,63 @@
-# Boletos Sicredi — contratos de marca "ambas" (sobre 7a4b552a)
+# Aluguéis, vistoria e anúncios — plano em etapas (base eebdbd17)
 
-## O que muda para o operador
-- Contrato **Cordial** ou **Morar**: nada muda. A conta é a da marca do contrato, sem escolha.
-- Contrato **ambas**: a janela de confirmação mostra "Emitir pela conta: Cordial / Morar". Sem escolha, o botão Emitir fica bloqueado com aviso.
-- **Secretária**: só vê as marcas a que está vinculada (com uma marca só, ela já vem marcada). **Admin**: vê as duas.
-- Depois de escolher, a prévia recarrega e mostra o ambiente (produção se liberada, senão homologação), como hoje.
+O pedido tem seis frentes. Implementar tudo de uma vez é arriscado demais para o financeiro e para as contas de anúncio. Proposta: **três entregas**, cada uma com aprovação própria. Este plano detalha a **Entrega 1**; as outras ficam descritas e só começam depois da aprovação.
 
-## Regra no servidor (a interface não decide nada)
-- Nova função pura `resolveIssuingBrand(flags, contractBrand, escolhida)` em `rules.ts`:
-  - contrato cordial/morar + escolha ausente ou igual → marca do contrato; escolha diferente → **recusada** ("marca forçada").
-  - contrato ambas + sem escolha → bloqueio "Escolha a conta de emissão".
-  - contrato ambas + escolha → admin qualquer; secretária só se a marca está nos vínculos dela; senão **negada** (42501).
-  - outro valor de marca → bloqueio, como hoje.
-- `boletoContractAccess` mantém o acesso de leitura ao contrato "ambas" para secretária com alguma marca (já é assim); a emissão passa a depender também de `resolveIssuingBrand`.
-- Também passa a ser usada em `marcasPermitidas(flags, contractBrand)`, retornada na prévia para a janela montar as opções.
+Nada do que segue liga emissão real de boletos, pagamento bancário, envio automático de mensagens, campanha ativa ou recarga.
 
-## Arquivos
-- `src/lib/boleto/rules.ts` — `resolveIssuingBrand`, `marcasPermitidas`; comentário de `boletoContractAccess` atualizado.
-- `src/lib/boleto/preview.ts` — recebe a marca resolvida (ou o bloqueio) em vez de ler `c.brand` direto; snapshot ganha `conta.brand` (já existe) e `marcaContrato` + `marcaEscolhida: boolean`.
-- `src/lib/boleto/boletos.functions.ts` — `previewInput`/`issueInput` ganham `brand` opcional (`cordial|morar`); `computePreview` chama `resolveIssuingBrand` com os papéis/vínculos já lidos em `authorizeContract` e só então `pickIssuingAccount(brand)`; `issueBoleto` exige que a marca do preview seja a mesma enviada (como já faz com total e ambiente). Prévia devolve `marcasPermitidas` e `precisaEscolherMarca`.
-- `src/components/alugueis/BoletoConfirmModal.tsx` — seletor Cordial/Morar só para contratos "ambas", com as opções vindas do servidor; reenvia a prévia ao trocar.
-- `src/components/alugueis/RentalEmissions.tsx` — só repassa a marca escolhida, se necessário.
-- `src/lib/boleto/AGENTS.md` — substituir a regra da marca: "brand comes from the contract; 'ambas' contracts take an operator choice validated on the server against user_agencies".
+## Entrega 1 — Repasse manual + checklist/contrato + vistoria de entrada
 
-## Migração 0103 (aditiva, só `CREATE OR REPLACE FUNCTION`)
-- `rental_boleto_prepare`: a checagem de marca passa a aceitar `c.brand = acc.brand` **ou** `c.brand = 'ambas'` (com conta cordial ou morar). Cordial→conta Morar e o inverso continuam recusados (42501).
-- Resto idêntico: mesma assinatura, `SECURITY DEFINER`, mesmos grants; trava e regra de um boleto ativo continuam por contrato × competência × ambiente, **sem a marca** — um boleto ativo pela Cordial impede outro pela Morar na mesma competência e ambiente.
-- Evento "Boleto preparado" ganha em `detalhe`: `marca_conta` e `marca_contrato`.
-- Conferência antes/depois: assinatura, dono, grants e `prosecdef` iguais. Nenhum dado alterado; journal Drizzle preservado.
+### 1A. Repasse ao proprietário (manual)
+- Nova seção **Repasse ao proprietário** na ficha do contrato, por competência.
+- Mostra: valor cobrado, valor recebido (informado pelo financeiro ou evidência do boleto), deduções linha a linha, valor previsto, valor aprovado e situação.
+- Situações separadas: previsto → aguardando recebimento → em conferência → aprovado → registrado como pago (manual, com comprovante) → confirmado; e "divergente" em qualquer ponto.
+- Cálculo em centavos no servidor, usando a regra do recibo como referência (aluguel + condomínio − honorários ± ajustes repassáveis; IPTU e seguro-fiança fora). Cada linha guarda origem, sinal, valor, destinatário e regra.
+- Pagamento parcial, diferença, estorno ou dados bancários incompletos exigem decisão registrada com motivo.
+- Dados bancários do proprietário em área restrita, sempre mascarados. Mudar o destino invalida a aprovação anterior. Cordial e Morar nunca se misturam. Repasse negativo ou acima do recebido é bloqueado.
+- Comprovante privado anexado; histórico e demonstrativo por proprietário.
+- Quem opera: admin e financeiro aprovam; secretária confere, dentro da marca dela. Outros perfis não veem.
+- **Diagnóstico das contas:** por marca e ambiente, Cobrança e Contas a pagar em linhas separadas. "Contas a pagar" aparece como **não contratado/não verificado** até existir convênio e credencial próprios.
+- **Título Morar incerto no sandbox:** resolver só pela conferência que já existe; nenhum título novo enquanto não houver resposta.
 
-## Testes
-- Puros (`test:boleto`): secretária Cordial em contrato ambas pela Cordial → ok (homologação); mesma pela Morar → negada; secretária sem marca → negada; admin Cordial e Morar → ok; contrato cordial sem escolha → cordial; contrato cordial com escolha "morar" → recusada; contrato ambas sem escolha → bloqueio; snapshot registra marca escolhida.
-- Banco (SELECT/transação revertida no teste existente de 0100, ou via função de verificação sem gravar): prepare aceita ambas+cordial e ambas+morar; recusa contrato cordial→conta morar; segundo prepare na mesma competência/ambiente por outra marca devolve o boleto existente.
-- Rodar build, typecheck, `test:boleto`, `test:receipts` e a suíte completa (NFS-e, Emissões).
+### 1B. Novo aluguel → checklist → gerar contrato
+- Em Novo contrato: "Preencher checklist" e "Gerar contrato" como caminho principal; anexar contrato externo continua disponível.
+- Checklist em partes (imóvel, financeiro, prazo/reajuste, garantia, responsabilidades, entrega, revisão), com pendência por campo e campos condicionais por garantia. Rascunho salvo no servidor, retomável.
+- Modelos de contrato versionados por marca/tipo, **somente com textos que a imobiliária enviar e aprovar**. Sem modelo aprovado, o botão "Gerar contrato" fica indisponível com aviso.
+- Prévia completa antes de confirmar. A geração guarda versão do modelo, dados usados, revisão, autor e PDF privado. Correção = nova versão, a anterior fica preservada.
+- Gerado, enviado, assinado e ativo são situações separadas. Sem assinatura eletrônica nesta entrega.
+
+### 1C. Vistoria de entrada livre
+- Depois da primeira versão válida do contrato, aparece **Iniciar vistoria de entrada**. Uma vistoria de entrada por contrato; se já existir, abre a mesma.
+- Começa vazia: "Adicionar cômodo ou item", nome, voz ou texto, fotos. Item solto (ex.: chaves) ou dentro de um cômodo. Editar e reordenar à vontade.
+- Usa a Vistoria Inteligente que já existe: mídia privada, gravação salva antes de transcrever, sugestão editável que não muda nada sozinha, termo em PDF versionado pelo servidor.
+- A ficha do aluguel mostra a situação: rascunho, mídia pendente, transcrição pendente, em revisão, termo concluído.
+
+## Entrega 2 — Mensagens por etapa (só "Revisar e enviar")
+Fila com bloqueio de repetição por evento + destinatário + modelo + canal, prévia com destinatário de teste, tentativas e status. Antes de começar, preciso saber o canal e o número oficial.
+
+## Entrega 3 — Marketing Morar
+Escolher marca e plataforma antes de conectar, confirmar conta/moeda/fuso, sem usar a Cordial como reserva. Registrar separadamente o que foi comprovado: leitura, edição, criação, status e faturamento. Fluxo rascunho → validar → criar pausada → conferir → ativar com aprovação. Faturamento só com o link oficial "Abrir faturamento", sem recarga simulada. O Google fica só em leitura até o acesso de escrita ser comprovado.
+
+## Detalhes técnicos (Entrega 1)
+- Migrações aditivas novas (0103+), cada uma com grants, RLS, política restritiva `meta_reviewer_block`/`atendimentos_viewer`, e gravação só pelo servidor:
+  - `rental_obligations` (contrato × competência × ocorrência, única) — chave comum de cobrança, recibo e repasse.
+  - `owner_payout_destinations` (versionado, dados mascarados para leitura; documento completo só no servidor).
+  - `rental_payouts` + `rental_payout_lines` + `rental_payout_events` (transições com compare-and-set, idempotência por obrigação + destino + versão).
+  - `rental_contract_checklists`, `rental_contract_templates` (versão aprovada, imutável), `rental_contract_versions` (snapshot + PDF + hash).
+  - `inspections.rental_contract_id` + `kind` (anulável) e índice único parcial para a vistoria de entrada vigente.
+- Regras puras e testáveis: `src/lib/rentals/payout-model.ts`, `contract-checklist.ts`, `contract-render.ts`; servidor em `*.functions.ts` com `requireSupabaseAuth` e checagem de perfil + marca como em `authorizeContract`.
+- Boleto não dá baixa no aluguel; o repasse só lê a evidência.
+- Telas: `RentalPayoutSection.tsx`, `RentalChecklistWizard.tsx`, `RentalContractVersions.tsx`, botão de vistoria em `RentalExpandedDetails.tsx`.
+- Testes: cálculo com comissão/desconto/encargo/ajuste, parcial, duplicado, estorno, troca de destino, negativo, marca cruzada; checklist incompleto e falha de PDF sem duplicar; nova revisão mantém a mesma vistoria; vistoria com 3 entradas (mídia na entrada certa). Rodar build, typecheck, `test:boleto`, `test:receipts` e a suíte completa. O teste em Safari/iPhone com rede instável fica como pendência manual.
+- AGENTS.md: regras novas para obrigação/repasse e modelos de contrato.
 
 ## Riscos
-- Dois operadores escolhendo marcas diferentes ao mesmo tempo: resolvido pela trava, que ignora a marca (o segundo recebe o boleto do primeiro).
-- Boleto já ativo pela marca A e operador escolhendo B: a tela mostrará o boleto existente, sem emitir outro. Trocar de marca exige baixa/rejeição do atual.
-- Liberação de produção é por marca: em "ambas", Cordial pode sair em produção e Morar em homologação; o ambiente aparece sempre na confirmação.
+- As regras de repasse dependem da validação da Bianca e do financeiro; até lá, os valores aparecem como "previsão — não validada".
+- Sem modelo de contrato aprovado, a 1B entrega só o checklist e a estrutura.
+- A Entrega 1 é grande; será feita em commits separados (1A, 1B, 1C), sem publicar.
 
 ## Perguntas
-1. O teste de banco pode criar uma linha de homologação num contrato "ambas" e revertê-la na mesma transação (nada fica gravado)? Se não, cubro só a regra da função por leitura do código e testes puros.
-2. A escolha deve ficar memorizada por contrato (pré-selecionada na próxima competência) ou sempre começar vazia? Proposta: sempre vazia, exceto quando a secretária tem uma única marca.
+1. Comprovante manual: só admin/financeiro aprovam o repasse, ou a secretária também?
+2. Repasse parcial é permitido, ou só repasse integral após recebimento total?
+3. Podem me enviar o(s) modelo(s) de contrato aprovados (Cordial/Morar, residencial/comercial)?
+4. Contrato antigo anexado e conferido também libera a vistoria de entrada?
+5. "Ambas" (plano anterior pulado): o repasse de contrato "ambas" sai pela conta de qual marca?
