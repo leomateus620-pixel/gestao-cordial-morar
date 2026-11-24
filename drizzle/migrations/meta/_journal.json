@@ -792,6 +792,13 @@
       "when": 1795525500001,
       "tag": "0112_rental_inspection_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1795561861239,
+      "tag": "0113_rental_contracts_workflow_agency_fix",
+      "breakpoints": true
     }
   ]
 }

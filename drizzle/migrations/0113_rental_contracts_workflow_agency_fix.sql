@@ -1,0 +1,3 @@
+ALTER POLICY rental_contracts_workflow_agency ON public.rental_contracts
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR ((NOT public.has_role(auth.uid(), 'secretaria'::public.app_role)) AND (NOT public.has_role(auth.uid(), 'corretor'::public.app_role))) OR public.current_user_has_notification_agency_access((brand)::text))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) OR ((NOT public.has_role(auth.uid(), 'secretaria'::public.app_role)) AND (NOT public.has_role(auth.uid(), 'corretor'::public.app_role))) OR public.current_user_has_notification_agency_access((brand)::text));
