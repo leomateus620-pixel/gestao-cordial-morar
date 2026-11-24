@@ -276,6 +276,7 @@ function DetalhePage() {
           images={gallery.map((image, index) => ({ ...image, isCover: index === 0 }))}
           alt={`Fotos do imóvel ${imovel.codigo ?? ""} em ${imovel.cidade ?? "catálogo"}`}
           editable={!isArchived}
+          safeMode={media.galleryMode === "safe" && Boolean(media.gallery.data)}
           onMove={(key, destination) => {
             const photo = gallery[destination];
             const target = media.photos.findIndex((item) => item.key === (photo?.uploadKey ?? photo?.id));

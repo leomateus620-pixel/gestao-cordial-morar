@@ -31,6 +31,7 @@ import {
 } from "@/lib/imoveis/image-client";
 import { describeGalleryMove } from "@/lib/imoveis/gallery-move";
 import { createGalleryOrderQueue } from "@/lib/imoveis/gallery-order";
+import { orderByDatabase, resolveGalleryMode } from "@/lib/imoveis/gallery-fallback";
 import type { PropertyImage } from "@/types/property";
 
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -382,6 +383,20 @@ export function usePropertyMedia(propertyId: string | undefined) {
     const uploads = new Map(
       progress.filter(({ replacement }) => !replacement).map((item) => [item.key, item]),
     );
+    // Modo de segurança: a lista carregada não cobre todas as fotos ativas.
+    // Vale a ordem inteira do banco, e nenhuma foto ativa some da tela.
+    if (gallery.data && resolveGalleryMode(gallery.data.images, orderView.keys) === "safe") {
+      const shown = orderByDatabase(gallery.data.images).map(
+        (image): GalleryPhoto => ({ key: imageKey(image), image, name: image.fileName }),
+      );
+      const known = new Set(shown.map((photo) => photo.key));
+      const pending = [...uploads.values()].flatMap((upload): GalleryPhoto[] =>
+        !known.has(upload.key) && upload.status !== "erro" && upload.status !== "duplicada"
+          ? [{ key: upload.key, upload, name: upload.name }]
+          : [],
+      );
+      return [...shown, ...pending];
+    }
     return orderView.keys.flatMap((key): GalleryPhoto[] => {
       const upload = uploads.get(key);
       const image = images.get(key) ?? upload?.image;
@@ -496,9 +511,15 @@ export function usePropertyMedia(propertyId: string | undefined) {
     }
   }, [progress, settledImages]);
 
+  const galleryMode = gallery.data
+    ? resolveGalleryMode(gallery.data.images, orderView.keys)
+    : ("safe" as const);
+
   return {
     gallery,
     photos,
+    /** "safe" desativa organizar, arrastar e definir capa. */
+    galleryMode,
     upload,
     movePhoto,
     moveRelative,

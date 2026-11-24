@@ -1,0 +1,7 @@
+-- RASCUNHO, NÃO APLICADO. Aplicar só com OK do Leonardo, via ferramenta de migração.
+-- Recria apenas as duas views trocando a regra de caminho:
+--   antiga: storage_path ~ '(^https?:|\.\.)'
+--   nova:   storage_path ~* '^https?:' OR storage_path ~ '(^|/)\.\.(/|$)'
+-- Mesmas colunas/ordem; sem dados, assinaturas, gatilhos ou vídeos.
+-- O corpo será a definição atual de pg_get_viewdef com só essas expressões trocadas
+-- (i.storage_path e other.storage_path, em cada view).

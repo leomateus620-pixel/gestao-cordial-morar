@@ -1,3 +1,4 @@
+import { pickThumbUrl } from "@/lib/imoveis/gallery-fallback";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -79,19 +80,7 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
       if (url) thumbByRow.set(r.id, url);
     }
   }
-  await Promise.all(
-    rows
-      .filter((r) => !thumbByRow.has(r.id))
-      .map(async (r) => {
-        const path = r.processed_storage_path ?? r.storage_path;
-        const { data: small } = await supabase.storage
-          .from(BUCKET)
-          .createSignedUrl(path, 3600, {
-            transform: { width: 480, height: 480, resize: "cover", quality: 60 },
-          });
-        if (small?.signedUrl) thumbByRow.set(r.id, small.signedUrl);
-      }),
-  );
+  // Foto antiga sem miniatura gravada usa a foto inteira (sem transformação).
 
   const signedAt = Date.now();
   return rows.map((r) => {
@@ -103,7 +92,7 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
       assetVersion: r.processed_checksum,
       signedAt,
       url,
-      thumbUrl: thumbByRow.get(r.id) ?? url,
+      thumbUrl: pickThumbUrl(thumbByRow.get(r.id), url),
       isCover: r.is_cover,
       position: r.position,
       processingStatus: (r.processing_status ?? "ready") as PropertyImage["processingStatus"],

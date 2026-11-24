@@ -7,11 +7,14 @@ import { usePhotoSorting } from "@/components/imoveis/PhotoSortableGrid";
 export function PropertyGallery({
   images,
   alt,
-  editable = false,
+  editable: editableProp = false,
   onMove,
   onFlushReorder,
   onSetCover,
+  safeMode = false,
 }: {
+  /** Lista incompleta: mostra a ordem do banco e não deixa reorganizar. */
+  safeMode?: boolean;
   images: PropertyImage[];
   alt: string;
   /** Permite organizar as fotos direto na ficha, sem entrar em edição. */
@@ -21,6 +24,7 @@ export function PropertyGallery({
   onFlushReorder?: () => Promise<void>;
   onSetCover?: (imageId: string) => void;
 }) {
+  const editable = editableProp && !safeMode;
   const [index, setIndex] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [organizando, setOrganizando] = useState(false);
@@ -104,6 +108,11 @@ export function PropertyGallery({
           )}
         </div>
 
+        {safeMode && editableProp && count > 1 && (
+          <p role="status" className="text-xs text-muted-foreground">
+            Ordem das fotos em modo de segurança; organização temporariamente indisponível.
+          </p>
+        )}
         {editable && count > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] text-foreground/55">
@@ -165,6 +174,13 @@ export function PropertyGallery({
                     >
                       <img
                         src={img.thumbUrl || img.url}
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (img.url && el.dataset.fallback !== "1") {
+                            el.dataset.fallback = "1";
+                            el.src = img.url;
+                          }
+                        }}
                         alt=""
                         draggable={false}
                         className="size-full object-cover"

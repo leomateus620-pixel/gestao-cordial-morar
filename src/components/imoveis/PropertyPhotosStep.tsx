@@ -102,6 +102,7 @@ export function PropertyPhotosStep({
   const [direct, setDirect] = useState<{ key: string; position: number } | null>(null);
   const gallerySync = usePropertySyncStatus(propertyId ?? undefined);
   const photos = media.photos;
+  const safeMode = Boolean(propertyId && media.gallery.data && media.galleryMode === "safe");
   const linkedPhotos = photos.filter(({ image }) => image);
   const ready = linkedPhotos.filter(
     ({ image }) => image?.processingStatus === "ready" || image?.processingStatus === "legacy",
@@ -154,6 +155,7 @@ export function PropertyPhotosStep({
 
   const sorting = usePhotoSorting({
     ids: photos.map(({ key }) => key),
+    enabled: !safeMode,
     onMove: (key, destination) => {
       const moved = media.movePhoto(key, destination);
       if (moved) announce(key, destination);
@@ -281,6 +283,11 @@ export function PropertyPhotosStep({
         </div>
       )}
 
+      {safeMode && (
+        <p role="status" className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
+          Ordem das fotos em modo de segurança; organização temporariamente indisponível.
+        </p>
+      )}
       {!propertyId && (
         <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
           O Gestão salva um rascunho ao adicionar as primeiras fotos.
@@ -363,6 +370,13 @@ export function PropertyPhotosStep({
                           alt={name ?? `Foto ${index + 1} do imóvel`}
                           draggable={false}
                           loading="lazy"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (image?.url && el.dataset.fallback !== "1") {
+                              el.dataset.fallback = "1";
+                              el.src = image.url;
+                            }
+                          }}
                           decoding="async"
                           className="size-full object-cover"
                         />
@@ -396,7 +410,8 @@ export function PropertyPhotosStep({
                         data-photo-control="previous"
                         aria-label="Mover uma posição antes"
                         title="Mover uma posição antes"
-                        aria-disabled={cover}
+                        aria-disabled={cover || safeMode}
+                        disabled={safeMode}
                         onClick={(event) => clickArrow(event, key, -1)}
                       >
                         <ArrowLeft className="size-4" />
@@ -405,6 +420,7 @@ export function PropertyPhotosStep({
                         type="button"
                         className={`${TOOL_BUTTON} cursor-grab select-none active:cursor-grabbing`}
                         {...sorting.getHandleProps(key)}
+                        disabled={safeMode}
                         aria-label={`Arrastar foto ${index + 1}. Use as setas para mover pelo teclado.`}
                         title="Arrastar"
                       >
@@ -416,7 +432,8 @@ export function PropertyPhotosStep({
                         data-photo-control="next"
                         aria-label="Mover uma posição depois"
                         title="Mover uma posição depois"
-                        aria-disabled={index === photos.length - 1}
+                        aria-disabled={index === photos.length - 1 || safeMode}
+                        disabled={safeMode}
                         onClick={(event) => clickArrow(event, key, 1)}
                       >
                         <ArrowRight className="size-4" />
@@ -434,12 +451,12 @@ export function PropertyPhotosStep({
                         <DropdownMenuContent align="end" className="min-w-48">
                           <DropdownMenuItem
                             onSelect={() => setDirect({ key, position: index })}
-                            disabled={photos.length < 2}
+                            disabled={photos.length < 2 || safeMode}
                           >
                             Mover para posição…
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            disabled={cover}
+                            disabled={cover || safeMode}
                             onSelect={() => sorting.move(key, 0, "menu", true)}
                           >
                             <Star /> Definir como capa
