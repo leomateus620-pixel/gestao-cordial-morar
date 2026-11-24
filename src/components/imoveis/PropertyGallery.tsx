@@ -8,7 +8,7 @@ export function PropertyGallery({
   images,
   alt,
   editable = false,
-  onReorder,
+  onMove,
   onFlushReorder,
   onSetCover,
 }: {
@@ -16,7 +16,7 @@ export function PropertyGallery({
   alt: string;
   /** Permite organizar as fotos direto na ficha, sem entrar em edição. */
   editable?: boolean;
-  onReorder?: (orderedIds: string[]) => void;
+  onMove?: (key: string, destination: number) => boolean;
   /** Grava imediatamente a ordem pendente ao concluir a organização. */
   onFlushReorder?: () => Promise<void>;
   onSetCover?: (imageId: string) => void;
@@ -26,11 +26,10 @@ export function PropertyGallery({
   const [organizando, setOrganizando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const sorting = usePhotoSorting({
-    items: images,
-    onReorder: (ids) => onReorder?.(ids),
+    ids: images.map((image) => image.uploadKey ?? image.id),
+    onMove: (key, destination) => onMove?.(key, destination) ?? false,
     enabled: editable && organizando,
   });
-  const strip = editable ? sorting.ordered : images;
 
   /** Concluir só sai do modo depois que a nova ordem estiver gravada. */
   async function concluir() {
@@ -49,7 +48,6 @@ export function PropertyGallery({
       setSalvando(false);
     }
   }
-
 
   const count = images.length;
   const go = (delta: number) => setIndex((i) => (count ? (i + delta + count) % count : 0));
@@ -77,7 +75,7 @@ export function PropertyGallery({
     );
   }
 
-  const current = (editable ? sorting.ordered : images)[Math.min(index, count - 1)]!;
+  const current = images[Math.min(index, count - 1)]!;
 
   return (
     <>
@@ -131,55 +129,77 @@ export function PropertyGallery({
               )}
               {organizando ? (salvando ? "Salvando…" : "Concluir") : "Organizar fotos"}
             </button>
-
           </div>
         )}
 
         {count > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {strip.map((img, i) => (
-              <div
-                key={img.id}
-                {...(editable && organizando ? sorting.getItemProps(i) : {})}
-                className={
-                  "relative size-16 shrink-0 overflow-hidden rounded-xl border-2 " +
-                  (editable && organizando ? "cursor-grab active:cursor-grabbing " : "") +
-                  (sorting.draggingId === img.id
-                    ? "z-30 border-primary opacity-90 shadow-2xl "
-                    : sorting.draggingId
-                      ? "opacity-70 "
-                      : "") +
-                  (i === index && sorting.draggingId !== img.id
-                    ? "border-primary"
-                    : sorting.draggingId === img.id
-                      ? ""
-                      : "border-transparent opacity-70 hover:opacity-100")
-                }
-              >
-
-                <button
-                  type="button"
-                  onClick={() => setIndex(i)}
-                  aria-label={`Foto ${i + 1}`}
-                  className="block size-full"
+            {images.map((img, i) => {
+              const key = img.uploadKey ?? img.id;
+              const dragging = sorting.draggingId === key;
+              const destination = sorting.targetId === key && !dragging;
+              return (
+                <div
+                  key={key}
+                  {...sorting.getItemProps(key)}
+                  className={
+                    "relative size-16 shrink-0 rounded-xl " +
+                    (dragging ? "z-30 " : "") +
+                    (destination ? "ring-2 ring-primary" : "")
+                  }
                 >
-                  <img src={img.url} alt="" className="size-full object-cover" />
-                </button>
-                {editable && organizando && onSetCover && (
-                  <button
-                    type="button"
-                    onClick={() => onSetCover(img.id)}
-                    aria-label="Definir como capa"
-                    title="Definir como capa"
-                    className="absolute right-0.5 top-0.5 grid size-5 place-items-center rounded-full bg-white/85"
+                  <div
+                    data-photo-card
+                    className={
+                      "relative size-full overflow-hidden rounded-xl border-2 " +
+                      (i === index || dragging
+                        ? "border-primary"
+                        : "border-transparent opacity-70 hover:opacity-100")
+                    }
                   >
-                    <Star
-                      className={`size-3 ${img.isCover ? "text-primary" : "text-foreground/50"}`}
-                    />
-                  </button>
-                )}
-              </div>
-            ))}
+                    <button
+                      type="button"
+                      onClick={() => setIndex(i)}
+                      aria-label={`Foto ${i + 1}`}
+                      className="block size-full"
+                    >
+                      <img
+                        src={img.thumbUrl || img.url}
+                        alt=""
+                        draggable={false}
+                        className="size-full object-cover"
+                      />
+                    </button>
+                    {editable && organizando && (
+                      <button
+                        type="button"
+                        {...sorting.getHandleProps(key)}
+                        aria-label={`Arrastar foto ${i + 1}`}
+                        className="absolute left-0.5 top-0.5 grid size-7 cursor-grab place-items-center rounded-full bg-white/90 text-foreground select-none active:cursor-grabbing"
+                      >
+                        <GripVertical className="size-4" />
+                      </button>
+                    )}
+                    {editable && organizando && onSetCover && (
+                      <button
+                        type="button"
+                        data-photo-control="cover"
+                        onClick={() => {
+                          if (i !== 0) sorting.animateMove(key, "cover", () => onSetCover(key));
+                        }}
+                        aria-label="Definir como capa"
+                        title="Definir como capa"
+                        className="absolute right-0.5 top-0.5 grid size-5 place-items-center rounded-full bg-white/85"
+                      >
+                        <Star
+                          className={`size-3 ${img.isCover ? "text-primary" : "text-foreground/50"}`}
+                        />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -207,8 +227,20 @@ export function PropertyGallery({
           </button>
           {count > 1 && (
             <>
-              <NavButton side="left" onClick={(e) => { e.stopPropagation(); go(-1); }} />
-              <NavButton side="right" onClick={(e) => { e.stopPropagation(); go(1); }} />
+              <NavButton
+                side="left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go(-1);
+                }}
+              />
+              <NavButton
+                side="right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go(1);
+                }}
+              />
             </>
           )}
         </div>

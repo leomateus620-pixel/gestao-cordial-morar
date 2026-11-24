@@ -139,6 +139,9 @@ function DetalhePage() {
   }
 
   const imovel: PropertyDetail = query.data;
+  const gallery = media.gallery.data
+    ? media.photos.flatMap(({ image }) => image ? [image] : [])
+    : imovel.images;
   const localidade = propertyLocalidade(imovel);
   const address = imovel.localizacaoExibida ?? localidade;
 
@@ -270,12 +273,16 @@ function DetalhePage() {
       {/* Hero: galeria + resumo */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <PropertyGallery
-          images={imovel.images}
+          images={gallery.map((image, index) => ({ ...image, isCover: index === 0 }))}
           alt={`Fotos do imóvel ${imovel.codigo ?? ""} em ${imovel.cidade ?? "catálogo"}`}
           editable={!isArchived}
-          onReorder={(ids) => media.reorderPhotos(ids)}
+          onMove={(key, destination) => {
+            const photo = gallery[destination];
+            const target = media.photos.findIndex((item) => item.key === (photo?.uploadKey ?? photo?.id));
+            return media.movePhoto(key, target);
+          }}
           onFlushReorder={media.flushReorder}
-          onSetCover={(imageId) => media.setCover.mutate(imageId)}
+          onSetCover={(key) => media.movePhoto(key, 0)}
 
         />
 

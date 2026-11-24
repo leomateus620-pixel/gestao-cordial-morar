@@ -73,6 +73,11 @@ export type PropertyImageProcessingStatus =
 export type PropertyImage = {
   id: string;
   url: string;
+  /** Identidade da posição reservada antes do upload, quando houver. */
+  uploadKey?: string;
+  fileName?: string;
+  signedAt?: number;
+  assetVersion?: string | null;
   /** Versão leve usada nas listas e no organizador (carrega bem mais rápido). */
   thumbUrl: string;
   isCover: boolean;
