@@ -9,8 +9,11 @@
 
 ## 1. Ficha e etapa Fotos: nunca esconder foto ativa
 - Nova função pura `resolveGalleryPhotos(activeImages, queueKeys, mediaPhotos)` em `src/lib/imoveis/gallery-fallback.ts`, que devolve `{ photos, mode: "queue" | "safe" }`:
-  - **Fila completa** (todas as fotos ativas têm chave): `queue`. Segue o comportamento novo do PR #50, com ordem e capa da fila.
-  - **Fila vazia ou incompleta:** `safe`. Vale a ordem inteira do banco (`property_images.position`, capa na posição 0). Nada é misturado com a fila.
+  - **Fila completa (`queue`):** a lista de chaves já carregada na tela (`orderView.keys` em `usePropertyMedia`) cobre todas as fotos ativas de `property_images`, sem contar as `pending_remote_delete`.
+    - A chave de cada foto segue a regra atual `uploadKey ?? id`: as fotos antigas usam o próprio `id`.
+    - Não depende da chave nova `galeria-<uuid>` nem de `property_gallery_upload_order`, que hoje está vazia em todos os imóveis.
+    - Assim, os ~738 imóveis só com fotos antigas ficam em `queue`, com todos os controles liberados, e o comportamento do PR #50 é mantido.
+  - **Modo de segurança (`safe`):** só quando falta de fato alguma foto ativa na lista carregada, ou a lista não carregou. Vale a ordem inteira do banco (`property_images.position`, capa na posição 0). Nada é misturado com a fila.
   - Regra fixa: o número de fotos exibidas é sempre igual ao de fotos ativas.
 - No modo `safe`, ficam desativados "Organizar fotos", arrastar e "Definir capa", na ficha e na etapa Fotos. Aparece um aviso curto: "Ordem das fotos em modo de segurança; organização temporariamente indisponível." Nada é gravado nesse modo.
 - Arquivos alterados:
@@ -29,6 +32,15 @@
   - que o único imóvel liberado é o 1444/3441;
   - que nenhum caminho com `..` como pasta ou com URL passa pela regra nova.
 - Sem DDL nem transação de teste no banco de produção.
+
+## 2b. Preparo das fotos para os sites (só leitura antes de qualquer mudança)
+- Conferir se outra trava, além das views, bloqueia o nome `.../originais/<uuid>-full...jpg` do 1444/3441:
+  - `src/lib/cordial-site/media-derivatives.server.ts` e o worker de mídia, com o bucket `public-site-derivatives`;
+  - as rotas `/api/cordial-site/media/...` e `/api/morar-site/media/...`;
+  - as funções SQL de derivados (0024 e as seguintes).
+- Na primeira busca, o preparo dos derivados (`media-derivatives.server.ts`) não tem checagem de `..`. Ainda falta ler as rotas de mídia e as funções SQL.
+- Se houver outra trava, a correção usa a mesma regra (bloquear `..` só como pasta, e URLs), tem teste próprio e fica listada aqui antes da execução. Ela vale para fotos, não para a regra dos vídeos.
+- Validação, depois do OK e da 0113: uma foto do 1444 abre pelo endereço de mídia da Cordial e da Morar (só leitura).
 
 ## 3. Investigação do 3454 (antes de qualquer correção)
 - Ler os registros do servidor perto de 19:01:55 UTC para `openPropertyImageBatch`, `createPropertyImageUploadUrl` e `reportPropertyImageBatchFailure`.
