@@ -247,3 +247,73 @@ describe("pagador, encargos e permissões", () => {
     ).toBe(false);
   });
 });
+
+import { allowedIssuingBrands, defaultIssuingBrand, resolveIssuingBrand } from "./rules";
+
+describe("conta emissora (contratos ambas)", () => {
+  const admin = { admin: true, agencies: [] };
+  const secCordial = { admin: false, agencies: ["cordial"] };
+  const secDuas = { admin: false, agencies: ["cordial", "morar"] };
+  it("admin vê as duas contas num contrato ambas, sem pré-seleção", () => {
+    expect(allowedIssuingBrands(admin, "ambas")).toEqual(["cordial", "morar"]);
+    expect(defaultIssuingBrand(admin, "ambas")).toBeNull();
+  });
+  it("secretária com uma marca vê só ela, já marcada", () => {
+    expect(allowedIssuingBrands(secCordial, "ambas")).toEqual(["cordial"]);
+    expect(defaultIssuingBrand(secCordial, "ambas")).toBe("cordial");
+    expect(defaultIssuingBrand(secDuas, "ambas")).toBeNull();
+  });
+  it("secretária Cordial não emite pela Morar", () => {
+    expect(resolveIssuingBrand(secCordial, "ambas", "morar").ok).toBe(false);
+    expect(resolveIssuingBrand(secCordial, "ambas", "cordial")).toEqual({ ok: true, brand: "cordial" });
+  });
+  it("contrato ambas sem escolha fica bloqueado", () => {
+    expect(resolveIssuingBrand(admin, "ambas", null).ok).toBe(false);
+  });
+  it("contrato Cordial usa a própria conta e recusa Morar forçada", () => {
+    expect(resolveIssuingBrand(admin, "cordial", null)).toEqual({ ok: true, brand: "cordial" });
+    expect(resolveIssuingBrand(admin, "cordial", "morar").ok).toBe(false);
+    expect(resolveIssuingBrand(admin, "morar", "cordial").ok).toBe(false);
+  });
+  it("prévia de contrato ambas grava marca da conta e do contrato no snapshot", () => {
+    const p = buildBoletoPreview({
+      contract: { id: "c", brand: "ambas", status: "ativo", diaVencimento: 10, proximoVencimento: null, valorMensal: 1000, seguroValorMensal: 0 },
+      pagador: {},
+      competencia: "2030-05",
+      today: "2030-05-01",
+      account: { ambiente: "sandbox", encargos: { ativo: false } },
+      issuingBrand: "morar",
+    });
+    expect(p.snapshot?.marca_conta).toBe("morar");
+    expect(p.snapshot?.marca_contrato).toBe("ambas");
+    expect(p.snapshot?.conta.brand).toBe("morar");
+  });
+  it("prévia de contrato ambas sem conta escolhida não monta título", () => {
+    const p = buildBoletoPreview({
+      contract: { id: "c", brand: "ambas", status: "ativo", diaVencimento: 10, proximoVencimento: null, valorMensal: 1000, seguroValorMensal: 0 },
+      pagador: {},
+      competencia: "2030-05",
+      today: "2030-05-01",
+      account: null,
+      issuingBrand: null,
+      issuingBrandMotivo: "Escolha a conta emissora (Cordial ou Morar).",
+    });
+    expect(p.ok).toBe(false);
+    expect(p.snapshot).toBeNull();
+    expect(p.bloqueios).toContain("Escolha a conta emissora (Cordial ou Morar).");
+  });
+  it("produção sem dados do inquilino bloqueia; homologação só avisa", () => {
+    const base = {
+      contract: { id: "c", brand: "cordial", status: "ativo", diaVencimento: 10, proximoVencimento: null, valorMensal: 1000, seguroValorMensal: 0 },
+      pagador: {},
+      competencia: "2030-05",
+      today: "2030-05-01",
+    };
+    const prod = buildBoletoPreview({ ...base, account: { ambiente: "producao", encargos: { ativo: false } } });
+    const sb = buildBoletoPreview({ ...base, account: { ambiente: "sandbox", encargos: { ativo: false } } });
+    expect(prod.ok).toBe(false);
+    expect(prod.pendencias.length).toBeGreaterThan(0);
+    expect(sb.pendencias).toEqual([]);
+    expect(sb.pagadorFicticio).toBe(true);
+  });
+});

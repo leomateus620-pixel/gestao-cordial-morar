@@ -18,8 +18,11 @@ import {
 } from "./flow.server";
 import { buildBoletoPreview, type BoletoPreview } from "./preview";
 import {
+  allowedIssuingBrands,
   boletoContractAccess,
   boletoPermissions,
+  defaultIssuingBrand,
+  resolveIssuingBrand,
   parseEncargos,
   todaySaoPaulo,
   type BillingAmbiente,
@@ -83,7 +86,7 @@ async function authorizeContract(ctx: Ctx, contractId: string) {
   const agencies = ((ag ?? []) as { agency: string }[]).map((a) => a.agency);
   if (!boletoContractAccess({ ...r.flags, agencies }, c.brand as string))
     throw new Error("Aluguel indisponível para o seu perfil.");
-  return { db, roles: r };
+  return { db, roles: r, agencies, contractBrand: c.brand as string };
 }
 async function assertOperator(ctx: Ctx) {
   const r = await roles(ctx);
@@ -149,8 +152,9 @@ async function computePreview(
   contractId: string,
   competencia: string,
   novoVencimento: string | null,
+  issuingBrand: string | null = null,
 ) {
-  const { db: sb } = await authorizeContract(ctx, contractId);
+  const { db: sb, roles: rr, agencies } = await authorizeContract(ctx, contractId);
   const { data: c } = await sb
     .from("rental_contracts")
     .select(
@@ -190,8 +194,12 @@ async function computePreview(
   ]);
   if (recurring.error || receipt.error)
     throw new Error("Não foi possível carregar os valores do aluguel.");
-  const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
+  const issuerFlags = { admin: rr.flags.admin, agencies };
+  const resolved = resolveIssuingBrand(issuerFlags, c.brand, issuingBrand);
+  const brand = resolved.ok ? resolved.brand : null;
   const account = brand ? await pickIssuingAccount(brand) : null;
+  const marcasPermitidas = allowedIssuingBrands(issuerFlags, c.brand);
+  const marcaSugerida = defaultIssuingBrand(issuerFlags, c.brand);
   const t = (tenant.data ?? {}) as Record<string, string | null>;
   const p = (property.data ?? {}) as Record<string, string | null>;
   const preview = buildBoletoPreview({
@@ -223,12 +231,17 @@ async function computePreview(
       }),
     ),
     account: account ? { ambiente: account.ambiente, encargos: account.encargos } : null,
+    issuingBrand: brand,
+    issuingBrandMotivo: resolved.ok ? null : resolved.motivo,
   });
-  return { preview, account };
+  return { preview, account, marcasPermitidas, marcaSugerida };
 }
-function publicPreview(p: BoletoPreview) {
+function publicPreview(
+  p: BoletoPreview,
+  extra: { marcasPermitidas: BoletoBrand[]; marcaSugerida: BoletoBrand | null },
+) {
   const { snapshot: _s, ...rest } = p;
-  return rest;
+  return { ...rest, ...extra };
 }
 
 const scope = z.object({ contractId: z.string().uuid(), competencia: competenciaSchema });
@@ -254,25 +267,30 @@ export const listRentalBoletos = createServerFn({ method: "GET" })
     };
   });
 
-const previewInput = scope.extend({ novoVencimento: isoSchema.nullable().optional() });
+const previewInput = scope.extend({
+  novoVencimento: isoSchema.nullable().optional(),
+  issuingBrand: brandSchema.nullable().optional(),
+});
 export const previewBoleto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.infer<typeof previewInput>) => previewInput.parse(d))
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
     await assertOperator(ctx);
-    const { preview } = await computePreview(
+    const { preview, marcasPermitidas, marcaSugerida } = await computePreview(
       ctx,
       data.contractId,
       data.competencia,
       data.novoVencimento ?? null,
+      data.issuingBrand ?? null,
     );
-    return publicPreview(preview);
+    return publicPreview(preview, { marcasPermitidas, marcaSugerida });
   });
 
 const issueInput = previewInput.extend({
   expectedTotalCentavos: z.number().int().positive(),
   expectedAmbiente: ambienteSchema,
+  expectedMarcaConta: brandSchema.optional(),
 });
 export const issueBoleto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -285,6 +303,7 @@ export const issueBoleto = createServerFn({ method: "POST" })
       data.contractId,
       data.competencia,
       data.novoVencimento ?? null,
+      data.issuingBrand ?? null,
     );
     if (!preview.ok || !preview.snapshot || !account)
       throw new Error(
@@ -292,7 +311,8 @@ export const issueBoleto = createServerFn({ method: "POST" })
       );
     if (
       preview.totalCentavos !== data.expectedTotalCentavos ||
-      preview.ambiente !== data.expectedAmbiente
+      preview.ambiente !== data.expectedAmbiente ||
+      (data.expectedMarcaConta && preview.marcaConta !== data.expectedMarcaConta)
     )
       throw new Error(
         "Os valores ou o ambiente mudaram desde a prévia. Revise e confirme de novo.",

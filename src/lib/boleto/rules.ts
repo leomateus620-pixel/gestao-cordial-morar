@@ -279,3 +279,42 @@ export function boletoContractAccess(
   if (contractBrand === "ambas") return true;
   return (mine as string[]).includes(String(contractBrand));
 }
+
+type IssuerFlags = { admin: boolean; agencies: string[] };
+const BRANDS: BoletoBrand[] = ["cordial", "morar"];
+
+/** Accounts the operator may issue from for one contract (shown in the confirmation). */
+export function allowedIssuingBrands(flags: IssuerFlags, contractBrand: string | null | undefined): BoletoBrand[] {
+  if (contractBrand === "cordial" || contractBrand === "morar") return [contractBrand];
+  if (contractBrand !== "ambas") return [];
+  if (flags.admin) return [...BRANDS];
+  return BRANDS.filter((b) => flags.agencies.includes(b));
+}
+
+/** Initial choice: the contract brand, or the only brand of a single-brand secretaria; else empty. */
+export function defaultIssuingBrand(flags: IssuerFlags, contractBrand: string | null | undefined): BoletoBrand | null {
+  if (contractBrand === "cordial" || contractBrand === "morar") return contractBrand;
+  const allowed = allowedIssuingBrands(flags, contractBrand);
+  return !flags.admin && allowed.length === 1 ? allowed[0]! : null;
+}
+
+export type IssuingBrandResult = { ok: true; brand: BoletoBrand } | { ok: false; motivo: string };
+
+/** Server-side resolution of the issuing account brand. The UI is not a security boundary. */
+export function resolveIssuingBrand(
+  flags: IssuerFlags,
+  contractBrand: string | null | undefined,
+  chosen: string | null | undefined,
+): IssuingBrandResult {
+  if (contractBrand === "cordial" || contractBrand === "morar") {
+    if (chosen && chosen !== contractBrand)
+      return { ok: false, motivo: "Este contrato só pode ser emitido pela conta da própria marca." };
+    return { ok: true, brand: contractBrand };
+  }
+  if (contractBrand !== "ambas")
+    return { ok: false, motivo: "Defina a marca do contrato (Cordial, Morar ou ambas) antes de emitir o boleto." };
+  if (!chosen) return { ok: false, motivo: "Escolha a conta emissora (Cordial ou Morar)." };
+  if (!allowedIssuingBrands(flags, contractBrand).includes(chosen as BoletoBrand))
+    return { ok: false, motivo: "Você não tem acesso à conta escolhida." };
+  return { ok: true, brand: chosen as BoletoBrand };
+}

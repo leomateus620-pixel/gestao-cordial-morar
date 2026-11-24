@@ -24,7 +24,12 @@ export async function testSicrediConnection(
       tokenOk: false,
       consultaOk: false,
       status: e instanceof SicrediError ? e.status : null,
-      mensagem: e instanceof SicrediError ? e.message : "Falha inesperada na autenticação.",
+      mensagem:
+        e instanceof SicrediError && (e.status === 401 || e.status === 403)
+          ? `Chave ou código de acesso recusado pelo Sicredi (HTTP ${e.status}). Nada foi liberado.`
+          : e instanceof SicrediError
+            ? e.message
+            : "Falha inesperada na autenticação.",
     };
   }
   try {

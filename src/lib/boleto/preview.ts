@@ -38,6 +38,9 @@ export type BoletoSnapshot = {
   pagador: PagadorNormalizado;
   encargos: Encargos;
   conta: { brand: BoletoBrand; ambiente: BillingAmbiente };
+  /** Account brand and contract brand (an "ambas" contract issues from the chosen account). */
+  marca_conta?: BoletoBrand;
+  marca_contrato?: string;
   /** Sandbox only: the payer above is the fixed fictitious one; the tenant is a reference. */
   pagador_ficticio?: true;
   pagador_referencia?: { tenantId: string | null };
@@ -58,6 +61,8 @@ export type BoletoPreview = {
   pagador: { nome: string; documento: string; cidadeUf: string } | null;
   ambiente: BillingAmbiente | null;
   encargosAtivos: boolean;
+  marcaConta: BoletoBrand | null;
+  marcaContrato: string;
   snapshot: BoletoSnapshot | null;
 };
 
@@ -71,12 +76,19 @@ export function buildBoletoPreview(args: {
   receiptValores?: unknown;
   recurring?: RecurringAdjustment[];
   account: { ambiente: BillingAmbiente; encargos: Encargos } | null;
+  /** Brand resolved on the server (resolveIssuingBrand); omitted = contract brand. */
+  issuingBrand?: BoletoBrand | null;
+  issuingBrandMotivo?: string | null;
 }): BoletoPreview {
   const bloqueios: string[] = [];
   const c = args.contract;
-  const brand = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
+  const own = c.brand === "cordial" || c.brand === "morar" ? (c.brand as BoletoBrand) : null;
+  const brand = args.issuingBrand !== undefined ? args.issuingBrand : own;
   if (!brand)
-    bloqueios.push("Defina a marca do contrato (Cordial ou Morar) antes de emitir o boleto.");
+    bloqueios.push(
+      args.issuingBrandMotivo ??
+        "Defina a marca do contrato (Cordial ou Morar) antes de emitir o boleto.",
+    );
   if (c.status === "encerrado" || c.status === "cancelado")
     bloqueios.push("Contrato encerrado ou cancelado: não é possível emitir boleto.");
   let vencimento: VencimentoResult | null = null;
@@ -131,6 +143,8 @@ export function buildBoletoPreview(args: {
       : null,
     ambiente: args.account?.ambiente ?? null,
     encargosAtivos: encargos.ativo,
+    marcaConta: brand,
+    marcaContrato: c.brand,
     snapshot:
       ok && pagadorEnvio && brand && vencimento?.ok && args.account
         ? {
@@ -147,6 +161,8 @@ export function buildBoletoPreview(args: {
             pagador: pagadorEnvio,
             encargos,
             conta: { brand, ambiente: args.account.ambiente },
+            marca_conta: brand,
+            marca_contrato: c.brand,
             ...(sandbox
               ? {
                   pagador_ficticio: true as const,

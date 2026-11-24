@@ -52,13 +52,20 @@ export function BoletoConfirmModal({
   const [error, setError] = useState<string | null>(null);
   const [novo, setNovo] = useState("");
   const [applied, setApplied] = useState<string | null>(null);
+  const [marca, setMarca] = useState<"cordial" | "morar" | null>(null);
+  const [marcaTocada, setMarcaTocada] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    preview({ data: { contractId, competencia, novoVencimento: applied } })
-      .then((p) => alive && setData(p))
+    preview({ data: { contractId, competencia, novoVencimento: applied, issuingBrand: marca } })
+      .then((p) => {
+        if (!alive) return;
+        setData(p);
+        if (!marcaTocada && !marca && p.marcaContrato === "ambas" && p.marcaSugerida)
+          setMarca(p.marcaSugerida);
+      })
       .catch(
         (e) =>
           alive && setError(e instanceof Error ? e.message : "Não foi possível montar a prévia."),
@@ -67,7 +74,8 @@ export function BoletoConfirmModal({
     return () => {
       alive = false;
     };
-  }, [contractId, competencia, applied, preview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, competencia, applied, marca, preview]);
 
   const needsDate =
     data?.vencimento &&
@@ -87,6 +95,8 @@ export function BoletoConfirmModal({
           novoVencimento: applied,
           expectedTotalCentavos: data.totalCentavos,
           expectedAmbiente: data.ambiente,
+          issuingBrand: marca,
+          ...(data.marcaConta ? { expectedMarcaConta: data.marcaConta } : {}),
         },
       });
       const b = out.boleto;
@@ -129,6 +139,42 @@ export function BoletoConfirmModal({
           </div>
         ) : data ? (
           <div className="space-y-4 text-sm">
+            {data.marcaContrato === "ambas" && (
+              <fieldset className="rounded-lg border p-3">
+                <legend className="px-1 text-xs font-medium">Emitir pela conta</legend>
+                {data.marcasPermitidas.length === 0 ? (
+                  <p className="text-xs text-destructive">Você não tem acesso a nenhuma conta.</p>
+                ) : (
+                  <div className="flex gap-2" role="radiogroup" aria-label="Emitir pela conta">
+                    {data.marcasPermitidas.map((b) => (
+                      <Button
+                        key={b}
+                        type="button"
+                        role="radio"
+                        aria-checked={marca === b}
+                        variant={marca === b ? "default" : "outline"}
+                        size="sm"
+                        disabled={loading || sending}
+                        onClick={() => {
+                          setMarcaTocada(true);
+                          setMarca(b);
+                        }}
+                      >
+                        {b === "cordial" ? "Cordial" : "Morar"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Contrato das duas marcas: escolha qual conta Sicredi emite este boleto.
+                </p>
+              </fieldset>
+            )}
+            {data.ambiente === "producao" && (
+              <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs font-medium text-destructive">
+                PRODUÇÃO: será registrado um boleto real no Sicredi, cobrado do inquilino.
+              </p>
+            )}
             {data.ambiente === "sandbox" && (
               <p className="rounded-lg bg-emission-boleto/10 p-3 text-xs text-emission-boleto">
                 Ambiente de homologação do Sicredi: o boleto não tem valor de cobrança e não deve
@@ -153,6 +199,12 @@ export function BoletoConfirmModal({
               </p>
             </section>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+              <dt className="text-muted-foreground">Conta emissora</dt>
+              <dd>
+                {data.marcaConta
+                  ? `${data.marcaConta === "cordial" ? "Cordial" : "Morar"} · ${data.ambiente === "producao" ? "Produção" : data.ambiente === "sandbox" ? "Homologação" : "—"}`
+                  : "Não escolhida"}
+              </dd>
               <dt className="text-muted-foreground">Pagador</dt>
               <dd>
                 {data.pagador
