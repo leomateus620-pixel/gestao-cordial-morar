@@ -100,7 +100,10 @@ test("reservations place recovered photos without moving existing photos and bot
           id: string;
           cover: boolean;
           position: number;
-        }>("SELECT id, is_cover cover, position FROM property_images WHERE property_id=$1 AND NOT pending_remote_delete ORDER BY position", [property])
+        }>(
+          "SELECT id, is_cover cover, position FROM property_images WHERE property_id=$1 AND NOT pending_remote_delete ORDER BY position",
+          [property],
+        )
         .then(({ rows }) => rows);
 
     await db.exec("SET ROLE authenticated; SET request.jwt.claim.role='authenticated'");
