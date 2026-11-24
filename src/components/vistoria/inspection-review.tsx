@@ -131,7 +131,9 @@ export function ReviewTab({
         finalize({ data: { id: i.id, expectedRevision: i.revision, reviewed: true } }),
       );
       if (!result) throw new Error("A emissão não foi confirmada. Atualize a vistoria.");
-      toast.success(`Laudo v${result.version} emitido.`);
+      toast.success(
+        i.rental_contract_id ? "Termo registrado." : `Laudo v${result.version} emitido.`,
+      );
       refetch();
       await downloadVersion(result.version);
     } catch (e) {
@@ -153,6 +155,7 @@ export function ReviewTab({
   }
 
   const concluded = i.status === "concluida";
+  const rental = Boolean(i.rental_contract_id);
   return (
     <div className="space-y-4">
       {!concluded && (
@@ -162,10 +165,36 @@ export function ReviewTab({
               ? `${issues.length} pendência(s) antes de concluir`
               : "Tudo pronto para concluir"}
           </h2>
-          <p className="mt-2 text-sm text-foreground/60">
-            {summary.filled}/{summary.total} preenchidos · {summary.evaluated} avaliados ·{" "}
-            {summary.untested} não testados · {summary.notApplicable} não aplicáveis
-          </p>
+          {rental ? (
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Cômodos no termo">
+              {data.rooms.map((room) => {
+                const photos = data.media.filter(
+                  (media) => media.room_id === room.id && media.status === "confirmada",
+                ).length;
+                const notes = data.notes.filter(
+                  (note) => note.room_id === room.id && note.status === "revisado",
+                );
+                return (
+                  <li key={room.id} className="space-y-1 rounded-xl border p-3 text-sm">
+                    <strong>{room.name}</strong>
+                    <p className="text-xs text-muted-foreground">
+                      {photos} {photos === 1 ? "foto" : "fotos"}
+                    </p>
+                    {notes.map((note) => (
+                      <p key={note.id} className="break-words">
+                        {note.approved_text}
+                      </p>
+                    ))}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-foreground/60">
+              {summary.filled}/{summary.total} preenchidos · {summary.evaluated} avaliados ·{" "}
+              {summary.untested} não testados · {summary.notApplicable} não aplicáveis
+            </p>
+          )}
           <div className="mt-3 divide-y">
             {REVIEW_GROUPS.map((group) => {
               const own = issues.filter((iss) =>
@@ -291,6 +320,27 @@ export function ReviewTab({
               ))}
             </ul>
           </details>
+          {i.rental_contract_id && !i.plan_confirmed && data.rooms.length > 0 && (
+            <button
+              type="button"
+              className="mt-3 min-h-11 rounded-xl border px-3 text-sm font-semibold text-primary"
+              onClick={() =>
+                void saver.run(
+                  () =>
+                    upd({
+                      data: {
+                        id: i.id,
+                        expectedRevision: i.revision,
+                        patch: { plan_confirmed: true },
+                      },
+                    }),
+                  (current, row) => ({ ...current, inspection: row }),
+                )
+              }
+            >
+              Confirmar lista de cômodos
+            </button>
+          )}
           <label className="mt-4 flex min-h-11 items-start gap-3 text-sm">
             <input
               type="checkbox"
@@ -298,8 +348,9 @@ export function ReviewTab({
               onChange={(e) => setReviewed(e.target.checked)}
               className="mt-1 size-5 shrink-0 accent-primary"
             />
-            Revisei os dados, a aplicabilidade dos itens e os alertas de qualidade. Confirmo o que
-            foi observado.
+            {rental
+              ? "Revisei os cômodos, as fotos e as descrições do termo."
+              : "Revisei os dados, a aplicabilidade dos itens e os alertas de qualidade. Confirmo o que foi observado."}
           </label>
 
           {i.status !== "em_revisao" && (
@@ -348,7 +399,7 @@ export function ReviewTab({
             className="min-h-12 rounded-xl bg-primary px-3 font-semibold text-primary-foreground"
             onClick={() => void downloadVersion(i.current_version)}
           >
-            Baixar laudo v{i.current_version}
+            {rental ? "Baixar termo" : "Baixar laudo"} v{i.current_version}
           </button>
         )}
         {!concluded && (issues.length > 0 || drafts.pending.length > 0 || !reviewed) && (
@@ -388,13 +439,17 @@ export function ReviewTab({
             ) : (
               <Check className="size-4" />
             )}{" "}
-            Concluir e emitir laudo v{i.current_version + 1}
+            {i.rental_contract_id
+              ? "Concluir e registrar termo"
+              : `Concluir e emitir laudo v${i.current_version + 1}`}
           </button>
         )}
       </section>
       {data.documents.length > 0 && (
         <section className="premium-card rounded-2xl p-4">
-          <h2 className="mb-2 text-sm font-semibold">Laudos emitidos</h2>
+          <h2 className="mb-2 text-sm font-semibold">
+            {rental ? "Termos registrados" : "Laudos emitidos"}
+          </h2>
           <ul className="space-y-1">
             {data.documents.map((d) => (
               <li key={d.id}>

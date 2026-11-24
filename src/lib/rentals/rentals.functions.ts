@@ -1,9 +1,27 @@
+import { z } from "zod";
+import { CONTRACT_TEMPLATES } from "./contract-templates";
+import {
+  contractWorkflowReview,
+  rentalWorkspaceSchema,
+  templateOptionsSchema,
+  workspaceBaseIssues,
+  workspaceInputFromContract,
+  type RentalWorkspaceDraft,
+  type RentalWorkspaceInput,
+} from "./contract-workflow";
 import { createServerFn } from "@tanstack/react-start";
 import { sanitizeSpouse } from "./guarantor-spouse";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertPaymentReferenceRecorded, nextPaymentDueDate } from "@/lib/rentals/payment-reference";
+import {
+  assertPaymentReferenceRecorded,
+  nextPaymentDueDate,
+} from "@/lib/rentals/payment-reference";
 import { canReviewContractDocument } from "@/lib/rentals/entry-inspection";
-import { loadContractEntryInspectionState } from "@/lib/rentals/entry-inspection.server";
+import {
+  assertRentalWorkflowAccess,
+  loadContractEntryInspectionState,
+  readRentalDataRevision,
+} from "@/lib/rentals/entry-inspection.server";
 import {
   RENTAL_PROPERTY_COLUMNS,
   mapRentalPropertyRow,
@@ -85,6 +103,7 @@ type ContractRow = {
   data_encerramento: string | null;
   observacoes: string | null;
   brand: string;
+  template_options?: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -406,6 +425,7 @@ async function enrichContracts(
 
     result.push({
       ...mapContract(r),
+      templateOptions: templateOptionsSchema.safeParse(r.template_options).data ?? {},
       property,
       tenant: primaryTenant,
       guarantor: guaranteeList[0]?.guarantor ?? null,
@@ -1000,10 +1020,18 @@ type DocRow = {
   drive_last_error?: string | null;
   drive_last_synced_at?: string | null;
   reviewed_at?: string | null;
+  review_revision?: string | null;
+  source_revision?: string | null;
+  origin?: "externo" | "gerado";
+  signed_at?: string | null;
 };
 
 type RentalDocCategory =
-  "contrato_aluguel" | "termo_vistoria" | "checklist_aluguel" | "apolice_seguro_fianca" | "outro"
+  | "contrato_aluguel"
+  | "termo_vistoria"
+  | "checklist_aluguel"
+  | "apolice_seguro_fianca"
+  | "outro"
   | "nota_fiscal";
 
 const RENTAL_DOC_CATS = new Set<RentalDocCategory>([
@@ -1034,12 +1062,15 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("rental_contract_documents")
       .select(
-        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at,reviewed_at",
+        "id,contract_id,file_path,file_name,mime_type,size_bytes,category,created_at,drive_file_id,drive_web_view_url,drive_sync_status,drive_last_error,drive_last_synced_at,reviewed_at,review_revision,source_revision,origin,signed_at",
       )
       .eq("contract_id", data.contractId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const list = (rows ?? []) as unknown as DocRow[];
+    const revision = list.some((doc) => doc.reviewed_at)
+      ? await readRentalDataRevision(context.supabase, data.contractId)
+      : null;
     const withUrls = await Promise.all(
       list.map(async (r) => ({
         id: r.id,
@@ -1057,6 +1088,10 @@ export const listRentalContractDocuments = createServerFn({ method: "GET" })
         driveLastError: r.drive_last_error ?? null,
         driveLastSyncedAt: r.drive_last_synced_at ?? null,
         reviewedAt: r.reviewed_at ?? null,
+        reviewCurrent: !!r.reviewed_at && revision !== null && r.review_revision === revision,
+        origin: r.origin ?? "externo",
+        signedAt: r.signed_at ?? null,
+        sourceRevision: r.source_revision ?? null,
       })),
     );
     return withUrls;
@@ -1484,6 +1519,9 @@ export const replaceRentalContract = createServerFn({ method: "POST" })
 
     // 4. Update contract base row
     const patch = {
+      ...(data.templateOptions
+        ? { template_options: templateOptionsSchema.parse(data.templateOptions) }
+        : {}),
       property_id: propertyId,
       tenant_id: primaryTenantId,
       guarantor_id: primaryGuarantee?.guarantorId ?? null,
@@ -1602,23 +1640,338 @@ export const setRentalContractDocumentReviewed = createServerFn({ method: "POST"
       throw new Error("Só o documento do contrato de aluguel pode ser marcado como conferido.");
     }
 
-    const { error: updateError } = await supabase
-      .from("rental_contract_documents")
-      .update({
-        reviewed_at: data.reviewed ? new Date().toISOString() : null,
-        reviewed_by: data.reviewed ? context.userId : null,
-      } as never)
-      .eq("id", data.documentId);
-    if (updateError) throw new Error(updateError.message);
+    await assertRentalWorkflowAccess(supabase, row.contract_id);
+    const revision = await readRentalDataRevision(supabase, row.contract_id);
+    return confirmWorkflowFile(context.userId, row.contract_id, row.id, revision, data.reviewed);
+  });
 
-    const { data: saved, error: savedError } = await supabase
-      .from("rental_contract_documents")
-      .select("id,reviewed_at")
-      .eq("id", data.documentId)
-      .maybeSingle();
-    if (savedError) throw new Error(savedError.message);
-    return {
-      id: data.documentId,
-      reviewedAt: saved?.reviewed_at ? String(saved.reviewed_at) : null,
-    };
+type RentalClient = import("@supabase/supabase-js").SupabaseClient<
+  import("@/integrations/supabase/types").Database
+>;
+
+type WorkflowDraftRow = {
+  id: string;
+  input: unknown;
+  revision: number;
+  updated_at: string;
+  brand: RentalBrand;
+};
+
+function requireResult<T>(result: { data: T; error: { message: string } | null }): T {
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}
+
+async function loadWorkspaceDraft(
+  sb: RentalClient,
+  id: string,
+): Promise<RentalWorkspaceDraft | null> {
+  const row = requireResult(
+    await sb
+      .from("rental_workspace_drafts" as never)
+      .select("id,input,revision,updated_at")
+      .eq("id", id)
+      .maybeSingle(),
+  ) as WorkflowDraftRow | null;
+  if (!row) return null;
+  return {
+    id: row.id,
+    revision: row.revision,
+    input: rentalWorkspaceSchema.parse(row.input),
+    updatedAt: row.updated_at,
+  };
+}
+
+export const getRentalWorkspaceDraft = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.uuid() }))
+  .handler(({ data, context }) => loadWorkspaceDraft(context.supabase, data.id));
+
+export const listRentalWorkspaceDrafts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const rows = (requireResult(
+      await context.supabase
+        .from("rental_workspace_drafts" as never)
+        .select("id,input,brand,updated_at")
+        .order("updated_at", { ascending: false }),
+    ) ?? []) as unknown as WorkflowDraftRow[];
+    return rows.map(({ id, input, brand, updated_at }) => {
+      const entry = rentalWorkspaceSchema.parse(input);
+      return {
+        id,
+        brand,
+        name: entry.property.data.apelido.trim() || entry.property.data.logradouro.trim(),
+        updatedAt: updated_at,
+      };
+    });
+  });
+
+export const saveRentalWorkspaceDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      id: z.uuid(),
+      revision: z.number().int().nonnegative(),
+      input: rentalWorkspaceSchema,
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const revision = requireResult(
+      await supabaseAdmin.rpc(
+        "rental_save_workspace_draft" as never,
+        {
+          p_actor: context.userId,
+          p_id: data.id,
+          p_revision: data.revision,
+          p_input: data.input,
+        } as never,
+      ),
+    ) as unknown as number;
+    return { id: data.id, revision };
+  });
+
+export const prepareRentalContractPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      id: z.uuid(),
+      draft: z.boolean(),
+      revision: z.number().int().optional(),
+      template: templateOptionsSchema,
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    await assertRentalWorkflowAccess(sb, data.id, data.draft);
+    const insurersPromise = sb
+      .from("rental_insurers")
+      .select("id,nome,brands,clause_template,active");
+    let input: RentalWorkspaceInput;
+    let revision: string;
+    if (data.draft) {
+      const draft = await loadWorkspaceDraft(sb, data.id);
+      if (!draft || draft.revision !== data.revision)
+        throw new Error("Salve a revisão atual do rascunho.");
+      input = draft.input;
+      revision = String(draft.revision);
+    } else {
+      const currentRevision = await readRentalDataRevision(sb, data.id);
+      const row = requireResult(
+        await sb.from("rental_contracts").select("*").eq("id", data.id).single(),
+      ) as unknown as ContractRow;
+      const [contract] = await enrichContracts(sb as unknown as SupabaseCtx, [row]);
+      if (!contract) throw new Error("Aluguel não encontrado.");
+      input = { ...workspaceInputFromContract(contract), template: data.template };
+      // Validate before saving a change to the reviewed data.
+      const insurers = (requireResult(await insurersPromise) ?? []).map((r) => ({
+        id: r.id,
+        nome: r.nome,
+        brands: r.brands,
+        clauseTemplate: r.clause_template,
+        active: r.active,
+      }));
+      const review = contractWorkflowReview(input, CONTRACT_TEMPLATES, insurers);
+      if (review.issues.length || !review.text)
+        throw new Error(review.issues[0]?.label || "Modelo indisponível.");
+      if (currentRevision !== (await readRentalDataRevision(sb, data.id))) {
+        throw new Error("O aluguel mudou em outra tela. Reabra a ficha para revisar.");
+      }
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const updated = requireResult(
+        await supabaseAdmin.rpc(
+          "rental_save_template_options" as never,
+          {
+            p_actor: context.userId,
+            p_id: data.id,
+            p_revision: currentRevision,
+            p_options: data.template,
+          } as never,
+        ),
+      ) as unknown as string;
+      return { ...review, revision: updated };
+    }
+    const insurers = (requireResult(await insurersPromise) ?? []).map((r) => ({
+      id: r.id,
+      nome: r.nome,
+      brands: r.brands,
+      clauseTemplate: r.clause_template,
+      active: r.active,
+    }));
+    const review = contractWorkflowReview(input, CONTRACT_TEMPLATES, insurers);
+    if (review.issues.length || !review.text)
+      throw new Error(review.issues[0]?.label || "Modelo indisponível.");
+    return { ...review, revision };
+  });
+
+const workflowFileInput = z.object({
+  contractId: z.uuid(),
+  draft: z.boolean(),
+  revision: z.string().max(90),
+  filePath: z.string().max(280),
+  fileName: z.string().trim().min(1).max(240),
+  mimeType: z.string().max(160),
+  sizeBytes: z.number().int().positive().max(MAX_DOC_BYTES),
+  category: z.enum([
+    "contrato_aluguel",
+    "termo_vistoria",
+    "checklist_aluguel",
+    "apolice_seguro_fianca",
+    "outro",
+  ]),
+  origin: z.enum(["gerado", "externo"]),
+});
+
+export const registerRentalWorkflowFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(workflowFileInput)
+  .handler(async ({ data, context }) => {
+    if (!ALLOWED_MIME.has(data.mimeType.toLowerCase()))
+      throw new Error("Tipo de arquivo não permitido.");
+    if (
+      data.origin === "gerado" &&
+      (data.category !== "contrato_aluguel" ||
+        !new RegExp(`^${data.contractId}/gen-[0-9a-f]{64}-[^/]+\\.docx$`).test(data.filePath))
+    ) {
+      throw new Error("Identificação da versão do Word inválida.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return requireResult(
+      await supabaseAdmin.rpc(
+        "rental_register_workflow_file" as never,
+        {
+          p_actor: context.userId,
+          p_id: data.contractId,
+          p_revision: data.revision,
+          p_draft: data.draft,
+          p_file: data,
+        } as never,
+      ),
+    ) as unknown as { id: string };
+  });
+
+export const listRentalWorkspaceFiles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ contractId: z.uuid() }))
+  .handler(async ({ data, context }) => {
+    const rows = requireResult(
+      await context.supabase
+        .from("rental_workspace_files" as never)
+        .select(
+          "id,file_path,file_name,mime_type,size_bytes,category,origin,created_at,draft_revision",
+        )
+        .eq("draft_id", data.contractId)
+        .order("created_at", { ascending: false }),
+    ) as unknown as (DocRow & { draft_revision: number })[];
+    return Promise.all(
+      rows.map(async (row) => ({
+        id: row.id,
+        contractId: data.contractId,
+        filePath: row.file_path,
+        fileName: row.file_name,
+        mimeType: row.mime_type,
+        sizeBytes: row.size_bytes,
+        category: normalizeRentalCategory(row.category),
+        origin: row.origin ?? "externo",
+        createdAt: row.created_at,
+        sourceRevision: String(row.draft_revision),
+        reviewedAt: null,
+        reviewCurrent: false,
+        signedAt: null,
+        url: await signDoc(context.supabase, row.file_path),
+      })),
+    );
+  });
+
+function materializeWorkspace(input: RentalWorkspaceInput) {
+  const missing = workspaceBaseIssues(input)[0];
+  if (missing) throw new Error(missing.label);
+  const primary = input.guarantees[0];
+  return {
+    property: { ...propertyPayload(input.property.data), id: input.property.existingId },
+    tenants: input.tenants.map((t) => ({ ...tenantPayload(t.data), id: t.existingId })),
+    guarantees: input.guarantees.map((g) => ({
+      tipo: g.tipo,
+      person: g.guarantor
+        ? { ...guarantorPayload(g.guarantor.data), id: g.guarantor.existingId }
+        : null,
+      valor_caucao: g.tipo === "caucao" ? (g.valorCaucao ?? null) : null,
+      seguro_seguradora: orNull(g.seguroSeguradora),
+      seguro_apolice: orNull(g.seguroApolice),
+      seguro_valor_mensal: g.seguroValorMensal ?? null,
+      conjuge: g.tipo === "fiador" ? sanitizeSpouse(g.conjuge) : null,
+    })),
+    contract: {
+      valor_mensal: input.valorMensal,
+      comissao_mensal: input.comissaoMensal ?? null,
+      valor_caucao: primary?.valorCaucao ?? null,
+      garantia_tipo: primary?.tipo ?? "sem_garantia",
+      seguro_seguradora: orNull(primary?.seguroSeguradora),
+      seguro_apolice: orNull(primary?.seguroApolice),
+      seguro_valor_mensal: primary?.seguroValorMensal ?? null,
+      data_inicio: input.dataInicio,
+      data_fim: input.dataFim,
+      dia_vencimento: input.diaVencimento,
+      status: input.status,
+      payment_status: "pendente",
+      proximo_vencimento: nextDueDate(input.dataInicio, input.diaVencimento),
+      observacoes: orNull(input.observacoes),
+      template_options: input.template,
+    },
+  };
+}
+
+async function confirmWorkflowFile(
+  actor: string,
+  id: string,
+  documentId: string,
+  revision: string | null,
+  reviewed: boolean,
+  payload?: ReturnType<typeof materializeWorkspace>,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const result = requireResult(
+    await supabaseAdmin.rpc(
+      "rental_confirm_workflow_file" as never,
+      {
+        p_actor: actor,
+        p_id: id,
+        p_document: documentId,
+        p_revision: revision,
+        p_reviewed: reviewed,
+        p_materialize: payload ?? null,
+      } as never,
+    ),
+  ) as unknown as { id: string; contractId: string; reviewedAt: string | null };
+  if (
+    result?.id !== documentId ||
+    result.contractId !== id ||
+    Boolean(result.reviewedAt) !== reviewed
+  ) {
+    throw new Error("O servidor não confirmou a conferência deste documento.");
+  }
+  return result;
+}
+
+export const confirmRentalWorkflowFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      id: z.uuid(),
+      documentId: z.uuid(),
+      draft: z.boolean(),
+      revision: z.string().max(90),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const draft = data.draft ? await loadWorkspaceDraft(context.supabase, data.id) : null;
+    return confirmWorkflowFile(
+      context.userId,
+      data.id,
+      data.documentId,
+      data.revision,
+      true,
+      draft ? materializeWorkspace(draft.input) : undefined,
+    );
   });

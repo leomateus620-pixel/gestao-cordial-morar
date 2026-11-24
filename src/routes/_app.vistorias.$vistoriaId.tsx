@@ -2,7 +2,7 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { VistoriaWorkspace } from "@/components/vistoria/inspection-workspace";
 import { useSession } from "@/lib/auth-mock";
 import { InspectionDraftProvider } from "@/lib/vistoria/drafts";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 export const Route = createFileRoute("/_app/vistorias/$vistoriaId")({
   head: () => ({
     meta: [
@@ -15,6 +15,9 @@ export const Route = createFileRoute("/_app/vistorias/$vistoriaId")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  validateSearch: (search: { formulario?: unknown } & SearchSchemaInput) => ({
+    formulario: search.formulario === true ? (true as const) : undefined,
+  }),
   component: () => (
     <RequireModuleAccess module="vistorias">
       <VistoriaPage />
@@ -25,9 +28,10 @@ export const Route = createFileRoute("/_app/vistorias/$vistoriaId")({
 function VistoriaPage() {
   const { vistoriaId } = Route.useParams();
   const user = useSession();
+  const { formulario } = Route.useSearch();
   return (
     <InspectionDraftProvider key={`${user?.id}:${vistoriaId}`} inspectionId={vistoriaId}>
-      <VistoriaWorkspace vistoriaId={vistoriaId} />
+      <VistoriaWorkspace vistoriaId={vistoriaId} returnToRentalForm={formulario} />
     </InspectionDraftProvider>
   );
 }

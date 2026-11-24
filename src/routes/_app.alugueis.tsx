@@ -1,6 +1,10 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getRentalWorkspaceDraft } from "@/lib/rentals/rentals.functions";
+import { Button } from "@/components/ui/button";
 import { CalendarClock, CheckCircle2, Plus, Wallet } from "lucide-react";
 import { useRentals } from "@/hooks/useRentals";
 import { RentalKpiCards } from "@/components/alugueis/RentalKpiCards";
@@ -34,6 +38,8 @@ export const Route = createFileRoute("/_app/alugueis")({
   validateSearch: (
     search: {
       id?: unknown;
+      formulario?: unknown;
+      etapa?: unknown;
       corretorId?: unknown;
       periodo?: unknown;
       imobiliaria?: unknown;
@@ -41,6 +47,8 @@ export const Route = createFileRoute("/_app/alugueis")({
     } & SearchSchemaInput,
   ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
+    formulario: parseBrokerId(search.formulario),
+    etapa: search.etapa === "vistorias" ? ("vistorias" as const) : undefined,
     corretorId: parseBrokerId(search.corretorId),
     periodo: parseOperationalPeriod(search.periodo),
     imobiliaria: parseAgency(search.imobiliaria),
@@ -58,7 +66,15 @@ function GuardedPage() {
 }
 
 function Page() {
-  const { id: highlightedId, corretorId, periodo, imobiliaria, status } = Route.useSearch();
+  const {
+    id: highlightedId,
+    formulario,
+    etapa,
+    corretorId,
+    periodo,
+    imobiliaria,
+    status,
+  } = Route.useSearch();
   const navigate = Route.useNavigate();
   const r = useRentals({
     initialFilter: status,
@@ -73,18 +89,34 @@ function Page() {
   });
   const session = useSession();
   const canViewFinancialInsights = canSeeFinancialInsights(session);
-  const [openForm, setOpenForm] = useState(false);
-  const [editing, setEditing] = useState<RentalContractFull | null>(null);
+  const [freshFormId, setFreshFormId] = useState<string>();
+  const [editing, setEditing] = useState<{ contract: RentalContractFull; field?: string } | null>(
+    null,
+  );
+  const loadDraft = useServerFn(getRentalWorkspaceDraft);
+  const resumed = r.allContracts.find((contract) => contract.id === formulario);
+  const draft = useQuery({
+    queryKey: ["rentals", "workspace-draft", formulario, session?.id],
+    queryFn: () => loadDraft({ data: { id: formulario! } }),
+    enabled: !!formulario && !resumed,
+  });
   const [selectedId, setSelectedId] = useState<string | null>(highlightedId ?? null);
   const selected = r.allContracts.find((contract) => contract.id === selectedId) ?? null;
   const newContractRequested = useRentalFormRequest((state) => state.requested);
 
+  function openNew(id?: string) {
+    const nextId = id ?? crypto.randomUUID();
+    setFreshFormId(id ? undefined : nextId);
+    setEditing(null);
+    setSelectedId(null);
+    void navigate({ search: { formulario: nextId, corretorId, periodo, imobiliaria, status } });
+  }
+
   useEffect(() => {
     if (!newContractRequested) return;
     useRentalFormRequest.getState().consume();
-    setEditing(null);
-    setSelectedId(null);
-    setOpenForm(true);
+    openNew();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newContractRequested]);
 
   useEffect(() => {
@@ -172,7 +204,7 @@ function Page() {
 
           <div className="flex shrink-0 sm:justify-end">
             <button
-              onClick={() => setOpenForm(true)}
+              onClick={() => openNew()}
               className={
                 "group inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white " +
                 "bg-gradient-to-br from-[#1f6a80] via-[#174d61] to-[#0f3a4a] " +
@@ -193,6 +225,35 @@ function Page() {
         <RentalKpiCards kpis={r.kpis} canViewFinancialInsights={canViewFinancialInsights} />
       </section>
 
+      {r.drafts.length > 0 && (
+        <section className="mb-4 rounded-2xl border bg-card p-4" aria-label="Rascunhos de aluguel">
+          <h2 className="mb-2 text-sm font-semibold">Rascunhos</h2>
+          <ul className="flex flex-wrap gap-2">
+            {r.drafts
+              .filter(
+                (item) =>
+                  !imobiliaria ||
+                  imobiliaria === "todas" ||
+                  item.brand === "ambas" ||
+                  item.brand === imobiliaria,
+              )
+              .map((item) => (
+                <li key={item.id}>
+                  <Button variant="outline" onClick={() => openNew(item.id)} className="min-h-11">
+                    Retomar{" "}
+                    {item.name || (item.brand === "morar" ? "aluguel Morar" : "aluguel Cordial")}
+                  </Button>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
+      {r.isDraftsError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          Não foi possível carregar os rascunhos.
+        </p>
+      )}
+
       <section className="mb-4">
         <RentalFilters
           filter={r.filter}
@@ -210,7 +271,7 @@ function Page() {
             Erro ao carregar aluguéis. Tente novamente.
           </div>
         ) : r.allContracts.length === 0 ? (
-          <EmptyRentalState onCreate={() => setOpenForm(true)} />
+          <EmptyRentalState onCreate={() => openNew()} />
         ) : r.contracts.length === 0 ? (
           <div className="glass-panel rounded-3xl p-6 text-center text-xs text-foreground/60">
             Nenhum contrato encontrado para este filtro.
@@ -224,27 +285,75 @@ function Page() {
         )}
       </section>
 
-      <RentalFormModal
-        open={openForm}
-        onOpenChange={(o) => {
-          setOpenForm(o);
-          if (!o) setEditing(null);
-        }}
-        properties={r.properties}
-        tenants={r.tenants}
-        onSubmit={r.saveRental}
-        isSaving={r.isSaving}
-        initial={editing}
-      />
+      {formulario && draft.isError && !resumed && (
+        <p className="my-3 text-sm text-destructive" role="alert">
+          Não foi possível retomar o rascunho.{" "}
+          <Button variant="link" onClick={() => draft.refetch()}>
+            Tentar novamente
+          </Button>
+        </p>
+      )}
+      {formulario &&
+        formulario !== freshFormId &&
+        !r.isLoading &&
+        draft.isSuccess &&
+        !resumed &&
+        !draft.data && (
+          <p role="alert" className="my-3 text-sm text-destructive">
+            Aluguel não encontrado ou fora do seu escopo.
+          </p>
+        )}
+      {(editing || (formulario && (resumed || draft.data || formulario === freshFormId))) && (
+        <RentalFormModal
+          key={editing?.contract.id ?? formulario}
+          open
+          onOpenChange={(open) => {
+            if (open) return;
+            if (editing) {
+              const id = editing.contract.id;
+              setEditing(null);
+              if (editing.field)
+                void navigate({
+                  search: { id, etapa: "vistorias", corretorId, periodo, imobiliaria, status },
+                });
+            }
+            if (formulario) {
+              setFreshFormId(undefined);
+              void navigate({
+                search: { corretorId, periodo, imobiliaria, status },
+                replace: true,
+              });
+            }
+          }}
+          workspaceId={editing?.contract.id ?? formulario!}
+          resumeForm={!editing}
+          focusField={editing?.field}
+          returnToInspections={etapa === "vistorias"}
+          properties={r.properties}
+          tenants={r.tenants}
+          onSubmit={r.saveRental}
+          onSaveDraft={r.saveDraft}
+          onConfirmed={async () => {
+            await r.refreshContracts();
+            if (formulario) await draft.refetch();
+          }}
+          isSaving={r.isSaving}
+          initial={editing?.contract ?? resumed ?? null}
+          draft={draft.data}
+        />
+      )}
 
       <RentalExpandedDetails
         contract={selected}
-        open={selectedId !== null && selected !== null}
+        open={!editing && selectedId !== null && selected !== null}
+        returnToInspections={etapa === "vistorias"}
+        onContractConfirmed={async () => {
+          await r.refreshContracts();
+        }}
         onOpenChange={(o) => !o && clearSelection()}
-        onEdit={(c) => {
-          clearSelection();
-          setEditing(c);
-          setOpenForm(true);
+        onEdit={(contract, field) => {
+          if (!field) clearSelection();
+          setEditing({ contract, field });
         }}
         onClose={async (id) => {
           await r.closeRental(id);

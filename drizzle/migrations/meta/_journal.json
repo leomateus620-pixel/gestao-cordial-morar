@@ -778,6 +778,20 @@
       "when": 1795519192654,
       "tag": "0110_property_gallery_upload_order",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1795525500000,
+      "tag": "0111_rental_contract_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1795525500001,
+      "tag": "0112_rental_inspection_scope",
+      "breakpoints": true
     }
   ]
 }

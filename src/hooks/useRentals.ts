@@ -8,6 +8,8 @@ import {
   deleteRentalContract as deleteFn,
   getRentalKpis as kpisFn,
   listRentalContracts,
+  listRentalWorkspaceDrafts,
+  saveRentalWorkspaceDraft,
   listRentalProperties,
   listRentalTenants,
   markRentalPaymentPaid as markPaidFn,
@@ -45,6 +47,20 @@ export function useRentals(options: UseRentalsOptions = {}) {
   const remove = useServerFn(deleteFn);
   const lookupProps = useServerFn(listRentalProperties);
   const lookupTenants = useServerFn(listRentalTenants);
+
+  const listDrafts = useServerFn(listRentalWorkspaceDrafts);
+  const saveDraft = useServerFn(saveRentalWorkspaceDraft);
+  const draftsQuery = useQuery({
+    queryKey: ["rentals", "workspace-drafts"],
+    queryFn: () => listDrafts(),
+    staleTime: 30_000,
+  });
+  const draftMutation = useMutation({
+    mutationFn: (data: Parameters<typeof saveDraft>[0]["data"]) => saveDraft({ data }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["rentals", "workspace-drafts"] });
+    },
+  });
 
   const contractsQuery = useQuery<RentalContractFull[]>({
     queryKey: ["rentals", "contracts"],
@@ -177,6 +193,10 @@ export function useRentals(options: UseRentalsOptions = {}) {
 
   return {
     contracts: filtered,
+    drafts: draftsQuery.data ?? [],
+    isDraftsError: draftsQuery.isError,
+    saveDraft: draftMutation.mutateAsync,
+    refreshContracts: contractsQuery.refetch,
     allContracts: contracts,
     kpis: contextualKpis,
     properties: propsQuery.data ?? [],

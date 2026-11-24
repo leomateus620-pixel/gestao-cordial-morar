@@ -1,465 +1,717 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { FileText, Download, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowRight, Check, CircleAlert, Download, FileText, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { RentalContractFull } from "@/types/rental";
-import {
-  qualifySpouse,
-  fillContract,
-  insurersForBrand,
-  missingFields,
-  qualify,
-  type ContractBrand,
-  type ContractGuarantee,
-  type ContractInsurer,
-} from "@/lib/rentals/contract-generator";
-import { CONTRACT_TEMPLATES } from "@/lib/rentals/contract-templates";
-import { contractTextToDocx } from "@/lib/rentals/contract-docx";
 import { useRentalDocuments } from "@/hooks/useRentalDocuments";
+import { supabase } from "@/integrations/supabase/client";
+import { CONTRACT_TEMPLATES } from "@/lib/rentals/contract-templates";
+import {
+  CONTRACT_GROUPS,
+  GUARANTEE_LABEL,
+  contractWorkflowReview,
+  workspaceBaseIssues,
+  type RentalTemplateOptions,
+  type RentalWorkspaceInput,
+} from "@/lib/rentals/contract-workflow";
+import {
+  contractVersionKey,
+  loadContractLetterhead,
+  sha256Hex,
+  type ContractLetterhead,
+} from "@/lib/rentals/contract-letterhead";
+import { prepareRentalContractPreview } from "@/lib/rentals/rentals.functions";
 
-const GUARANTEE_LABEL: Record<ContractGuarantee, string> = {
-  fiador: "Fiador",
-  caucao: "Caução",
-  seguro_fianca: "Seguro-fiança",
+const WORD_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const BRAND_LABEL = { cordial: "Cordial Imóveis", morar: "Morar Imóveis" } as const;
+type Preview = {
+  text: string;
+  revision: string;
+  key: string;
+  fileName: string;
+  model: string;
+  letterhead: ContractLetterhead;
 };
 
-function propertyAddress(c: RentalContractFull): string {
-  const p = c.property;
-  return [
-    [p.logradouro, p.numero ? `n° ${p.numero}` : null, p.complemento].filter(Boolean).join(", "),
-    p.bairro ? `bairro ${p.bairro}` : null,
-    p.cidade ? `na cidade de ${p.cidade}${p.uf ? `, ${p.uf}` : ""}` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
+export function focusRentalField(scope: HTMLElement | null, field: string) {
+  const target = scope?.querySelector<HTMLElement>(`[data-rental-field="${CSS.escape(field)}"]`);
+  if (!target) return false;
+  const details = target.closest("details");
+  if (details) details.open = true;
+  target.scrollIntoView({ block: "center" });
+  const control = target.matches("input,select,textarea,button")
+    ? target
+    : (target.querySelector<HTMLElement>("input,select,textarea,button") ?? target);
+  control.focus({ preventScroll: true });
+  return true;
 }
 
-const toNum = (s: string) => {
-  const n = Number(s.replace(/\./g, "").replace(",", "."));
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
+type Party = NonNullable<RentalTemplateOptions["owner"]>;
+const PARTY_FIELDS: { key: keyof Party; label: string }[] = [
+  { key: "nationality", label: "Nacionalidade" },
+  { key: "maritalStatus", label: "Estado civil" },
+  { key: "rg", label: "RG" },
+  { key: "profession", label: "Profissão" },
+  { key: "address", label: "Endereço" },
+];
+function PartyFields({
+  label,
+  prefix,
+  value,
+  onChange,
+  coreOnly = false,
+}: {
+  label: string;
+  prefix: string;
+  value?: Party;
+  onChange: (value: Party) => void;
+  coreOnly?: boolean;
+}) {
+  return (
+    <fieldset className="grid gap-2 rounded-xl border border-border/70 p-3 sm:grid-cols-2">
+      <legend className="px-1 text-xs font-semibold">{label}</legend>
+      {(coreOnly ? PARTY_FIELDS.slice(0, 3) : PARTY_FIELDS).map(({ key, label: fieldLabel }) => (
+        <label className="space-y-1 text-xs font-medium" key={key}>
+          <span>{fieldLabel}</span>
+          <Input
+            data-rental-field={`extra-${prefix}-${key}`}
+            value={value?.[key] ?? ""}
+            maxLength={240}
+            onChange={(event) => onChange({ ...value, [key]: event.target.value })}
+          />
+        </label>
+      ))}
+    </fieldset>
+  );
+}
 
-export function RentalContractGenerator({ contract }: { contract: RentalContractFull }) {
-  const [open, setOpen] = useState(false);
-  const insurersQ = useQuery({
+function TemplateFields({
+  input,
+  onChange,
+}: {
+  input: RentalWorkspaceInput;
+  onChange: (next: RentalTemplateOptions) => void;
+}) {
+  const { template, guarantees, brand, tenants } = input;
+  const usesGuarantee = guarantees[0]?.tipo;
+  const selectedBrand = brand === "ambas" ? template.modelBrand : brand;
+  const model =
+    selectedBrand && usesGuarantee ? CONTRACT_TEMPLATES[`${selectedBrand}-${usesGuarantee}`] : "";
+  const updateParty = (group: "tenants" | "guarantors", index: number, party: Party) => {
+    const members = group === "tenants" ? tenants : guarantees;
+    onChange({
+      ...template,
+      [group]: members.map((_, i) => (i === index ? party : (template[group]?.[i] ?? {}))),
+    });
+  };
+  return (
+    <details className="rounded-xl border border-border/70 bg-background">
+      <summary className="min-h-11 cursor-pointer px-3 py-2.5 text-sm font-semibold focus-visible:outline-primary">
+        Dados do modelo
+      </summary>
+      <div className="space-y-4 border-t p-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {brand === "ambas" && (
+            <label className="space-y-1 text-xs font-medium">
+              <span>Imobiliária do contrato</span>
+              <select
+                data-rental-field="template-brand"
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                value={template.modelBrand ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...template,
+                    modelBrand:
+                      (e.target.value as RentalTemplateOptions["modelBrand"]) || undefined,
+                  })
+                }
+              >
+                <option value="">Selecione</option>
+                <option value="cordial">Cordial Imóveis</option>
+                <option value="morar">Morar Imóveis</option>
+              </select>
+            </label>
+          )}
+          <label className="space-y-1 text-xs font-medium">
+            <span>Data prevista para assinatura</span>
+            <Input
+              data-rental-field="template-date"
+              type="date"
+              value={template.signedOn ?? ""}
+              onChange={(e) => onChange({ ...template, signedOn: e.target.value })}
+            />
+          </label>
+          {model.includes("{{matricula}}") && (
+            <label className="space-y-1 text-xs font-medium">
+              <span>Matrícula do imóvel</span>
+              <Input
+                data-rental-field="template-registration"
+                value={template.registration ?? ""}
+                onChange={(e) => onChange({ ...template, registration: e.target.value })}
+              />
+            </label>
+          )}
+        </div>
+        <PartyFields
+          label="Locador"
+          prefix="owner"
+          value={template.owner}
+          onChange={(owner) => onChange({ ...template, owner })}
+        />
+        {tenants.map((_, i) => (
+          <PartyFields
+            key={i}
+            label={`Locatário ${i + 1}`}
+            prefix={`tenant-${i}`}
+            value={template.tenants?.[i]}
+            onChange={(party) => updateParty("tenants", i, party)}
+            coreOnly
+          />
+        ))}
+        {guarantees.map(
+          (guarantee, i) =>
+            guarantee.tipo === "fiador" && (
+              <PartyFields
+                key={i}
+                label={`Fiador ${i + 1}`}
+                prefix={`guarantor-${i}`}
+                value={template.guarantors?.[i]}
+                onChange={(party) => updateParty("guarantors", i, party)}
+              />
+            ),
+        )}
+        {model.includes("{{bens_fiadores}}") && (
+          <label className="block space-y-1 text-xs font-medium">
+            <span>Bens oferecidos pelos fiadores</span>
+            <Textarea
+              data-rental-field="template-assets"
+              rows={3}
+              value={template.guarantorAssets ?? ""}
+              onChange={(e) => onChange({ ...template, guarantorAssets: e.target.value })}
+            />
+          </label>
+        )}
+        {usesGuarantee === "seguro_fianca" && (
+          <label className="block space-y-1 text-xs font-medium">
+            <span>Parcelas do seguro</span>
+            <Input
+              type="number"
+              min={1}
+              max={120}
+              value={template.insuranceInstallments ?? 12}
+              onChange={(e) =>
+                onChange({
+                  ...template,
+                  insuranceInstallments: e.target.valueAsNumber || undefined,
+                })
+              }
+            />
+          </label>
+        )}
+      </div>
+    </details>
+  );
+}
+
+export function RentalContractWorkflow({
+  id,
+  input,
+  onTemplateChange,
+  onFocusField,
+  persistDraft,
+  beforePreview,
+  onConfirmed,
+  changesPending = false,
+}: {
+  id: string;
+  input: RentalWorkspaceInput;
+  onTemplateChange: (next: RentalTemplateOptions) => void;
+  onFocusField: (field: string) => void;
+  persistDraft?: () => Promise<number>;
+  beforePreview?: () => Promise<unknown>;
+  changesPending?: boolean;
+  onConfirmed?: () => void | Promise<void>;
+}) {
+  const container = useRef<HTMLElement>(null);
+  const external = useRef<HTMLInputElement>(null);
+  const lock = useRef(false);
+  const draft = Boolean(persistDraft);
+  const documents = useRentalDocuments(id, draft);
+  const prepare = useServerFn(prepareRentalContractPreview);
+  const queryClient = useQueryClient();
+  const insurers = useQuery({
     queryKey: ["rental-insurers", "contract"],
-    enabled: open,
-    queryFn: async (): Promise<ContractInsurer[]> => {
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("rental_insurers")
-        .select("id,nome,brands,clause_template,active")
-        .order("nome");
+        .select("id,nome,brands,clause_template,active");
       if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return data.map((r) => ({
         id: r.id,
         nome: r.nome,
-        brands: r.brands as string[],
+        brands: r.brands,
         clauseTemplate: r.clause_template,
         active: r.active,
       }));
     },
   });
-
-  const primary = contract.guarantees[0];
-  const initialGuarantee: ContractGuarantee =
-    primary?.tipo ?? (contract.garantiaTipo !== "sem_garantia" ? contract.garantiaTipo : "fiador");
-  const [brand, setBrand] = useState<ContractBrand>(
-    contract.brand === "morar" ? "morar" : "cordial",
-  );
-  const [guarantee, setGuarantee] = useState<ContractGuarantee>(initialGuarantee);
-  const [insurerId, setInsurerId] = useState("");
-  const [locador, setLocador] = useState("");
-  const [locatarios, setLocatarios] = useState<string[]>([]);
-  const [fiadores, setFiadores] = useState<string[]>([]);
-  const spouses = useMemo(
-    () =>
-      contract.guarantees
-        .filter((g) => g.tipo === "fiador" && g.guarantor)
-        .map((g) => (g.conjuge?.enabled ? qualifySpouse(g.conjuge) : null)),
-    [contract.guarantees],
-  );
-  const [endereco, setEndereco] = useState("");
-  const [matricula, setMatricula] = useState("");
-  const [bens, setBens] = useState("");
-  const [aluguel, setAluguel] = useState("");
-  const [caucao, setCaucao] = useState("");
-  const [seguroMensal, setSeguroMensal] = useState("");
-  const [parcelas, setParcelas] = useState("12");
-  const [dataAssinatura, setDataAssinatura] = useState(new Date().toISOString().slice(0, 10));
+  const review = contractWorkflowReview(input, CONTRACT_TEMPLATES, insurers.data ?? []);
+  const letterhead = useQuery({
+    queryKey: ["rental-letterhead", review.brand],
+    queryFn: () => loadContractLetterhead(review.brand!),
+    enabled: !!review.brand && (review.guarantee !== "seguro_fianca" || !insurers.isError),
+    staleTime: Infinity,
+    retry: false,
+  });
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmedInput, setConfirmedInput] = useState<string | null>(null);
+  const inputSnapshot = JSON.stringify(input);
+  const [externalCandidate, setExternalCandidate] = useState<File | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setLocador(
-      qualify({
-        nome: contract.property.proprietarioNome,
-        cpfCnpj: contract.property.proprietarioCpf,
-      }),
-    );
-    const tenants = contract.tenants.length ? contract.tenants : [contract.tenant];
-    setLocatarios(tenants.map((t) => qualify(t)));
-    setFiadores(
-      contract.guarantees
-        .filter((g) => g.tipo === "fiador" && g.guarantor)
-        .map((g) => qualify(g.guarantor!)),
-    );
-    setEndereco(propertyAddress(contract));
-    setAluguel(String(contract.valorMensal).replace(".", ","));
-    const cau =
-      contract.guarantees.find((g) => g.tipo === "caucao")?.valorCaucao ?? contract.valorCaucao;
-    setCaucao(cau ? String(cau).replace(".", ",") : "");
-    const seg = contract.guarantees.find((g) => g.tipo === "seguro_fianca");
-    setSeguroMensal(seg?.seguroValorMensal ? String(seg.seguroValorMensal).replace(".", ",") : "");
-  }, [open, contract]);
-
-  const available = useMemo(
-    () => insurersForBrand(insurersQ.data ?? [], brand),
-    [insurersQ.data, brand],
+  const contractDocs = documents.documents.filter((doc) => doc.category === "contrato_aluguel");
+  const current = !changesPending && contractDocs.some((doc) => doc.reviewCurrent);
+  const requiresNewReview = !current && contractDocs.some((doc) => doc.reviewedAt);
+  const externalCurrent = contractDocs.find(
+    (doc) => doc.origin === "externo" && !doc.reviewCurrent,
   );
-  useEffect(() => {
-    if (insurerId && available.some((i) => i.id === insurerId)) return;
-    const name =
-      contract.guarantees
-        .find((g) => g.tipo === "seguro_fianca")
-        ?.seguroSeguradora?.toLowerCase() ?? "";
-    setInsurerId(available.find((i) => name && name.includes(i.nome.toLowerCase()))?.id ?? "");
-  }, [available, insurerId, contract.guarantees]);
+  const pending =
+    (review.guarantee === "seguro_fianca" && insurers.isError
+      ? "Não foi possível carregar as seguradoras"
+      : review.issues[0]?.label) ??
+    (letterhead.isError
+      ? "Logo ou endereço institucional"
+      : !letterhead.data
+        ? "Aguardando timbre da imobiliária"
+        : null);
+  const focus = (field: string) => {
+    if (!focusRentalField(container.current, field)) onFocusField(field);
+  };
 
-  const text = useMemo(
-    () =>
-      fillContract(CONTRACT_TEMPLATES[`${brand}-${guarantee}`], {
-        brand,
-        guarantee,
-        locador: { label: "Locador", qualificacao: locador },
-        locatarios: locatarios.map((q) => ({ label: "Locatário", qualificacao: q })),
-        fiadores:
-          guarantee === "fiador" ? fiadores.map((q, i) => ({
-                label: "Fiador",
-                qualificacao: q,
-                conjuge: spouses[i] ?? null,
-              })) : [],
-        imovelEndereco: endereco,
-        matricula,
-        bensFiadores: bens,
-        dataInicio: contract.dataInicio,
-        dataAssinatura,
-        valorAluguel: toNum(aluguel),
-        valorCaucao: toNum(caucao),
-        insurer: available.find((i) => i.id === insurerId) ?? null,
-        seguroValorMensal: toNum(seguroMensal),
-        seguroParcelas: Math.max(1, Number(parcelas) || 12),
-      }),
-    [
-      brand,
-      guarantee,
-      locador,
-      locatarios,
-      fiadores,
-      spouses,
-      endereco,
-      matricula,
-      bens,
-      contract.dataInicio,
-      dataAssinatura,
-      aluguel,
-      caucao,
-      available,
-      insurerId,
-      seguroMensal,
-      parcelas,
-    ],
-  );
-  const missing = missingFields(text);
-  const { saveGeneratedContract, setDocumentReviewed } = useRentalDocuments(contract.id);
-  // Uma chave por versão do texto: clique duplo e nova tentativa reaproveitam o mesmo arquivo.
-  const versionKey = useMemo(() => stableKey(`${contract.id}|${brand}|${guarantee}|${text}`), [contract.id, brand, guarantee, text]);
-  const [saved, setSaved] = useState<{ key: string; documentId: string } | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const isSaved = saved?.key === versionKey;
-  const inFlight = useRef(false);
-
-  async function buildFile() {
-    const blob = await contractTextToDocx(text);
-    const fileName = `Contrato gerado - ${brand} - ${GUARANTEE_LABEL[guarantee]} - v${versionKey.slice(0, 8)}.docx`;
-    return new File([blob], fileName, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-  }
-
-  async function confirmAndSave() {
-    if (missing.length || busy || isSaved || inFlight.current) return;
-    inFlight.current = true;
+  async function run(action: () => Promise<void>) {
+    if (lock.current) return;
+    lock.current = true;
+    setError(null);
     setBusy(true);
-    setSaveError(null);
     try {
-      const file = await buildFile();
-      const doc = (await saveGeneratedContract(file, versionKey)) as { id?: string } | null;
-      if (!doc?.id) throw new Error("O arquivo não foi registrado no aluguel.");
-      await setDocumentReviewed(doc.id, true);
-      setSaved({ key: versionKey, documentId: doc.id });
-      toast.success("Contrato salvo nos documentos do aluguel e marcado como conferido.");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Falha ao salvar.";
-      setSaveError(msg);
-      toast.error("Não consegui salvar o contrato no aluguel. Seus dados continuam aqui — tente de novo.");
+      await action();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Não foi possível concluir. Tente novamente.",
+      );
     } finally {
-      inFlight.current = false;
+      lock.current = false;
       setBusy(false);
     }
   }
 
-  async function download() {
-    if (missing.length) return;
-    try {
-      const file = await buildFile();
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Contrato de locação - ${GUARANTEE_LABEL[guarantee]} - ${contract.tenant.nome}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Não foi possível gerar o arquivo. Tente de novo.");
-    }
+  function showPreview() {
+    void run(async () => {
+      if (!letterhead.data || review.issues.length) return;
+      await beforePreview?.();
+      const revision = await persistDraft?.();
+      const { data: identity } = letterhead;
+      const result = await prepare({ data: { id, draft, revision, template: input.template } });
+      if (!result.text || !result.brand || !result.guarantee || result.brand !== review.brand)
+        throw new Error("O cadastro mudou. Revise os dados e gere novamente.");
+      let key = await contractVersionKey(result.text, identity, result.versionContext);
+      const { data: latestDocs, error: docsError } = await documents.refreshDocuments();
+      if (docsError)
+        throw new Error("Não foi possível conferir as versões salvas. Tente novamente.");
+      const previous = latestDocs?.find((doc) => doc.filePath.includes(`/${key}-`));
+      if (previous && previous.sourceRevision !== result.revision) {
+        key = await contractVersionKey(
+          result.text,
+          identity,
+          `${result.versionContext}|${result.revision}`,
+        );
+      }
+      setPreview({
+        text: result.text,
+        revision: result.revision,
+        key,
+        letterhead: identity,
+        model: `${GUARANTEE_LABEL[result.guarantee]}${result.purpose === "geral" ? "" : ` · ${result.purpose}`}`,
+        fileName: `Contrato - ${BRAND_LABEL[result.brand]} - ${GUARANTEE_LABEL[result.guarantee]}.docx`,
+      });
+      if (!draft) {
+        void queryClient.invalidateQueries({ queryKey: ["rental-entry-inspection", id] });
+        void queryClient.invalidateQueries({ queryKey: ["rentals", "documents", id] });
+      }
+    });
   }
 
-  const field = "space-y-1.5";
+  async function complete(documentId: string, revision?: string) {
+    const saved =
+      revision === undefined
+        ? await documents.setDocumentReviewed(documentId, true)
+        : await documents.confirmWorkflowFile({ documentId, revision });
+    if (saved.id !== documentId || saved.contractId !== id || !saved.reviewedAt) {
+      throw new Error("A conferência ainda está pendente. Tente novamente.");
+    }
+    setConfirmedInput(inputSnapshot);
+    setPreview(null);
+    await onConfirmed?.();
+  }
+
+  function attach(file: File) {
+    setExternalCandidate(file);
+    void run(async () => {
+      const revision = await persistDraft?.();
+      const key = `ext-${await sha256Hex(await file.arrayBuffer())}`;
+      await documents.uploadWorkflowFile({
+        file,
+        key,
+        revision: String(revision ?? ""),
+        origin: "externo",
+        category: "contrato_aluguel",
+      });
+      setExternalCandidate(null);
+    });
+  }
+
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="gap-2">
-        <FileText className="h-4 w-4" /> Gerar contrato
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Gerar contrato de locação</DialogTitle>
-            <DialogDescription>
-              Confira os dados. O que estiver marcado como “PREENCHER” precisa ser completado antes
-              de baixar.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className={field}>
-                  <Label>Modelo da imobiliária</Label>
-                  <select
-                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value as ContractBrand)}
-                    disabled={contract.brand !== "ambas"}
-                  >
-                    <option value="cordial">Cordial</option>
-                    <option value="morar">Morar</option>
-                  </select>
-                </div>
-                <div className={field}>
-                  <Label>Garantia</Label>
-                  <select
-                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                    value={guarantee}
-                    onChange={(e) => setGuarantee(e.target.value as ContractGuarantee)}
-                  >
-                    {(Object.keys(GUARANTEE_LABEL) as ContractGuarantee[]).map((g) => (
-                      <option key={g} value={g}>
-                        {GUARANTEE_LABEL[g]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {guarantee === "seguro_fianca" && (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={`${field} col-span-3`}>
-                    <Label>Seguradora contratada pelo inquilino</Label>
-                    <select
-                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                      value={insurerId}
-                      onChange={(e) => setInsurerId(e.target.value)}
-                    >
-                      <option value="">Escolha…</option>
-                      {available.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={field}>
-                    <Label>Valor mensal do seguro (R$)</Label>
-                    <Input
-                      inputMode="decimal"
-                      value={seguroMensal}
-                      onChange={(e) => setSeguroMensal(e.target.value)}
-                    />
-                  </div>
-                  <div className={field}>
-                    <Label>Parcelas</Label>
-                    <Input
-                      inputMode="numeric"
-                      value={parcelas}
-                      onChange={(e) => setParcelas(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className={field}>
-                  <Label>Aluguel (R$)</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={aluguel}
-                    onChange={(e) => setAluguel(e.target.value)}
-                  />
-                </div>
-                {guarantee === "caucao" && (
-                  <div className={field}>
-                    <Label>Caução (R$)</Label>
-                    <Input
-                      inputMode="decimal"
-                      value={caucao}
-                      onChange={(e) => setCaucao(e.target.value)}
-                    />
-                  </div>
-                )}
-                <div className={field}>
-                  <Label>Data da assinatura</Label>
-                  <Input
-                    type="date"
-                    value={dataAssinatura}
-                    onChange={(e) => setDataAssinatura(e.target.value)}
-                  />
-                </div>
-                <div className={field}>
-                  <Label>Matrícula do imóvel</Label>
-                  <Input value={matricula} onChange={(e) => setMatricula(e.target.value)} />
-                </div>
-              </div>
-              <div className={field}>
-                <Label>Endereço do imóvel</Label>
-                <Input value={endereco} onChange={(e) => setEndereco(e.target.value)} />
-              </div>
-              <div className={field}>
-                <Label>Locador(a)</Label>
-                <Textarea rows={3} value={locador} onChange={(e) => setLocador(e.target.value)} />
-              </div>
-              {locatarios.map((q, i) => (
-                <div key={`t${i}`} className={field}>
-                  <Label>Locatário(a) {locatarios.length > 1 ? i + 1 : ""}</Label>
-                  <Textarea
-                    rows={3}
-                    value={q}
-                    onChange={(e) =>
-                      setLocatarios((l) => l.map((x, j) => (j === i ? e.target.value : x)))
-                    }
-                  />
-                </div>
-              ))}
-              {guarantee === "fiador" && (
-                <>
-                  {fiadores.map((q, i) => (
-                    <div key={`f${i}`} className={field}>
-                      <Label>Fiador(a) {i + 1}</Label>
-                      <Textarea
-                        rows={3}
-                        value={q}
-                        onChange={(e) =>
-                          setFiadores((l) => l.map((x, j) => (j === i ? e.target.value : x)))
-                        }
-                      />
-                    </div>
+    <section
+      ref={container}
+      className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
+      aria-label="Checklist do contrato"
+    >
+      <header className="flex items-start justify-between gap-2">
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold tracking-tight">Checklist do contrato</h3>
+          {review.brand && (
+            <p className="text-sm text-muted-foreground">{BRAND_LABEL[review.brand]}</p>
+          )}
+        </div>
+        <span
+          role="status"
+          className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+        >
+          {current || confirmedInput === inputSnapshot
+            ? "Contrato conferido"
+            : requiresNewReview
+              ? "Nova conferência necessária"
+              : review.issues.length
+                ? `${review.issues.length} ${review.issues.length === 1 ? "pendência" : "pendências"}`
+                : "Checklist concluído"}
+        </span>
+      </header>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {CONTRACT_GROUPS.map((group) => {
+          const issues = review.issues.filter((issue) => issue.group === group);
+          return (
+            <details key={group} className="min-w-0 rounded-xl border bg-background px-3 py-2">
+              <summary className="cursor-pointer rounded-sm text-sm focus-visible:outline-primary">
+                <span className="inline-flex items-center gap-2">
+                  <strong>{group}</strong>
+                  {issues.length ? (
+                    <span className="text-muted-foreground">{issues.length}</span>
+                  ) : (
+                    <Check className="size-4 text-primary" aria-label="Completo" />
+                  )}
+                </span>
+              </summary>
+              {issues.length ? (
+                <ul className="mt-1 divide-y divide-border/70">
+                  {issues.map((issue) => (
+                    <li key={issue.field}>
+                      <button
+                        type="button"
+                        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-sm py-1.5 text-left text-xs font-medium text-primary hover:underline focus-visible:outline-primary"
+                        onClick={() => focus(issue.field)}
+                      >
+                        {issue.label}
+                        <ArrowRight className="size-3.5 shrink-0" />
+                      </button>
+                    </li>
                   ))}
+                </ul>
+              ) : (
+                <p className="pt-1 text-xs text-muted-foreground">Completo</p>
+              )}
+            </details>
+          );
+        })}
+      </div>
+
+      <div className="space-y-1.5">
+        <Button
+          type="button"
+          className="min-h-11 w-full"
+          onClick={showPreview}
+          disabled={busy || !!pending}
+          aria-describedby={pending ? `pending-${id}` : undefined}
+        >
+          <FileText aria-hidden /> {busy && !preview ? "Salvando…" : "Gerar contrato"}
+        </Button>
+        {pending && (
+          <p className="text-xs text-muted-foreground" id={`pending-${id}`}>
+            {pending}
+          </p>
+        )}
+        {insurers.isError && review.guarantee === "seguro_fianca" && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => insurers.refetch()}>
+            Recarregar seguradoras
+          </Button>
+        )}
+        {letterhead.isError && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => letterhead.refetch()}>
+            Verificar timbre novamente
+          </Button>
+        )}
+      </div>
+
+      <TemplateFields input={input} onChange={onTemplateChange} />
+      <section className="space-y-2 border-t pt-3" aria-label="Contratos registrados">
+        <input
+          ref={external}
+          type="file"
+          hidden
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) attach(file);
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 px-2 text-primary"
+          disabled={busy}
+          onClick={() => external.current?.click()}
+        >
+          <Paperclip /> Anexar contrato existente
+        </Button>
+        {externalCandidate && !busy && (
+          <Button type="button" variant="outline" onClick={() => attach(externalCandidate)}>
+            Tentar envio novamente
+          </Button>
+        )}
+        {documents.isError && (
+          <p role="alert" className="text-xs text-destructive">
+            Não foi possível carregar os contratos registrados.
+          </p>
+        )}
+        {contractDocs.length > 0 && (
+          <ul className="space-y-2">
+            {contractDocs.map((doc) => (
+              <li
+                key={doc.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-muted/40 px-3 py-2 text-xs"
+              >
+                <span className="min-w-0 flex-1 break-all font-medium">
+                  {doc.url || doc.driveUrl ? (
+                    <a
+                      className="text-primary underline underline-offset-2"
+                      href={doc.url ?? doc.driveUrl ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {doc.fileName}
+                    </a>
+                  ) : (
+                    doc.fileName
+                  )}
+                </span>
+                <span>{doc.origin === "gerado" ? "Gerado" : "Anexado"}</span>
+                {doc.reviewedAt && (
+                  <span>{doc.reviewCurrent ? "Conferido" : "Conferido em revisão anterior"}</span>
+                )}
+                {doc.signedAt && <span>Assinado</span>}
+                {doc.id === externalCurrent?.id && (
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
-                    onClick={() => setFiadores((l) => [...l, qualify({})])}
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        if (draft) {
+                          const issue = workspaceBaseIssues(input)[0];
+                          if (issue) {
+                            focus(issue.field);
+                            throw new Error(issue.label);
+                          }
+                          const revision = await persistDraft?.();
+                          await complete(doc.id, String(revision));
+                        } else await complete(doc.id);
+                      })
+                    }
                   >
-                    + Adicionar fiador
+                    Marcar como conferido
                   </Button>
-                  <div className={field}>
-                    <Label>Bens oferecidos pelos fiadores</Label>
-                    <Textarea
-                      rows={3}
-                      value={bens}
-                      onChange={(e) => setBens(e.target.value)}
-                      placeholder="a) Imóvel de Matrícula nº …"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="space-y-3">
-              {missing.length > 0 ? (
-                <div className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  <div>
-                    <p className="font-medium">Falta preencher:</p>
-                    <p className="text-muted-foreground">{missing.join(", ")}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-                  Tudo preenchido. Revise a prévia e baixe o contrato.
-                </p>
-              )}
-              <div
-                className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-md border bg-card p-4 text-xs leading-relaxed"
-                data-testid="contract-preview"
-              >
-                {text}
-              </div>
-              {saveError && (
-                <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-                  Não foi salvo no aluguel: {saveError}
-                </p>
-              )}
-              {isSaved && (
-                <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm" data-testid="contract-saved">
-                  Esta versão está salva nos documentos do aluguel e conferida. Vistoria de entrada liberada.
-                </p>
-              )}
-              <Button
-                className="w-full gap-2"
-                disabled={missing.length > 0 || busy || isSaved}
-                onClick={confirmAndSave}
-              >
-                {saveError ? "Tentar salvar de novo" : isSaved ? "Contrato salvo" : "Confirmar e salvar contrato"}
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                disabled={missing.length > 0}
-                onClick={download}
-              >
-                <Download className="h-4 w-4" /> Baixar contrato (Word)
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+                )}
+                {doc.origin === "gerado" && !doc.reviewedAt && (
+                  <span className="text-primary">Conferência pendente</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {error && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <CircleAlert className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </p>
+      )}
+      {preview && (
+        <RentalContractGenerator
+          preview={preview}
+          error={error}
+          busy={busy}
+          registeredId={contractDocs.find((doc) => doc.filePath.includes(`/${preview.key}-`))?.id}
+          onClose={() => {
+            if (!busy) {
+              setPreview(null);
+              setError(null);
+            }
+          }}
+          onConfirm={(documentId, getFile, rememberDocument) =>
+            void run(async () => {
+              let registered = documentId;
+              if (!registered) {
+                const result = await documents.uploadWorkflowFile({
+                  file: await getFile(),
+                  key: preview.key,
+                  revision: preview.revision,
+                  origin: "gerado",
+                  category: "contrato_aluguel",
+                });
+                if (!result.id) throw new Error("O Word ainda não foi registrado.");
+                registered = result.id;
+                rememberDocument(result.id);
+              }
+              await complete(registered, preview.revision);
+            })
+          }
+        />
+      )}
+    </section>
   );
 }
 
-/** Hash curto e determinístico (FNV-1a) para a chave da versão. */
-function stableKey(input: string): string {
-  let h1 = 0x811c9dc5, h2 = 0x01000193;
-  for (let i = 0; i < input.length; i++) {
-    const c = input.charCodeAt(i);
-    h1 = Math.imul(h1 ^ c, 16777619);
-    h2 = Math.imul(h2 ^ c, 2246822519);
+export function RentalContractGenerator({
+  preview,
+  error,
+  busy,
+  registeredId,
+  onClose,
+  onConfirm,
+}: {
+  preview: Preview;
+  error: string | null;
+  busy: boolean;
+  registeredId?: string;
+  onClose: () => void;
+  onConfirm: (
+    documentId: string | undefined,
+    getFile: () => Promise<File>,
+    rememberDocument: (documentId: string) => void,
+  ) => void;
+}) {
+  const file = useRef<Promise<File> | null>(null);
+  const [savedId, remember] = useState(registeredId);
+  const [downloadError, setDownloadError] = useState(false);
+  const documentId = savedId ?? registeredId;
+  function getFile() {
+    file.current ??= import("@/lib/rentals/contract-docx")
+      .then(async ({ contractTextToDocx }) => {
+        const blob = await contractTextToDocx(preview.text, preview.letterhead);
+        return new File([blob], preview.fileName, { type: WORD_MIME });
+      })
+      .catch((cause) => {
+        file.current = null;
+        throw cause;
+      });
+    return file.current;
   }
-  const hex = (n: number) => (n >>> 0).toString(16).padStart(8, "0");
-  return `gen-${hex(h1)}${hex(h2)}`;
+  async function download() {
+    try {
+      setDownloadError(false);
+      const url = URL.createObjectURL(await getFile());
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = preview.fileName;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    } catch {
+      setDownloadError(true);
+    }
+  }
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="flex h-dvh max-h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[90dvh] sm:max-w-4xl sm:rounded-2xl">
+        <header className="shrink-0 border-b px-5 py-4 pr-12">
+          <DialogTitle>Prévia do contrato</DialogTitle>
+          <DialogDescription>
+            {preview.letterhead.name} · {preview.model} · Checklist concluído
+          </DialogDescription>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/50 p-3 sm:p-6">
+          <article className="mx-auto max-w-3xl rounded-lg border bg-card px-5 py-6 shadow-sm sm:px-12">
+            <img
+              src={preview.letterhead.logo}
+              alt={preview.letterhead.name}
+              className="mx-auto h-11 w-auto object-contain"
+            />
+            <div
+              className="my-5 whitespace-pre-wrap break-words text-sm leading-relaxed"
+              data-testid="contract-preview"
+            >
+              {preview.text}
+            </div>
+            <p className="border-t pt-3 text-center text-xs text-muted-foreground">
+              {preview.letterhead.address}
+            </p>
+          </article>
+        </div>
+        <footer className="shrink-0 space-y-2 border-t bg-background px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+          {(error || downloadError) && (
+            <p role="alert" className="text-sm text-destructive">
+              {downloadError
+                ? "Não foi possível baixar o Word. Tente novamente."
+                : `${documentId ? "Word registrado. Conferência pendente. " : ""}${error}`}
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              onClick={() => void download()}
+            >
+              <Download /> Baixar Word
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11 flex-1 sm:flex-none"
+              disabled={busy}
+              onClick={() => onConfirm(documentId, getFile, remember)}
+            >
+              {busy
+                ? "Salvando…"
+                : documentId
+                  ? "Confirmar conferência"
+                  : "Confirmar e salvar contrato"}
+            </Button>
+          </div>
+        </footer>
+      </DialogContent>
+    </Dialog>
+  );
 }

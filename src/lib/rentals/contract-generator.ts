@@ -11,7 +11,11 @@ export type ContractGuarantee = "fiador" | "caucao" | "seguro_fianca";
 export const MISSING_PREFIX = "[PREENCHER:";
 
 export type ContractSpouse = { papel: "esposa" | "conjuge"; nome: string; qualificacao: string };
-export type ContractParty = { label: string; qualificacao: string; conjuge?: ContractSpouse | null };
+export type ContractParty = {
+  label: string;
+  qualificacao: string;
+  conjuge?: ContractSpouse | null;
+};
 
 export type ContractInsurer = {
   id: string;
@@ -72,13 +76,16 @@ export function qualify(p: {
   cpfCnpj?: string | null;
   profissao?: string | null;
   endereco?: string | null;
+  nationality?: string | null;
+  maritalStatus?: string | null;
+  rg?: string | null;
 }): string {
   return [
     orNeed(p.nome?.toUpperCase(), "nome completo"),
-    need("nacionalidade"),
-    need("estado civil"),
+    orNeed(p.nationality, "nacionalidade"),
+    orNeed(p.maritalStatus, "estado civil"),
     orNeed(p.profissao, "profissão"),
-    `inscrito(a) no CPF/CNPJ nº ${orNeed(p.cpfCnpj, "CPF")} e no RG nº ${need("RG")}`,
+    `inscrito(a) no CPF/CNPJ nº ${orNeed(p.cpfCnpj, "CPF")} e no RG nº ${orNeed(p.rg, "RG")}`,
     `residente e domiciliado(a) na ${orNeed(p.endereco, "endereço")}`,
   ].join(", ");
 }
@@ -139,7 +146,10 @@ function signatures(d: ContractData): string {
   const line = "____________________________________";
   const rows: [string, string][] = [
     [d.locador.qualificacao.split(",")[0] ?? "", "Locador(a)"],
-    ...d.locatarios.map((p): [string, string] => [p.qualificacao.split(",")[0] ?? "", "Locatário(a)"]),
+    ...d.locatarios.map((p): [string, string] => [
+      p.qualificacao.split(",")[0] ?? "",
+      "Locatário(a)",
+    ]),
   ];
   for (const f of d.fiadores) {
     const nome = f.qualificacao.split(",")[0] ?? "";

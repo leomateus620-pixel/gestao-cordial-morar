@@ -54,6 +54,7 @@ import {
   Camera,
   Check,
   CloudOff,
+  Folder,
   Keyboard,
   Loader2,
   Mic,
@@ -74,7 +75,13 @@ import { PhotosBlock } from "./photos";
 type Saver = ReturnType<typeof useSaver>;
 type Queue = ReturnType<typeof useLocalQueue>;
 type Tab = "ambientes" | "dados" | "revisao";
-export function VistoriaWorkspace({ vistoriaId }: { vistoriaId: string }) {
+export function VistoriaWorkspace({
+  vistoriaId,
+  returnToRentalForm = false,
+}: {
+  vistoriaId: string;
+  returnToRentalForm?: boolean;
+}) {
   useFieldViewport();
   const session = useSession();
   const qc = useQueryClient();
@@ -138,18 +145,39 @@ export function VistoriaWorkspace({ vistoriaId }: { vistoriaId: string }) {
   const readOnly = insp.status === "concluida";
   const prog = progress(data.rooms, data.items);
   const snap = insp.property_snapshot ?? {};
+  const rental = Boolean(insp.rental_contract_id);
 
   return (
-    <div className="inspection-workspace mx-auto w-full max-w-2xl pb-40">
+    <div
+      className={cn(
+        "inspection-workspace mx-auto w-full pb-40",
+        rental ? "max-w-4xl" : "max-w-2xl",
+      )}
+    >
       <header className="sticky top-0 z-20 -mx-4 mb-3 border-b border-border/50 bg-background px-4 pb-2 pt-2 backdrop-blur">
         <div className="flex items-center gap-2">
-          <Link
-            to="/vistorias"
-            aria-label="Voltar às vistorias"
-            className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-foreground/5"
-          >
-            <ArrowLeft className="size-5" />
-          </Link>
+          {insp.rental_contract_id ? (
+            <Link
+              to="/alugueis"
+              aria-label="Voltar ao aluguel"
+              search={
+                returnToRentalForm
+                  ? { formulario: insp.rental_contract_id, etapa: "vistorias" }
+                  : { id: insp.rental_contract_id, etapa: "vistorias" }
+              }
+              className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-foreground/5"
+            >
+              <ArrowLeft className="size-5" />
+            </Link>
+          ) : (
+            <Link
+              to="/vistorias"
+              aria-label="Voltar às vistorias"
+              className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-foreground/5"
+            >
+              <ArrowLeft className="size-5" />
+            </Link>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">
               Nº {insp.numero} · {KIND_LABEL[insp.kind as InspectionKind]}
@@ -167,37 +195,43 @@ export function VistoriaWorkspace({ vistoriaId }: { vistoriaId: string }) {
         </div>
         <p className="ml-11 text-xs font-medium text-primary">
           {tab === "ambientes"
-            ? `${data.rooms.find((r) => r.id === roomId)?.name ?? "Ambientes"} · ambiente ${data.rooms.findIndex((r) => r.id === roomId) + 1} de ${data.rooms.length}`
+            ? rental
+              ? `${data.rooms.length} ${data.rooms.length === 1 ? "cômodo" : "cômodos"}`
+              : `${data.rooms.find((r) => r.id === roomId)?.name ?? "Ambientes"} · ambiente ${data.rooms.findIndex((r) => r.id === roomId) + 1} de ${data.rooms.length}`
             : tab === "dados"
               ? "Dados da vistoria"
-              : "Revisão e laudos"}
+              : rental
+                ? "Revisão e termo"
+                : "Revisão e laudos"}
         </p>
         {data.cacheMode && (
           <p role="status" className="text-xs text-amber-800">
             Sem conexão · mostrando a última consulta salva no aparelho.
           </p>
         )}
-        <div
-          className="mt-2 flex items-center gap-2 text-[11px] text-foreground/60"
-          aria-live="polite"
-        >
+        {!rental && (
           <div
-            className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"
-            role="progressbar"
-            aria-valuenow={prog.percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Progresso dos itens"
+            className="mt-2 flex items-center gap-2 text-[11px] text-foreground/60"
+            aria-live="polite"
           >
             <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${prog.percent}%` }}
-            />
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10"
+              role="progressbar"
+              aria-valuenow={prog.percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Progresso dos itens"
+            >
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${prog.percent}%` }}
+              />
+            </div>
+            <span className="tabular-nums">
+              {prog.done}/{prog.total} preenchidos · {prog.roomsDone}/{prog.rooms} amb.
+            </span>
           </div>
-          <span className="tabular-nums">
-            {prog.done}/{prog.total} preenchidos · {prog.roomsDone}/{prog.rooms} amb.
-          </span>
-        </div>
+        )}
         {drafts.pending.length ? (
           <DraftStatus />
         ) : (
@@ -235,7 +269,11 @@ export function VistoriaWorkspace({ vistoriaId }: { vistoriaId: string }) {
                 tab === t ? "bg-background shadow-sm" : "text-foreground/60",
               )}
             >
-              {{ ambientes: "Ambientes", dados: "Dados", revisao: "Revisão" }[t]}
+              {
+                { ambientes: rental ? "Cômodos" : "Ambientes", dados: "Dados", revisao: "Revisão" }[
+                  t
+                ]
+              }
             </button>
           ))}
         </nav>
@@ -366,6 +404,8 @@ function RoomsTab(props: {
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [evidenceItem, setEvidenceItem] = useState<string | null>(null);
   const insp = data.inspection;
+  const rental = Boolean(insp.rental_contract_id);
+  const addingRequest = useRef(false);
   const room = data.rooms.find((r) => r.id === roomId) ?? null;
   const idx = room ? data.rooms.findIndex((r) => r.id === room.id) : -1;
   const addRoomFn = useServerFn(addRoom);
@@ -629,55 +669,66 @@ function RoomsTab(props: {
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">
-          {room?.name ?? "Ambientes"} · ambiente {idx + 1} de {data.rooms.length}
-        </p>
-        <button
-          type="button"
-          className="min-h-11 rounded-xl border px-3 text-sm font-semibold text-primary"
-          onClick={() => setRoomsOpen(true)}
-        >
-          Ver ambientes
-        </button>
-      </div>
-      <Dialog open={roomsOpen} onOpenChange={setRoomsOpen}>
-        <DialogContent className="inspection-workspace max-h-[85dvh] overflow-auto">
-          <DialogTitle>Ambientes do imóvel</DialogTitle>
-          <p className="text-sm text-foreground/60">Avance na coleta mesmo com itens pendentes.</p>
-          <ul className="space-y-2">
-            {data.rooms.map((r, index) => {
-              const own = data.items.filter((it) => it.room_id === r.id);
-              return (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    className="min-h-14 w-full rounded-xl border p-3 text-left"
-                    onClick={() => {
-                      setRoomId(r.id);
-                      setRoomsOpen(false);
-                      setArea("itens");
-                    }}
-                  >
-                    <strong>
-                      {index + 1}. {r.name}
-                    </strong>
-                    <span className="mt-1 block text-sm text-foreground/60">
-                      {own.filter((it) => !itemResolved(it)).length} itens pendentes ·{" "}
-                      {data.media.filter((m) => m.room_id === r.id).length} fotos
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </DialogContent>
-      </Dialog>
+      {!rental && (
+        <>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold">
+              {room?.name ?? "Ambientes"} · ambiente {idx + 1} de {data.rooms.length}
+            </p>
+            <button
+              type="button"
+              className="min-h-11 rounded-xl border px-3 text-sm font-semibold text-primary"
+              onClick={() => setRoomsOpen(true)}
+            >
+              Ver ambientes
+            </button>
+          </div>
+          <Dialog open={roomsOpen} onOpenChange={setRoomsOpen}>
+            <DialogContent className="inspection-workspace max-h-[85dvh] overflow-auto">
+              <DialogTitle>Ambientes do imóvel</DialogTitle>
+              <p className="text-sm text-foreground/60">
+                Avance na coleta mesmo com itens pendentes.
+              </p>
+              <ul className="space-y-2">
+                {data.rooms.map((r, index) => {
+                  const own = data.items.filter((it) => it.room_id === r.id);
+                  return (
+                    <li key={r.id}>
+                      <button
+                        type="button"
+                        className="min-h-14 w-full rounded-xl border p-3 text-left"
+                        onClick={() => {
+                          setRoomId(r.id);
+                          setRoomsOpen(false);
+                          setArea("itens");
+                        }}
+                      >
+                        <strong>
+                          {index + 1}. {r.name}
+                        </strong>
+                        <span className="mt-1 block text-sm text-foreground/60">
+                          {own.filter((it) => !itemResolved(it)).length} itens pendentes ·{" "}
+                          {data.media.filter((m) => m.room_id === r.id).length} fotos
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
       <div
-        className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1"
-        aria-label="Atalhos de ambientes"
+        className={
+          rental
+            ? "mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+            : "-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1"
+        }
+        aria-label={rental ? "Cômodos do imóvel" : "Atalhos de ambientes"}
       >
         {data.rooms.map((r) => {
+          const photoCount = data.media.filter((m) => m.room_id === r.id).length;
           const its = data.items.filter((i) => i.room_id === r.id);
           const done = its.length > 0 && its.every(itemResolved);
           return (
@@ -685,28 +736,51 @@ function RoomsTab(props: {
               key={r.id}
               aria-pressed={r.id === roomId}
               type="button"
-              onClick={() => setRoomId(r.id)}
+              onClick={() => {
+                setRoomId(r.id);
+                setRenaming(null);
+              }}
               className={cn(
-                "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium",
+                rental
+                  ? "flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left text-sm font-medium"
+                  : "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium",
                 r.id === roomId
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-input bg-background",
                 done && r.id !== roomId && "border-emerald-600/50",
               )}
             >
-              {done && <Check className="mr-1 inline size-3.5" />}
-              {r.name}
+              {rental ? (
+                <>
+                  <Folder className="size-5 shrink-0" aria-hidden />
+                  <span className="min-w-0">
+                    <strong className="block break-words">{r.name}</strong>
+                    <span className="block text-xs opacity-90">
+                      {photoCount} {photoCount === 1 ? "foto" : "fotos"}
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  {done && <Check className="mr-1 inline size-3.5" />}
+                  {r.name}
+                </>
+              )}
             </button>
           );
         })}
-        {!readOnly && (
+        {!readOnly && (!rental || !adding) && (
           <button
             type="button"
             onClick={() => setAdding({ name: "", kind: "outro" })}
-            className="min-h-11 shrink-0 rounded-full border border-dashed border-primary/50 px-4 text-sm font-medium text-primary"
+            className={
+              rental && !data.rooms.length
+                ? "min-h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                : "min-h-11 shrink-0 rounded-xl border border-dashed border-primary/50 px-4 text-sm font-medium text-primary"
+            }
           >
             <Plus className="mr-1 inline size-4" />
-            Ambiente
+            {rental ? "Adicionar cômodo" : "Ambiente"}
           </button>
         )}
       </div>
@@ -715,42 +789,45 @@ function RoomsTab(props: {
         <div className="premium-card mb-3 space-y-2 rounded-2xl p-3">
           <Input
             autoFocus
-            aria-label="Nome do ambiente"
-            placeholder="Ex.: Varanda"
+            aria-label={rental ? "Nome do cômodo" : "Nome do ambiente"}
+            placeholder={rental ? "Ex.: Cozinha, Quarto da frente" : "Ex.: Varanda"}
+            maxLength={80}
             value={adding.name}
             onChange={(e) => setAdding({ ...adding, name: e.target.value })}
             className="h-11"
           />
-          <select
-            aria-label="Tipo do ambiente"
-            value={adding.kind}
-            onChange={(e) => setAdding({ ...adding, kind: e.target.value as RoomKind })}
-            className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {(
-              [
-                "sala",
-                "dormitorio",
-                "suite",
-                "banheiro",
-                "cozinha",
-                "servico",
-                "garagem",
-                "externa",
-                "comercial",
-                "terreno",
-                "outro",
-              ] as RoomKind[]
-            ).map((k) => (
-              <option key={k} value={k}>
-                {k === "externa"
-                  ? "Área externa / varanda"
-                  : k === "servico"
-                    ? "Área de serviço"
-                    : k.charAt(0).toUpperCase() + k.slice(1)}
-              </option>
-            ))}
-          </select>
+          {!rental && (
+            <select
+              aria-label="Tipo do ambiente"
+              value={adding.kind}
+              onChange={(e) => setAdding({ ...adding, kind: e.target.value as RoomKind })}
+              className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {(
+                [
+                  "sala",
+                  "dormitorio",
+                  "suite",
+                  "banheiro",
+                  "cozinha",
+                  "servico",
+                  "garagem",
+                  "externa",
+                  "comercial",
+                  "terreno",
+                  "outro",
+                ] as RoomKind[]
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {k === "externa"
+                    ? "Área externa / varanda"
+                    : k === "servico"
+                      ? "Área de serviço"
+                      : k.charAt(0).toUpperCase() + k.slice(1)}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
@@ -764,23 +841,30 @@ function RoomsTab(props: {
               disabled={!adding.name.trim()}
               className="min-h-11 flex-1 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-40"
               onClick={async () => {
-                const created = await saver.run(() =>
-                  addRoomFn({
-                    data: {
-                      inspectionId: insp.id,
-                      name: adding.name.trim(),
-                      kind: adding.kind,
-                      furnished,
-                    },
-                  }),
-                );
-                setAdding(null);
-                await queryClient.invalidateQueries({
-                  queryKey: inspectionKey(insp.id, props.userId),
-                });
-                if (created) {
-                  await new Promise((r) => setTimeout(r, 0));
-                  setRoomId(created.id);
+                if (addingRequest.current) return;
+                addingRequest.current = true;
+                try {
+                  const created = await saver.run(
+                    () =>
+                      addRoomFn({
+                        data: {
+                          inspectionId: insp.id,
+                          name: adding.name.trim(),
+                          kind: adding.kind,
+                          furnished,
+                        },
+                      }),
+                    (current, row) => ({
+                      ...current,
+                      rooms: [...current.rooms.filter((r) => r.id !== row.id), row],
+                    }),
+                  );
+                  if (created) {
+                    setAdding(null);
+                    setRoomId(created.id);
+                  }
+                } finally {
+                  addingRequest.current = false;
                 }
               }}
             >
@@ -791,7 +875,12 @@ function RoomsTab(props: {
       )}
 
       {room && (
-        <section aria-label={`Ambiente ${room.name}`}>
+        <section
+          className={
+            rental ? "rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-5" : undefined
+          }
+          aria-label={`${rental ? "Cômodo" : "Ambiente"} ${room.name}`}
+        >
           <div className="mb-3 flex items-center gap-2">
             {renaming !== null ? (
               <>
@@ -832,7 +921,7 @@ function RoomsTab(props: {
                   <>
                     <details className="relative">
                       <summary className="min-h-11 cursor-pointer py-3 text-sm text-primary">
-                        Editar ambiente
+                        {rental ? "Editar cômodo" : "Editar ambiente"}
                       </summary>
                       <div className="absolute right-0 z-20 flex rounded-xl border bg-background p-2">
                         <button
@@ -881,74 +970,174 @@ function RoomsTab(props: {
             )}
           </div>
 
-          <nav className="mb-3 grid grid-cols-3 border-b" aria-label="Registro do ambiente">
-            {(["itens", "fotos", "relatos"] as const).map((a) => (
-              <button
-                key={a}
-                type="button"
-                aria-pressed={area === a}
-                className={cn(
-                  "min-h-11 border-b-2 text-sm font-semibold",
-                  area === a
-                    ? "border-primary text-primary"
-                    : "border-transparent text-foreground/60",
-                )}
-                onClick={() => {
-                  setArea(a);
-                  if (a === "relatos") setMode("texto");
-                }}
-              >
-                {
+          {!rental && (
+            <nav className="mb-3 grid grid-cols-3 border-b" aria-label="Registro do ambiente">
+              {(["itens", "fotos", "relatos"] as const).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  aria-pressed={area === a}
+                  className={cn(
+                    "min-h-11 border-b-2 text-sm font-semibold",
+                    area === a
+                      ? "border-primary text-primary"
+                      : "border-transparent text-foreground/60",
+                  )}
+                  onClick={() => {
+                    setArea(a);
+                    if (a === "relatos") setMode("texto");
+                  }}
+                >
                   {
-                    itens: "Itens",
-                    fotos: `Fotos (${roomMedia.length + roomPending.filter((p) => p.kind === "photo").length})`,
-                    relatos: `Relatos (${roomNotes.length})`,
-                  }[a]
-                }
-              </button>
-            ))}
-          </nav>
-          {area === "fotos" && (
-            <>
-              <div className="mb-3 flex gap-2">
-                <button
-                  type="button"
-                  className="min-h-11 rounded-xl border px-3"
-                  onClick={() => {
-                    setEvidenceItem(null);
-                    camRef.current?.click();
-                  }}
-                >
-                  Foto geral
+                    {
+                      itens: "Itens",
+                      fotos: `Fotos (${roomMedia.length + roomPending.filter((p) => p.kind === "photo").length})`,
+                      relatos: `Relatos (${roomNotes.length})`,
+                    }[a]
+                  }
                 </button>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-xl border px-3"
-                  onClick={() => {
-                    setEvidenceItem(null);
-                    galRef.current?.click();
-                  }}
-                >
-                  Importar da galeria
-                </button>
-              </div>
-              <PhotosBlock
-                inspectionId={insp.id}
-                media={roomMedia}
-                pending={roomPending}
-                readOnly={readOnly}
-                saver={saver}
-                onRetry={queue.retry}
-                items={roomItems}
-              />
-              {!roomMedia.some((m) => m.status === "confirmada") && (
-                <NoPhotoReason room={room} readOnly={readOnly} saver={saver} />
-              )}
-            </>
+              ))}
+            </nav>
           )}
-          {area === "itens" && (
-            <>
-              <ul className="mt-4 space-y-2">
+          {rental && !readOnly && (
+            <div className="mb-4 flex flex-wrap gap-2" aria-label="Registro do cômodo">
+              <BarButton
+                icon={<Camera className="size-5" />}
+                label="Tirar foto"
+                onClick={() => {
+                  setEvidenceItem(null);
+                  camRef.current?.click();
+                }}
+              />
+              <BarButton
+                icon={<Plus className="size-5" />}
+                label="Adicionar fotos"
+                onClick={() => {
+                  setEvidenceItem(null);
+                  galRef.current?.click();
+                }}
+              />
+              <BarButton
+                icon={<Mic className="size-5" />}
+                label="Gravar áudio"
+                onClick={() => {
+                  setEvidenceItem(null);
+                  void startRecording();
+                }}
+              />
+              <BarButton
+                icon={<Keyboard className="size-5" />}
+                label="Descrição"
+                onClick={() => {
+                  setEvidenceItem(null);
+                  setMode("texto");
+                  window.requestAnimationFrame(() =>
+                    document
+                      .getElementById("rental-room-description")
+                      ?.querySelector("textarea")
+                      ?.focus(),
+                  );
+                }}
+              />
+            </div>
+          )}
+          <div className={rental ? "grid gap-4 md:grid-cols-2" : undefined}>
+            {(rental || area === "fotos") && (
+              <div className="space-y-3">
+                {!rental && (
+                  <div className="mb-3 flex gap-2">
+                    <button
+                      type="button"
+                      className="min-h-11 rounded-xl border px-3"
+                      onClick={() => {
+                        setEvidenceItem(null);
+                        camRef.current?.click();
+                      }}
+                    >
+                      Foto geral
+                    </button>
+                    <button
+                      type="button"
+                      className="min-h-11 rounded-xl border px-3"
+                      onClick={() => {
+                        setEvidenceItem(null);
+                        galRef.current?.click();
+                      }}
+                    >
+                      Importar da galeria
+                    </button>
+                  </div>
+                )}
+                {rental && <h3 className="text-sm font-semibold">Fotos do cômodo</h3>}
+                <PhotosBlock
+                  inspectionId={insp.id}
+                  media={roomMedia}
+                  pending={roomPending}
+                  readOnly={readOnly}
+                  saver={saver}
+                  onRetry={queue.retry}
+                  items={roomItems}
+                />
+                {!roomMedia.some((m) => m.status === "confirmada") && (
+                  <NoPhotoReason room={room} readOnly={readOnly} saver={saver} />
+                )}
+              </div>
+            )}
+            {!rental && area === "itens" && (
+              <>
+                <ul className="mt-4 space-y-2">
+                  {roomItems.map((it) => (
+                    <ItemCard
+                      key={it.id}
+                      item={it}
+                      readOnly={readOnly}
+                      saver={saver}
+                      onTouched={markStarted}
+                      forceOpen={props.jump?.itemId === it.id}
+                      photos={roomMedia.filter((m) => m.item_id === it.id).length}
+                      onPhoto={() => {
+                        setEvidenceItem(it.id);
+                        camRef.current?.click();
+                      }}
+                      onNarrate={() => {
+                        setEvidenceItem(it.id);
+                        setArea("relatos");
+                        setMode("texto");
+                      }}
+                    />
+                  ))}
+                </ul>
+                {!readOnly && <AddItem inspectionId={insp.id} roomId={room.id} saver={saver} />}
+              </>
+            )}
+            {(rental || area === "relatos") && (
+              <div id={rental ? "rental-room-description" : undefined} className="min-w-0">
+                {rental && <h3 className="mb-2 text-sm font-semibold">Descrição e áudios</h3>}
+                <NotesBlock
+                  key={`${room.id}:${evidenceItem ?? "general"}`}
+                  roomName={room.name}
+                  itemId={evidenceItem}
+                  notes={roomNotes}
+                  items={roomItems}
+                  readOnly={readOnly}
+                  saver={saver}
+                  voiceReady={props.voiceReady}
+                  inspectionId={insp.id}
+                  currentCtx={currentCtx}
+                  mode={mode}
+                  setMode={setMode}
+                  roomId={room.id}
+                  rental={rental}
+                />
+              </div>
+            )}
+          </div>
+          {rental && roomItems.length > 0 && (
+            <details className="mt-4 rounded-xl border p-3">
+              <summary className="cursor-pointer text-sm font-semibold">
+                Itens registrados neste cômodo
+              </summary>
+              <ul className="mt-3 space-y-2">
                 {roomItems.map((it) => (
                   <ItemCard
                     key={it.id}
@@ -956,7 +1145,6 @@ function RoomsTab(props: {
                     readOnly={readOnly}
                     saver={saver}
                     onTouched={markStarted}
-                    forceOpen={props.jump?.itemId === it.id}
                     photos={roomMedia.filter((m) => m.item_id === it.id).length}
                     onPhoto={() => {
                       setEvidenceItem(it.id);
@@ -964,31 +1152,12 @@ function RoomsTab(props: {
                     }}
                     onNarrate={() => {
                       setEvidenceItem(it.id);
-                      setArea("relatos");
                       setMode("texto");
                     }}
                   />
                 ))}
               </ul>
-              {!readOnly && <AddItem inspectionId={insp.id} roomId={room.id} saver={saver} />}
-            </>
-          )}
-          {area === "relatos" && (
-            <NotesBlock
-              key={`${room.id}:${evidenceItem ?? "general"}`}
-              roomName={room.name}
-              itemId={evidenceItem}
-              notes={roomNotes}
-              items={roomItems}
-              readOnly={readOnly}
-              saver={saver}
-              voiceReady={props.voiceReady}
-              inspectionId={insp.id}
-              currentCtx={currentCtx}
-              mode={mode}
-              setMode={setMode}
-              roomId={room.id}
-            />
+            </details>
           )}
         </section>
       )}
@@ -1089,6 +1258,20 @@ function RoomsTab(props: {
                 <Square className="size-4" /> Parar e salvar
               </button>
             </div>
+          ) : rental ? (
+            <div className="mx-auto flex max-w-4xl justify-end">
+              <button
+                type="button"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground sm:w-auto"
+                onClick={() => {
+                  props.onReview();
+                  window.scrollTo({ top: 0 });
+                }}
+              >
+                Gerar termo de {insp.rental_kind === "saida" ? "saída" : "entrada"}{" "}
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
           ) : (
             <div className="mx-auto grid max-w-2xl grid-cols-[1fr_1fr_1.5fr] gap-2">
               <BarButton
@@ -1128,7 +1311,7 @@ function RoomsTab(props: {
               />
             </div>
           )}
-          {!recording && area === "relatos" && (
+          {!rental && !recording && area === "relatos" && (
             <div className="mx-auto mt-1 flex max-w-2xl items-center justify-between gap-2">
               <button
                 type="button"

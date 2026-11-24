@@ -1,4 +1,9 @@
-import { spousePending, SPOUSE_ROLE_LABEL, type GuarantorSpouse, type SpouseRole } from "@/lib/rentals/guarantor-spouse";
+import {
+  spousePending,
+  SPOUSE_ROLE_LABEL,
+  type GuarantorSpouse,
+  type SpouseRole,
+} from "@/lib/rentals/guarantor-spouse";
 
 const inputCls =
   "w-full rounded-xl border border-border/70 bg-background px-3.5 py-2.5 text-sm font-medium text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
@@ -7,16 +12,29 @@ const inputCls =
 export function SpouseFields({
   value,
   onChange,
+  fieldPrefix,
 }: {
   value: GuarantorSpouse;
   onChange: (v: GuarantorSpouse) => void;
+  fieldPrefix?: string;
 }) {
   const set = (patch: Partial<GuarantorSpouse>) => onChange({ ...value, ...patch });
   const pending = spousePending(value);
-  const field = (label: string, key: "nome" | "cpf" | "rg" | "profissao" | "telefone", wide = false) => (
+  const field = (
+    label: string,
+    key: "nome" | "cpf" | "rg" | "profissao" | "telefone",
+    wide = false,
+  ) => (
     <label className={`block ${wide ? "sm:col-span-2" : ""}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/75">{label}</span>
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/75">
+        {label}
+      </span>
       <input
+        data-rental-field={
+          fieldPrefix
+            ? `${fieldPrefix}-${{ nome: "name", cpf: "cpf", rg: "rg", profissao: "profession", telefone: "phone" }[key]}`
+            : undefined
+        }
         value={value[key]}
         onChange={(e) => set({ [key]: e.target.value })}
         inputMode={key === "cpf" || key === "telefone" ? "numeric" : undefined}
@@ -58,7 +76,8 @@ export function SpouseFields({
           {field("Telefone", "telefone")}
           {pending.length > 0 && (
             <p className="sm:col-span-2 text-xs font-medium text-destructive">
-              Falta: {pending.join(", ")}. O rascunho pode ser salvo, mas o contrato só é gerado completo.
+              Falta: {pending.join(", ")}. O rascunho pode ser salvo, mas o contrato só é gerado
+              completo.
             </p>
           )}
         </div>

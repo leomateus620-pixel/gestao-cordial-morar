@@ -1,7 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ClipboardCheck, FileCheck2, ShieldCheck } from "lucide-react";
+import { startRentalInspection } from "@/lib/vistoria/vistoria.functions";
+import { Button } from "@/components/ui/button";
 import { getContractEntryInspectionState } from "@/lib/rentals/rentals.functions";
 import {
   entryInspectionAction,
@@ -19,43 +22,56 @@ export function RentalEntryInspection({
   contractId,
   sectionId,
   kind = "entrada",
+  returnToForm = false,
+  preventStart = false,
 }: {
-  contractId: string;
+  contractId: string | null;
+  returnToForm?: boolean;
+  preventStart?: boolean;
   sectionId: string;
   kind?: RentalInspectionKind;
 }) {
   const stateFn = useServerFn(getContractEntryInspectionState);
   const navigate = useNavigate();
+  const start = useServerFn(startRentalInspection);
+  const cache = useQueryClient();
+  const inFlight = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestRooms, setSuggestRooms] = useState(true);
   const query = useQuery({
     queryKey: ["rental-entry-inspection", contractId],
-    queryFn: () => stateFn({ data: { contractId } }),
+    queryFn: () => stateFn({ data: { contractId: contractId! } }),
+    enabled: !!contractId,
+    staleTime: 0,
   });
   const state = query.data;
   const isExit = kind === "saida";
   const word = isExit ? "saída" : "entrada";
 
-  const action = !state
-    ? null
-    : isExit
-      ? exitInspectionAction({
-          contractId,
-          entry: {
-            id: state.existingInspectionId,
-            status: state.existingInspectionStatus,
-            hasDocument: state.entryHasDocument,
-          },
-          existingExitId: state.exitInspectionId,
-        })
-      : entryInspectionAction({
-          contractId,
-          gate: {
-            unlocked: state.unlocked,
-            reviewedDocumentId: null,
-            reviewedAt: state.reviewedAt,
-            missing: state.missing,
-          },
-          existingInspectionId: state.existingInspectionId,
-        });
+  const action =
+    !state || !contractId
+      ? null
+      : isExit
+        ? exitInspectionAction({
+            contractId,
+            entry: {
+              id: state.existingInspectionId,
+              status: state.existingInspectionStatus,
+              hasDocument: state.entryHasDocument,
+            },
+            existingExitId: state.exitInspectionId,
+          })
+        : entryInspectionAction({
+            contractId,
+            gate: {
+              unlocked: state.unlocked,
+              reviewedDocumentId: null,
+              reviewedAt: state.reviewedAt,
+              missing: state.missing,
+            },
+            existingInspectionId: state.existingInspectionId,
+          });
 
   const status = isExit ? state?.exitInspectionStatus : state?.existingInspectionStatus;
   const hasDoc = isExit ? state?.exitHasDocument : state?.entryHasDocument;
@@ -78,17 +94,26 @@ export function RentalEntryInspection({
           {isExit ? <FileCheck2 className="size-4.5" /> : <ClipboardCheck className="size-4.5" />}
         </span>
         <div className="min-w-0">
-          <h3 id={`${sectionId}-title`} className="text-[15px] font-extrabold leading-5 text-foreground">
-            Termo de vistoria de {word}
+          <h3
+            id={`${sectionId}-title`}
+            className="text-[15px] font-extrabold leading-5 text-foreground"
+          >
+            Vistoria de {word}
           </h3>
-          <p className="mt-0.5 text-[11px] leading-4 text-foreground/55">
-            Uma única vistoria de {word} por contrato, ligada a ele.
-          </p>
         </div>
       </div>
 
-      {query.isLoading ? (
-        <div className="h-14 animate-pulse rounded-2xl bg-foreground/[0.05] motion-reduce:animate-none" aria-label={`Carregando vistoria de ${word}`} />
+      {!contractId ? (
+        <p className="text-sm text-muted-foreground">
+          {isExit
+            ? "Conclua a entrada com o termo registrado para iniciar a saída."
+            : "Confirme e salve o contrato para iniciar a vistoria."}
+        </p>
+      ) : query.isLoading ? (
+        <div
+          className="h-14 animate-pulse rounded-2xl bg-foreground/[0.05] motion-reduce:animate-none"
+          aria-label={`Carregando vistoria de ${word}`}
+        />
       ) : query.isError || !state ? (
         <p className="rounded-2xl border border-dashed border-foreground/12 px-3.5 py-3 text-xs font-medium text-foreground/55">
           Não foi possível ler a situação da vistoria de {word}. Recarregue a tela.
@@ -99,7 +124,13 @@ export function RentalEntryInspection({
             <>
               <button
                 type="button"
-                onClick={() => navigate({ to: "/vistorias/$vistoriaId", params: { vistoriaId: action.inspectionId } })}
+                onClick={() =>
+                  navigate({
+                    to: "/vistorias/$vistoriaId",
+                    params: { vistoriaId: action.inspectionId },
+                    search: { formulario: returnToForm ? true : undefined },
+                  })
+                }
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground hover:opacity-90"
               >
                 <ClipboardCheck className="size-4" />
@@ -112,28 +143,61 @@ export function RentalEntryInspection({
               )}
             </>
           )}
-          {action?.kind === "start" && (
-            <>
-              <button
+          {action?.kind === "start" && !preventStart && (
+            <div className="space-y-2">
+              {isExit && state.entryRooms.length > 0 && (
+                <label className="flex min-h-9 items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={suggestRooms}
+                    onChange={(e) => setSuggestRooms(e.target.checked)}
+                  />
+                  Sugerir cômodos da entrada
+                </label>
+              )}
+              <Button
                 type="button"
-                onClick={() =>
-                  navigate({
-                    to: "/vistorias/nova",
-                    search: isExit ? { contrato: contractId, tipo: "saida" } : { contrato: contractId },
-                  })
-                }
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground hover:opacity-90"
+                className="min-h-11 gap-2"
+                disabled={busy}
+                onClick={async () => {
+                  if (inFlight.current || !contractId) return;
+                  inFlight.current = true;
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const inspection = await start({ data: { contractId, kind, suggestRooms } });
+                    void cache.invalidateQueries({
+                      queryKey: ["rental-entry-inspection", contractId],
+                    });
+                    await navigate({
+                      to: "/vistorias/$vistoriaId",
+                      params: { vistoriaId: inspection.id },
+                      search: { formulario: returnToForm ? true : undefined },
+                    });
+                  } catch (cause) {
+                    setError(
+                      cause instanceof Error ? cause.message : "Não foi possível abrir a vistoria.",
+                    );
+                  } finally {
+                    inFlight.current = false;
+                    setBusy(false);
+                  }
+                }}
               >
                 <ClipboardCheck className="size-4" />
-                Iniciar vistoria de {word}
-              </button>
-              {!isExit && state.reviewedAt && (
-                <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-[11px] font-bold text-primary">
-                  <ShieldCheck className="size-3.5" />
-                  Contrato conferido em {new Date(state.reviewedAt).toLocaleDateString("pt-BR")}
-                </span>
+                {busy ? "Abrindo…" : `Iniciar vistoria de ${word}`}
+              </Button>
+              {error && (
+                <p className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
               )}
-            </>
+            </div>
+          )}
+          {preventStart && action?.kind === "start" && (
+            <p className="text-sm text-muted-foreground">
+              Salve os dados e confira a versão atual para iniciar a vistoria.
+            </p>
           )}
           {action?.kind === "blocked" && (
             <p className="flex min-w-0 items-start gap-2 rounded-2xl border border-dashed border-foreground/12 px-3.5 py-3 text-xs font-medium leading-5 text-foreground/55">
