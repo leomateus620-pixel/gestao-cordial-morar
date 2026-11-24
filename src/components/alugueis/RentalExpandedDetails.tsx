@@ -41,7 +41,8 @@ import type {
   RentalTenant,
 } from "@/types/rental";
 import { RentalDocuments } from "./RentalDocuments";
-import { RentalContractGenerator } from "./RentalContractGenerator";
+import { RentalContractWorkflow } from "./RentalContractGenerator";
+import { workspaceInputFromContract } from "@/lib/rentals/contract-workflow";
 import { RentalEntryInspection } from "./RentalEntryInspection";
 import { RentalNfseSection } from "./RentalNfseSection";
 import { useSession } from "@/lib/auth-mock";
@@ -399,6 +400,8 @@ export function RentalExpandedDetails({
   onMarkPaid,
   onDelete,
   onEdit,
+  returnToInspections,
+  onContractConfirmed,
 }: {
   contract: RentalContractFull | null;
   open: boolean;
@@ -407,7 +410,9 @@ export function RentalExpandedDetails({
   onRenew: (id: string) => void | Promise<unknown>;
   onMarkPaid: (id: string) => void | Promise<unknown>;
   onDelete: (id: string) => void | Promise<unknown>;
-  onEdit?: (contract: RentalContractFull) => void;
+  onEdit?: (contract: RentalContractFull, field?: string) => void;
+  returnToInspections?: boolean;
+  onContractConfirmed?: () => Promise<void>;
 }) {
   const [activeSection, setActiveSection] = useState<DetailSection>("resumo");
   const [view, setView] = useState<"emissions" | "details">("emissions");
@@ -417,6 +422,7 @@ export function RentalExpandedDetails({
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contractId = contract?.id ?? null;
+  const [template, setTemplate] = useState<RentalContractFull["templateOptions"]>();
 
   const tenants = useMemo(
     () => (contract ? (contract.tenants?.length ? contract.tenants : [contract.tenant]) : []),
@@ -430,12 +436,23 @@ export function RentalExpandedDetails({
   useEffect(() => {
     if (!open || !contractId) return;
     setActiveSection("resumo");
-    setView("emissions");
+    setView(returnToInspections ? "details" : "emissions");
+    setTemplate(undefined);
     setCompetencia(currentRentalCompetence());
     setNfRequest(undefined);
     setPendingAction(null);
     scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
-  }, [contractId, open]);
+  }, [contractId, open, returnToInspections]);
+
+  useEffect(() => {
+    if (!open || !returnToInspections || view !== "details") return;
+    const frame = window.requestAnimationFrame(() => {
+      scrollRef.current
+        ?.querySelector('[data-rental-section="vistoria-entrada"]')
+        ?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, view, returnToInspections]);
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -938,18 +955,38 @@ export function RentalExpandedDetails({
                 emissionRequest={nfRequest}
               />
 
-              <section className="rounded-[1.35rem] border border-foreground/[0.07] bg-card/60 p-4 sm:p-5">
-                <h3 className="text-[15px] font-extrabold text-foreground">Contrato de aluguel</h3>
-                <p className="mt-0.5 mb-3 text-[11px] text-foreground/55">
-                  Gere pelo modelo da imobiliária (com check-list das pendências) e confirme para salvar. Contrato externo: anexe abaixo e marque como conferido.
-                </p>
-                <RentalContractGenerator key={contract.id} contract={contract} />
-              </section>
+              <RentalContractWorkflow
+                key={contract.id}
+                id={contract.id}
+                input={{
+                  ...workspaceInputFromContract(contract),
+                  template: template ?? contract.templateOptions ?? {},
+                }}
+                onTemplateChange={setTemplate}
+                onFocusField={(field) =>
+                  onEdit?.(
+                    { ...contract, templateOptions: template ?? contract.templateOptions },
+                    field,
+                  )
+                }
+                changesPending={
+                  !!template &&
+                  JSON.stringify(template) !== JSON.stringify(contract.templateOptions ?? {})
+                }
+                onConfirmed={async () => {
+                  setTemplate(undefined);
+                  await onContractConfirmed?.();
+                }}
+              />
 
               <RentalEntryInspection
                 key={`${contract.id}-entrada`}
                 contractId={contract.id}
                 sectionId={sectionId("vistoria-entrada")}
+                preventStart={
+                  !!template &&
+                  JSON.stringify(template) !== JSON.stringify(contract.templateOptions ?? {})
+                }
               />
 
               <RentalEntryInspection

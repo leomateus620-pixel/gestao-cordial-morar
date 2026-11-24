@@ -1,6 +1,8 @@
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   assertContractEntryInspectionStart,
+  assertRentalWorkflowAccess,
+  loadContractEntryInspectionState,
   loadContractInspectionProperty,
   type ContractInspectionProperty,
 } from "@/lib/rentals/entry-inspection.server";
@@ -129,6 +131,7 @@ export const getContractInspectionProperty = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await requireInspectionRole(sb, context.userId);
+    await assertRentalWorkflowAccess(sb, data.contractId);
     const { data: contract, error } = await sb
       .from("rental_contracts")
       .select("id,property_id")
@@ -316,130 +319,186 @@ const createSchema = z.object({
   planConfirmed: z.boolean(),
 });
 
-export const createInspection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => createSchema.parse(d))
-  .handler(async ({ data, context }) => {
-    const sb = context.supabase;
-    const { all } = await requireInspectionRole(sb, context.userId);
+type InspectionContext = { supabase: InspectionClient; userId: string };
 
-    // Vistoria de entrada ligada a um contrato: o contrato precisa estar visível
-    // para quem cria, ter o contrato anexado conferido e ainda não ter vistoria.
-    const contractLink = data.contractId
-      ? await assertContractEntryInspectionStart(sb, data.contractId, data.rentalKind ?? "entrada")
-      : null;
+async function createInspectionRecord(
+  data: z.infer<typeof createSchema>,
+  context: InspectionContext,
+  suggestRooms = true,
+) {
+  const sb = context.supabase;
+  const { all } = await requireInspectionRole(sb, context.userId);
 
-    // Vistoria de contrato: o imóvel é o do próprio contrato (cadastro de aluguel),
-    // lido pelo servidor depois de conferido o acesso ao contrato.
-    let prop: PropertyForInspection | ContractInspectionProperty;
-    if (contractLink) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      prop = await loadContractInspectionProperty(
-        supabaseAdmin as never,
-        contractLink.rentalPropertyId,
-      );
-    } else {
-      const { data: catalogProp, error: pe } = await sb
-        .from("properties")
-        .select(PROPERTY_COLS)
-        .eq("id", data.propertyId)
-        .maybeSingle();
-      fail(pe);
-      if (!catalogProp) throw new Error("Imóvel não encontrado ou sem acesso.");
-      prop = catalogProp;
-    }
-    const rentalListing = contractLink !== null;
-    const responsibleId = all ? data.responsibleId || context.userId : context.userId;
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("nome")
-      .eq("id", responsibleId)
+  const rentalKind = data.rentalKind ?? "entrada";
+  const contractLink = data.contractId
+    ? await assertContractEntryInspectionStart(sb, data.contractId, rentalKind)
+    : null;
+  const existingId =
+    rentalKind === "saida" ? contractLink?.exitInspectionId : contractLink?.existingInspectionId;
+  if (existingId) return { id: existingId, reused: true };
+
+  // Vistoria de contrato: o imóvel é o do próprio contrato (cadastro de aluguel),
+  // lido pelo servidor depois de conferido o acesso ao contrato.
+  let prop: PropertyForInspection | ContractInspectionProperty;
+  if (contractLink) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    prop = await loadContractInspectionProperty(
+      supabaseAdmin as never,
+      contractLink.rentalPropertyId,
+    );
+  } else {
+    const { data: catalogProp, error: pe } = await sb
+      .from("properties")
+      .select(PROPERTY_COLS)
+      .eq("id", data.propertyId)
       .maybeSingle();
+    fail(pe);
+    if (!catalogProp) throw new Error("Imóvel não encontrado ou sem acesso.");
+    prop = catalogProp;
+  }
+  const rentalListing = contractLink !== null;
+  const responsibleId = all ? data.responsibleId || context.userId : context.userId;
+  const { data: profile } = await sb
+    .from("profiles")
+    .select("nome")
+    .eq("id", responsibleId)
+    .maybeSingle();
 
-    const address = [prop.logradouro, prop.numero, prop.complemento].filter(Boolean).join(", ");
-    const snapshot = {
-      captured_at: new Date().toISOString(),
-      cadastro: prop,
-      confirmado: data.confirmed,
-      endereco: [address, prop.bairro, [prop.cidade, prop.uf].filter(Boolean).join("/")]
-        .filter(Boolean)
-        .join(" · "),
-      search_text: [
-        prop.codigo,
-        prop.codigo_cordial,
-        prop.codigo_morar,
-        "locacao",
-        prop.logradouro,
-        prop.numero,
-        prop.bairro,
-        prop.cidade,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase(),
-    };
-    const inspection = {
-      id: data.id,
-      property_id: rentalListing ? null : data.propertyId,
-      rental_property_id: rentalListing ? data.propertyId : null,
-      agency: data.agency,
-      kind: contractLink ? (data.rentalKind ?? "entrada") : data.kind,
-      responsible_id: responsibleId,
-      responsible_name: profile?.nome ?? null,
-      created_by: context.userId,
-      inspected_at: data.inspectedAt,
-      participants: data.participants,
-      furnished: data.furnished,
-      cleaning: data.cleaning,
-      keys: data.keys,
-      meters: data.meters,
-      property_snapshot: snapshot,
-      plan_confirmed: data.planConfirmed,
-      rental_contract_id: contractLink ? contractLink.contractId : null,
-      rental_kind: contractLink ? (data.rentalKind ?? "entrada") : null,
-    };
-    // Vistoria de aluguel começa vazia (cômodos criados pela equipe). Na saída,
-    // sugere só os NOMES dos cômodos da entrada — sem fotos, áudios ou textos.
-    let rentalPlan: { name: string; kind: string; items: never[] }[] | null = null;
-    if (contractLink && !data.rooms) {
-      rentalPlan = [];
-      if ((data.rentalKind ?? "entrada") === "saida" && contractLink.existingInspectionId) {
-        const { data: entryRooms } = await sb
-          .from("inspection_rooms" as never)
-          .select("name, kind, position")
-          .eq("inspection_id", contractLink.existingInspectionId)
-          .order("position");
-        rentalPlan = ((entryRooms ?? []) as { name: string; kind: string }[]).map((r) => ({
-          name: r.name,
-          kind: r.kind,
-          items: [],
-        }));
-      }
-    }
-    const plan =
-      data.rooms ??
-      rentalPlan ??
+  const address = [prop.logradouro, prop.numero, prop.complemento].filter(Boolean).join(", ");
+  const snapshot = {
+    captured_at: new Date().toISOString(),
+    cadastro: prop,
+    confirmado: contractLink
+      ? {
+          tipo: prop.tipo,
+          dormitorios: prop.dormitorios,
+          suites: prop.suites,
+          banheiros: prop.banheiros,
+          vagas: prop.vagas,
+          salas: prop.salas,
+        }
+      : data.confirmed,
+    endereco: [address, prop.bairro, [prop.cidade, prop.uf].filter(Boolean).join("/")]
+      .filter(Boolean)
+      .join(" · "),
+    search_text: [
+      prop.codigo,
+      prop.codigo_cordial,
+      prop.codigo_morar,
+      "locacao",
+      prop.logradouro,
+      prop.numero,
+      prop.bairro,
+      prop.cidade,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+  };
+  const inspection = {
+    id: data.id,
+    property_id: rentalListing ? null : data.propertyId,
+    rental_property_id: contractLink?.rentalPropertyId ?? null,
+    agency: contractLink
+      ? contractLink.brand === "ambas"
+        ? (contractLink.modelBrand ?? data.agency)
+        : contractLink.brand
+      : data.agency,
+    kind: contractLink ? rentalKind : data.kind,
+    responsible_id: responsibleId,
+    responsible_name: profile?.nome ?? null,
+    created_by: context.userId,
+    inspected_at: data.inspectedAt,
+    participants: data.participants,
+    furnished: data.furnished,
+    cleaning: data.cleaning,
+    keys: data.keys,
+    meters: data.meters,
+    property_snapshot: snapshot,
+    plan_confirmed: data.planConfirmed,
+    rental_contract_id: contractLink ? contractLink.contractId : null,
+    rental_kind: contractLink ? rentalKind : null,
+  };
+  const plan = contractLink
+    ? (rentalKind === "saida" && suggestRooms ? contractLink.entryRooms : []).map(
+        ({ name, kind }) => ({ name, kind, items: [] }),
+      )
+    : (data.rooms ??
       buildRoomPlan({
         ...data.confirmed,
         furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado",
-      });
-    const { data: result, error } = await sb.rpc(
-      "inspection_create" as never,
-      {
-        p_inspection: inspection,
-        p_rooms: plan,
-      } as never,
-    );
+      }));
+  const { data: result, error } = await sb.rpc(
+    "inspection_create" as never,
+    {
+      p_inspection: inspection,
+      p_rooms: plan,
+    } as never,
+  );
+  if (error && contractLink) {
+    // The unique index arbitrates concurrent requests for the same kind.
+    const latest = await loadContractEntryInspectionState(sb, contractLink.contractId);
+    const existing = rentalKind === "saida" ? latest.exitInspectionId : latest.existingInspectionId;
+    if (existing) return { id: existing, reused: true };
+  }
+  fail(error);
+  return result as unknown as { id: string; reused: boolean };
+}
+
+export const createInspection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => createSchema.parse(d))
+  .handler(({ data, context }) => createInspectionRecord(data, context));
+
+export const startRentalInspection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      contractId: uuid,
+      kind: z.enum(["entrada", "saida"]),
+      suggestRooms: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const meter = { status: "nao_informado" as const };
+    const { data: access, error } = await context.supabase
+      .from("user_agencies")
+      .select("agency")
+      .eq("user_id", context.userId);
     fail(error);
-    const created = result as unknown as { id: string; reused: boolean };
-    if (contractLink && data.rentalKind === "saida" && contractLink.existingInspectionId) {
-      const { error: linkErr } = await sb
-        .from("inspections" as never)
-        .update({ entry_inspection_id: contractLink.existingInspectionId } as never)
-        .eq("id", created.id);
-      fail(linkErr);
-    }
-    return created;
+    const fallbackAgency = access?.some((row) => row.agency === "cordial")
+      ? "cordial"
+      : access?.some((row) => row.agency === "morar")
+        ? "morar"
+        : "cordial";
+    return createInspectionRecord(
+      {
+        id: crypto.randomUUID(),
+        // The linked property and agency are resolved from the rental on the server.
+        propertyId: data.contractId,
+        contractId: data.contractId,
+        rentalKind: data.kind,
+        kind: data.kind,
+        agency: fallbackAgency,
+        inspectedAt: new Date().toISOString(),
+        participants: [],
+        keys: [],
+        furnished: "nao_informado",
+        cleaning: "nao_informado",
+        meters: { agua: meter, luz: meter, gas: meter },
+        confirmed: {
+          tipo: null,
+          dormitorios: null,
+          suites: null,
+          banheiros: null,
+          vagas: null,
+          salas: null,
+        },
+        planConfirmed: true,
+      },
+      context,
+      data.suggestRooms,
+    );
   });
 
 /* ---------------- Leitura completa ---------------- */
@@ -589,6 +648,12 @@ export const addRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
+    const { data: inspection, error: inspectionError } = await sb
+      .from("inspections")
+      .select("id,rental_contract_id")
+      .eq("id", data.inspectionId)
+      .single();
+    fail(inspectionError);
     const { count } = await sb
       .from("inspection_rooms")
       .select("id", { count: "exact", head: true })
@@ -605,7 +670,9 @@ export const addRoom = createServerFn({ method: "POST" })
       .single();
     fail(error);
     const { itemsForRoom } = await import("./model");
-    const items = itemsForRoom(data.kind as RoomKind, data.furnished);
+    const items = inspection.rental_contract_id
+      ? []
+      : itemsForRoom(data.kind as RoomKind, data.furnished);
     if (items.length) {
       const { error: ie } = await sb.from("inspection_items").insert(
         items.map((it, i) => ({
@@ -649,15 +716,14 @@ export const reorderRooms = createServerFn({ method: "POST" })
     z.object({ inspectionId: uuid, order: z.array(uuid).max(60) }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const sb = context.supabase as any;
-    for (const [i, id] of data.order.entries()) {
-      const { error } = await sb
-        .from("inspection_rooms")
-        .update({ position: i })
-        .eq("id", id)
-        .eq("inspection_id", data.inspectionId);
-      fail(error);
-    }
+    const { error } = await context.supabase.rpc(
+      "inspection_reorder_rooms" as never,
+      {
+        p_id: data.inspectionId,
+        p_order: data.order,
+      } as never,
+    );
+    fail(error);
     return { ok: true };
   });
 

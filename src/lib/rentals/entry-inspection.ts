@@ -63,10 +63,8 @@ export function entryInspectionGate(
 }
 
 export const ENTRY_INSPECTION_BLOCKED_REASON: Record<EntryInspectionMissing, string> = {
-  no_contract_document:
-    "Anexe o contrato de aluguel e marque como conferido para iniciar a vistoria de entrada.",
-  not_reviewed:
-    "Marque o contrato anexado como conferido para iniciar a vistoria de entrada.",
+  no_contract_document: "Confirme e salve o contrato para iniciar a vistoria.",
+  not_reviewed: "Confira o contrato da revisão atual para iniciar a vistoria.",
 };
 
 export type EntryInspectionAction =

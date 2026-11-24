@@ -17,7 +17,9 @@ export type InspectionRow = {
   id: string;
   numero: number;
   revision: number;
-  property_id: string;
+  property_id: string | null;
+  rental_contract_id?: string | null;
+  rental_kind?: "entrada" | "saida" | null;
   agency: "cordial" | "morar";
   kind: InspectionKind;
   status: InspectionStatus;

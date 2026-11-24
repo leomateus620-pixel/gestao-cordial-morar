@@ -20,7 +20,15 @@ export const SPOUSE_ROLE_LABEL: Record<SpouseRole, string> = {
 };
 
 export function emptySpouse(): GuarantorSpouse {
-  return { enabled: false, papel: "esposa", nome: "", cpf: "", rg: "", profissao: "", telefone: "" };
+  return {
+    enabled: false,
+    papel: "esposa",
+    nome: "",
+    cpf: "",
+    rg: "",
+    profissao: "",
+    telefone: "",
+  };
 }
 
 export function isValidCpf(raw: string): boolean {
@@ -43,8 +51,10 @@ export function spousePending(s: GuarantorSpouse | null | undefined): string[] {
   if (!s.cpf.trim()) out.push("CPF do cônjuge");
   else if (!isValidCpf(s.cpf)) out.push("CPF do cônjuge válido");
   if (!s.rg.trim()) out.push("RG do cônjuge");
+  else if (!/^[\p{L}\d.\-/ ]+$/u.test(s.rg.trim())) out.push("RG do cônjuge válido");
   if (!s.profissao.trim()) out.push("profissão do cônjuge");
-  if (s.telefone.trim() && s.telefone.replace(/\D/g, "").length < 10) out.push("telefone do cônjuge válido");
+  if (s.telefone.trim() && s.telefone.replace(/\D/g, "").length < 10)
+    out.push("telefone do cônjuge válido");
   return out;
 }
 
@@ -68,6 +78,7 @@ export function sanitizeSpouse(input: unknown): GuarantorSpouse | null {
     telefone: clip(r["telefone"], 30),
   };
   if (s.cpf && !isValidCpf(s.cpf)) throw new Error(`CPF do cônjuge de fiador inválido.`);
-  if (s.rg && !/^[\p{L}\d.\-/ ]+$/u.test(s.rg)) throw new Error("RG do cônjuge com caracteres inválidos.");
+  if (s.rg && !/^[\p{L}\d.\-/ ]+$/u.test(s.rg))
+    throw new Error("RG do cônjuge com caracteres inválidos.");
   return s;
 }

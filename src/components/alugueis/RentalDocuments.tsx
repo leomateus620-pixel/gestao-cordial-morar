@@ -143,16 +143,16 @@ function FileActions({
         </button>
       )}
       {document.category !== "nota_fiscal" && (
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={isDeleting}
-        className={cn(buttonClass, "text-rose-700 hover:bg-rose-500/[0.08]")}
-        aria-label={`Excluir documento ${document.fileName}`}
-        title="Excluir documento"
-      >
-        <Trash2 className="size-4" />
-      </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeleting}
+          className={cn(buttonClass, "text-rose-700 hover:bg-rose-500/[0.08]")}
+          aria-label={`Excluir documento ${document.fileName}`}
+          title="Excluir documento"
+        >
+          <Trash2 className="size-4" />
+        </button>
       )}
     </div>
   );
@@ -252,7 +252,7 @@ export function RentalDocuments({
                 id={`${sectionId}-title`}
                 className="text-[15px] font-extrabold leading-5 tracking-[-0.015em]"
               >
-                Documentos
+                Anexos
               </h3>
               {!isLoading && (
                 <span className="rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[10px] font-bold text-foreground/58">
@@ -367,20 +367,20 @@ export function RentalDocuments({
                   )}
                 </div>
                 {category.id !== "nota_fiscal" && (
-                <button
-                  type="button"
-                  onClick={() => inputsRef.current[category.id]?.click()}
-                  disabled={isUploading}
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary/9 px-3 text-[11px] font-bold text-primary transition duration-200 hover:bg-primary/14 disabled:pointer-events-none disabled:opacity-55 motion-reduce:transition-none"
-                  aria-label={`Adicionar arquivo em ${category.label}`}
-                >
-                  {busy ? (
-                    <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  ) : (
-                    <Upload className="size-3.5" />
-                  )}
-                  {busy ? "Enviando…" : "Adicionar"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => inputsRef.current[category.id]?.click()}
+                    disabled={isUploading}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-primary/9 px-3 text-[11px] font-bold text-primary transition duration-200 hover:bg-primary/14 disabled:pointer-events-none disabled:opacity-55 motion-reduce:transition-none"
+                    aria-label={`Adicionar arquivo em ${category.label}`}
+                  >
+                    {busy ? (
+                      <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <Upload className="size-3.5" />
+                    )}
+                    {busy ? "Enviando…" : "Adicionar"}
+                  </button>
                 )}
                 <input
                   ref={(element) => {
@@ -410,7 +410,8 @@ export function RentalDocuments({
                     {items.map((document) => {
                       const isImage = (document.mimeType ?? "").startsWith("image/");
                       const driveStatus = document.driveSyncStatus ?? "not_enabled";
-                      const canReview = category.id === "contrato_aluguel";
+                      const canReview =
+                        category.id === "contrato_aluguel" && document.origin !== "gerado";
 
                       return (
                         <li
@@ -463,7 +464,9 @@ export function RentalDocuments({
                               {document.reviewedAt && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                                   <ShieldCheck className="size-3" />
-                                  Conferido em{" "}
+                                  {document.reviewCurrent
+                                    ? "Conferido em "
+                                    : "Conferência anterior em "}
                                   {new Date(document.reviewedAt).toLocaleDateString("pt-BR")}
                                 </span>
                               )}
@@ -473,7 +476,7 @@ export function RentalDocuments({
                                 type="button"
                                 onClick={() =>
                                   runDocumentAction(() =>
-                                    setDocumentReviewed(document.id, !document.reviewedAt),
+                                    setDocumentReviewed(document.id, !document.reviewCurrent),
                                   )
                                 }
                                 disabled={isReviewing}
@@ -484,7 +487,7 @@ export function RentalDocuments({
                                 ) : (
                                   <ShieldCheck className="size-3.5" />
                                 )}
-                                {document.reviewedAt
+                                {document.reviewCurrent
                                   ? "Desmarcar conferência"
                                   : "Marcar como conferido"}
                               </button>

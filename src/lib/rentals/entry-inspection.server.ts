@@ -17,9 +17,34 @@ import {
 
 type Client = SupabaseClient<Database>;
 
+export async function assertRentalWorkflowAccess(supabase: Client, id: string, draft = false) {
+  const { data, error } = await supabase.rpc(
+    "rental_workflow_can_operate" as never,
+    {
+      p_id: id,
+      p_draft: draft,
+    } as never,
+  );
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Aluguel não encontrado ou sem acesso à imobiliária.");
+}
+
+export async function readRentalDataRevision(supabase: Client, id: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc(
+    "rental_contract_data_revision" as never,
+    {
+      p_id: id,
+    } as never,
+  );
+  if (error) throw new Error(error.message);
+  return typeof data === "string" ? data : null;
+}
+
 export type ContractEntryInspectionState = {
   contractId: string;
   rentalPropertyId: string;
+  brand: "cordial" | "morar" | "ambas";
+  modelBrand: "cordial" | "morar" | undefined;
   unlocked: boolean;
   reviewedAt: string | null;
   missing: EntryInspectionMissing | null;
@@ -39,9 +64,10 @@ export async function loadContractEntryInspectionState(
   supabase: Client,
   contractId: string,
 ): Promise<ContractEntryInspectionState> {
+  await assertRentalWorkflowAccess(supabase, contractId);
   const { data: contract, error: contractError } = await supabase
     .from("rental_contracts")
-    .select("id,property_id")
+    .select("id,property_id,brand,template_options" as "id,property_id,brand")
     .eq("id", contractId)
     .maybeSingle();
   if (contractError) throw new Error(contractError.message);
@@ -50,17 +76,19 @@ export async function loadContractEntryInspectionState(
   const [
     { data: documentRows, error: documentError },
     { data: inspectionRows, error: inspectionError },
+    revision,
   ] = await Promise.all([
     supabase
       .from("rental_contract_documents")
-      .select("id,category,reviewed_at")
+      .select("id,category,reviewed_at,review_revision" as "id,category,reviewed_at")
       .eq("contract_id", contractId),
     supabase
       .from("inspections")
-      .select("id,status,rental_kind")
+      .select("id,status,rental_kind,current_version")
       .eq("rental_contract_id", contractId)
       .in("rental_kind", ["entrada", "saida"])
       .order("created_at"),
+    readRentalDataRevision(supabase, contractId),
   ]);
   if (documentError) throw new Error(documentError.message);
   if (inspectionError) throw new Error(inspectionError.message);
@@ -68,7 +96,10 @@ export async function loadContractEntryInspectionState(
   const documents: EntryInspectionDocument[] = (documentRows ?? []).map((row) => ({
     id: String(row.id),
     category: String(row.category ?? "outro"),
-    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
+    reviewedAt:
+      revision && (row as typeof row & { review_revision?: string }).review_revision === revision
+        ? row.reviewed_at
+        : null,
   }));
   const gate = entryInspectionGate(documents);
   const rows = inspectionRows ?? [];
@@ -79,10 +110,13 @@ export async function loadContractEntryInspectionState(
   if (ids.length) {
     const { data: docs, error: docErr } = await supabase
       .from("inspection_documents")
-      .select("inspection_id")
+      .select("inspection_id,version")
       .in("inspection_id", ids);
     if (docErr) throw new Error(docErr.message);
-    for (const d of docs ?? []) withDoc.add(String(d.inspection_id));
+    for (const d of docs ?? []) {
+      if (rows.some((row) => row.id === d.inspection_id && row.current_version === d.version))
+        withDoc.add(d.inspection_id);
+    }
   }
   let entryRooms: { name: string; kind: string }[] = [];
   if (existing) {
@@ -104,6 +138,10 @@ export async function loadContractEntryInspectionState(
   return {
     contractId,
     rentalPropertyId: String(contract.property_id),
+    brand: contract.brand,
+    modelBrand: (
+      contract as typeof contract & { template_options?: { modelBrand?: "cordial" | "morar" } }
+    ).template_options?.modelBrand,
     unlocked: gate.unlocked,
     reviewedAt: gate.reviewedAt,
     missing: gate.missing,
@@ -131,17 +169,14 @@ export async function assertContractEntryInspectionStart(
 ): Promise<ContractEntryInspectionState> {
   const state = await loadContractEntryInspectionState(supabase, contractId);
   if (kind === "saida") {
-    if (state.exitInspectionId)
-      throw new Error("Este contrato já tem uma vistoria de saída. Abra a existente.");
+    if (state.exitInspectionId) return state;
     if (!state.exitUnlocked)
-      throw new Error("A vistoria de saída só é liberada depois da entrada concluída com o termo registrado.");
+      throw new Error(
+        "A vistoria de saída só é liberada depois da entrada concluída com o termo registrado.",
+      );
     return state;
   }
-  if (state.existingInspectionId) {
-    throw new Error(
-      "Este contrato já tem uma vistoria de entrada. Abra a vistoria existente em vez de criar outra.",
-    );
-  }
+  if (state.existingInspectionId) return state;
   if (!state.unlocked) {
     throw new Error(
       state.missing === "no_contract_document"

@@ -3,6 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { uploadAndRegister, friendlyUploadError } from "@/lib/rentals/upload-document";
 import { rentalStorageDeps } from "@/lib/rentals/upload-storage";
 import {
+  confirmRentalWorkflowFile,
+  listRentalWorkspaceFiles,
+  registerRentalWorkflowFile,
   deleteRentalContractDocument,
   listRentalContractDocuments,
   registerRentalContractDocument,
@@ -24,9 +27,12 @@ function sanitize(name: string) {
   return name.replace(/[^\w.-]+/g, "_").slice(0, 120);
 }
 
-export function useRentalDocuments(contractId: string | null) {
+export function useRentalDocuments(contractId: string | null, draft = false) {
   const qc = useQueryClient();
   const list = useServerFn(listRentalContractDocuments);
+  const listDraft = useServerFn(listRentalWorkspaceFiles);
+  const workflowRegister = useServerFn(registerRentalWorkflowFile);
+  const workflowConfirm = useServerFn(confirmRentalWorkflowFile);
   const register = useServerFn(registerRentalContractDocument);
   const remove = useServerFn(deleteRentalContractDocument);
   const getFolder = useServerFn(getRentalDriveFolder);
@@ -37,8 +43,8 @@ export function useRentalDocuments(contractId: string | null) {
   const trashOne = useServerFn(trashRentalDocumentOnDrive);
 
   const query = useQuery<RentalContractDocument[]>({
-    queryKey: ["rentals", "documents", contractId],
-    queryFn: () => list({ data: { contractId: contractId! } }),
+    queryKey: ["rentals", "documents", contractId, draft],
+    queryFn: () => (draft ? listDraft : list)({ data: { contractId: contractId! } }),
     enabled: !!contractId,
     staleTime: 30_000,
   });
@@ -46,7 +52,7 @@ export function useRentalDocuments(contractId: string | null) {
   const folderQuery = useQuery({
     queryKey: ["rentals", "drive-folder", contractId],
     queryFn: () => getFolder({ data: { contractId: contractId! } }),
-    enabled: !!contractId,
+    enabled: !!contractId && !draft,
     staleTime: 30_000,
   });
 
@@ -57,38 +63,97 @@ export function useRentalDocuments(contractId: string | null) {
     ]);
 
   const uploadMutation = useMutation({
-    mutationFn: async (args: {
-      file: File;
-      category?: RentalDocumentCategory;
-      /** Mesma chave = mesmo arquivo: nova tentativa ou clique duplo não duplicam. */
-      idempotencyKey?: string;
-      origin?: "gerado" | "externo";
-    }) => {
-      const { file, category, idempotencyKey, origin } = args;
+    mutationFn: async (args: { file: File; category?: RentalDocumentCategory }) => {
+      const { file, category } = args;
       if (!contractId) throw new Error("Contrato inválido.");
       if (file.size <= 0) throw new Error("Arquivo vazio.");
       if (file.size > MAX_BYTES) throw new Error("Arquivo excede 50 MB.");
 
       const safeName = sanitize(file.name);
-      const filePath = `${contractId}/${idempotencyKey ?? crypto.randomUUID()}-${safeName}`;
+      const filePath = `${contractId}/${crypto.randomUUID()}-${safeName}`;
       const contentType = file.type || "application/octet-stream";
 
       try {
-        return await uploadAndRegister(
+        return (await uploadAndRegister(
           filePath,
           file,
           contentType,
           rentalStorageDeps((p) =>
             register({
-              data: { contractId, fileName: file.name, filePath: p, mimeType: contentType, sizeBytes: file.size, category, ...(origin ? { origin } : {}) },
+              data: {
+                contractId,
+                fileName: file.name,
+                filePath: p,
+                mimeType: contentType,
+                sizeBytes: file.size,
+                category,
+              },
             }),
           ),
-        ) as Awaited<ReturnType<typeof register>>;
+        )) as Awaited<ReturnType<typeof register>>;
       } catch (e) {
         throw new Error(friendlyUploadError(file.name, e));
       }
     },
     onSuccess: invalidateAll,
+  });
+
+  const workflowUpload = useMutation({
+    mutationFn: async ({
+      file,
+      key,
+      revision,
+      origin,
+      category,
+    }: {
+      file: File;
+      key: string;
+      revision: string;
+      origin: "gerado" | "externo";
+      category: Exclude<RentalDocumentCategory, "nota_fiscal">;
+    }) => {
+      if (!contractId) throw new Error("Salve o rascunho antes de enviar.");
+      if (file.size <= 0 || file.size > MAX_BYTES)
+        throw new Error("Envie um arquivo de até 50 MB.");
+      const filePath = `${contractId}/${key}-${sanitize(file.name)}`;
+      const mimeType = file.type || "application/octet-stream";
+      try {
+        return (await uploadAndRegister(
+          filePath,
+          file,
+          mimeType,
+          rentalStorageDeps((path) =>
+            workflowRegister({
+              data: {
+                contractId,
+                draft,
+                revision,
+                origin,
+                category,
+                filePath: path,
+                fileName: file.name,
+                mimeType,
+                sizeBytes: file.size,
+              },
+            }),
+          ),
+        )) as { id: string };
+      } catch (error) {
+        throw new Error(friendlyUploadError(file.name, error));
+      }
+    },
+    onSuccess: () => {
+      void invalidateAll();
+    },
+  });
+
+  const workflowReview = useMutation({
+    mutationFn: ({ documentId, revision }: { documentId: string; revision: string }) =>
+      workflowConfirm({ data: { id: contractId!, draft, documentId, revision } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["rentals"] });
+      void qc.invalidateQueries({ queryKey: ["rental-entry-inspection", contractId] });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -130,6 +195,9 @@ export function useRentalDocuments(contractId: string | null) {
 
   return {
     documents: query.data ?? [],
+    refreshDocuments: query.refetch,
+    uploadWorkflowFile: workflowUpload.mutateAsync,
+    confirmWorkflowFile: workflowReview.mutateAsync,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error as Error | null,
@@ -137,8 +205,6 @@ export function useRentalDocuments(contractId: string | null) {
     isFolderLoading: folderQuery.isLoading,
     uploadFile: (file: File, category?: RentalDocumentCategory) =>
       uploadMutation.mutateAsync({ file, category }),
-    saveGeneratedContract: (file: File, idempotencyKey: string) =>
-      uploadMutation.mutateAsync({ file, category: "contrato_aluguel", idempotencyKey, origin: "gerado" }),
     deleteFile: (id: string, scope: "both" | "cloud" | "drive" = "both") =>
       deleteMutation.mutateAsync({ id, scope }),
     enableDriveSync: () => enableSyncMutation.mutateAsync(),

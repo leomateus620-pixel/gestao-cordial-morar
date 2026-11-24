@@ -28,6 +28,7 @@ type Saver = ReturnType<typeof useSaver>;
 type Queue = ReturnType<typeof useLocalQueue>;
 export function NotesBlock(props: {
   notes: NoteRow[];
+  rental?: boolean;
   items: ItemRow[];
   readOnly: boolean;
   saver: Saver;
@@ -54,14 +55,14 @@ export function NotesBlock(props: {
     .join(" · ");
   return (
     <section aria-label="Relatos do ambiente" className="space-y-3">
-      <h3 className="text-sm font-semibold">Relatos · {context}</h3>
+      {!props.rental && <h3 className="text-sm font-semibold">Relatos · {context}</h3>}
       {!props.readOnly && props.mode === "texto" && (
         <div className="premium-card space-y-2 rounded-xl p-3">
           <label className="block text-sm font-medium">
-            Relato de {context}
+            {props.rental ? "Descrição" : `Relato de ${context}`}
             <Textarea
               id="note-text"
-              aria-label="Relato digitado"
+              aria-label={props.rental ? "Descrição do cômodo" : "Relato digitado"}
               rows={5}
               disabled={saving}
               placeholder="Descreva o que observou. O texto fica neste ambiente."
@@ -132,7 +133,7 @@ export function NotesBlock(props: {
                 }
               }}
             >
-              Salvar relato
+              {props.rental ? "Salvar descrição" : "Salvar relato"}
             </button>
           </div>
         </div>
@@ -143,7 +144,11 @@ export function NotesBlock(props: {
           className="min-h-11 w-full rounded-xl border text-sm font-semibold text-primary"
           onClick={() => props.setMode("texto")}
         >
-          {draft.value.text ? "Retomar rascunho deste ambiente" : "Digitar relato"}
+          {draft.value.text
+            ? "Retomar descrição"
+            : props.rental
+              ? "Escrever descrição"
+              : "Digitar relato"}
         </button>
       )}
       <ul className="space-y-3">
@@ -191,6 +196,7 @@ function NoteCard({
   const { controller, pending } = useDrafts();
   const approved = draft.value.approved_text ?? note.transcript_original ?? "";
   const [busy, setBusy] = useState(false);
+  const [transcriptionError, setTranscriptionError] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [target, setTarget] = useState<Record<number, string>>({});
   const obs: OrganizedObservation[] = note.suggestion?.observacoes ?? [];
@@ -208,6 +214,7 @@ function NoteCard({
       sessionId: currentCtx.current?.sessionId ?? "",
     };
     setBusy(true);
+    setTranscriptionError(false);
     try {
       const row = await transcribe({ data: { noteId: note.id } });
       qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, useSessionId), (f) =>
@@ -216,6 +223,7 @@ function NoteCard({
       // Resposta atrasada não preenche outro cômodo: só aplica se ainda estivermos aqui.
       toast.info("Transcrição salva no relato do ambiente de origem. Revise antes de aprovar.");
     } catch (e) {
+      setTranscriptionError(true);
       toast.error(e instanceof Error ? e.message : "Falha na transcrição");
     } finally {
       setBusy(false);
@@ -229,7 +237,9 @@ function NoteCard({
           {note.source === "voz" ? `Voz · ${Math.round(note.audio_seconds ?? 0)} s` : "Digitado"} ·{" "}
           {fmt(note.created_at)}
         </span>
-        <span className="text-[11px] font-semibold">{label}</span>
+        <span className="text-[11px] font-semibold" role="status">
+          {busy ? "Processando…" : label}
+        </span>
       </div>
       {note.audio_path &&
         (audioUrl ? (
@@ -254,7 +264,13 @@ function NoteCard({
           className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-xl border border-input px-3 text-xs font-semibold disabled:opacity-50"
         >
           {busy && <Loader2 className="size-3 animate-spin" />}
-          {voiceReady ? "Transcrever agora" : "Transcrição ainda indisponível"}
+          {busy
+            ? "Processando áudio…"
+            : voiceReady
+              ? transcriptionError
+                ? "Tentar transcrição novamente"
+                : "Transcrever áudio"
+              : "Transcrição ainda indisponível"}
         </button>
       )}
       {note.transcript_original && (
@@ -326,11 +342,15 @@ function NoteCard({
           ))}
         </div>
       )}
-      {note.status !== "pendente_transcricao" && (
+      {(!readOnly || note.status !== "pendente_transcricao") && (
         <div className="mt-2">
           <Textarea
             disabled={readOnly || note.status === "descartado"}
-            aria-label="Texto aprovado do relato"
+            aria-label={
+              note.status === "pendente_transcricao"
+                ? "Digitar descrição manualmente"
+                : "Texto aprovado do relato"
+            }
             rows={3}
             value={approved}
             onChange={(e) => draft.set({ approved_text: e.target.value, status: "transcrito" })}

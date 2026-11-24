@@ -126,6 +126,7 @@ export type RentalContractFull = RentalContract & {
   guarantor?: RentalGuarantor | null; // principal (item 0)
   tenants: RentalTenant[];
   guarantees: RentalContractGuaranteeItem[];
+  templateOptions?: import("@/lib/rentals/contract-workflow").RentalTemplateOptions;
 };
 
 export type RentalPropertyInput = Omit<RentalProperty, "id" | "createdAt" | "updatedAt">;
@@ -149,6 +150,7 @@ export type RentalContractGuaranteeInput = {
 
 export type RentalContractInput = {
   contractId?: string;
+  templateOptions?: import("@/lib/rentals/contract-workflow").RentalTemplateOptions;
   property: { existingId?: string | null; data?: RentalPropertyInput };
   // Compatibilidade: manter `tenant` para consumidores antigos.
   tenant?: { existingId?: string | null; data?: RentalTenantInput };
@@ -200,17 +202,17 @@ export const RENTAL_DOCUMENT_CATEGORIES: {
   {
     id: "contrato_aluguel",
     label: "Contrato de aluguel",
-    description: "Instrumento particular assinado pelas partes.",
+    description: "Versões geradas e contratos externos cadastrados.",
   },
   {
     id: "termo_vistoria",
-    label: "Termos de vistoria anexados",
+    label: "Termos de vistoria externos",
     description: "Termos anexados à mão (os gerados ficam nas vistorias de entrada e saída).",
   },
   {
     id: "checklist_aluguel",
-    label: "Check-list (arquivos antigos)",
-    description: "Check-lists anexados antes do check-list do contrato.",
+    label: "Checklists antigos (histórico)",
+    description: "Arquivos históricos da conferência do aluguel.",
   },
   {
     id: "apolice_seguro_fianca",
@@ -254,6 +256,10 @@ export type RentalContractDocument = {
   driveLastSyncedAt?: string | null;
   /** When the attached contract was reviewed ("conferido"); null while unreviewed. */
   reviewedAt?: string | null;
+  reviewCurrent?: boolean;
+  origin?: "externo" | "gerado";
+  signedAt?: string | null;
+  sourceRevision?: string | null;
 };
 
 export type RentalFilter =
