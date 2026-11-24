@@ -7840,6 +7840,71 @@ export type Database = {
           },
         ]
       }
+      property_gallery_upload_order: {
+        Row: {
+          ordered_keys: string[]
+          property_id: string
+        }
+        Insert: {
+          ordered_keys: string[]
+          property_id: string
+        }
+        Update: {
+          ordered_keys?: string[]
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "cordial_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_admin_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_documents"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "morar_site_eligible"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_gallery_upload_order_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_history: {
         Row: {
           actor_kind: string
@@ -10456,10 +10521,12 @@ export type Database = {
           id: string
           mime_type: string | null
           origin: string
+          review_revision: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           signed_at: string | null
           size_bytes: number | null
+          source_revision: string | null
           updated_by: string | null
           uploaded_by: string | null
         }
@@ -10478,10 +10545,12 @@ export type Database = {
           id?: string
           mime_type?: string | null
           origin?: string
+          review_revision?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           signed_at?: string | null
           size_bytes?: number | null
+          source_revision?: string | null
           updated_by?: string | null
           uploaded_by?: string | null
         }
@@ -10500,10 +10569,12 @@ export type Database = {
           id?: string
           mime_type?: string | null
           origin?: string
+          review_revision?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           signed_at?: string | null
           size_bytes?: number | null
+          source_revision?: string | null
           updated_by?: string | null
           uploaded_by?: string | null
         }
@@ -10647,6 +10718,7 @@ export type Database = {
           seguro_seguradora: string | null
           seguro_valor_mensal: number | null
           status: Database["public"]["Enums"]["rental_contract_status"]
+          template_options: Json
           tenant_id: string
           updated_at: string
           valor_caucao: number | null
@@ -10673,6 +10745,7 @@ export type Database = {
           seguro_seguradora?: string | null
           seguro_valor_mensal?: number | null
           status?: Database["public"]["Enums"]["rental_contract_status"]
+          template_options?: Json
           tenant_id: string
           updated_at?: string
           valor_caucao?: number | null
@@ -10699,6 +10772,7 @@ export type Database = {
           seguro_seguradora?: string | null
           seguro_valor_mensal?: number | null
           status?: Database["public"]["Enums"]["rental_contract_status"]
+          template_options?: Json
           tenant_id?: string
           updated_at?: string
           valor_caucao?: number | null
@@ -11542,6 +11616,80 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rental_workspace_drafts: {
+        Row: {
+          brand: Database["public"]["Enums"]["rental_brand"]
+          created_by: string
+          id: string
+          input: Json
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          brand: Database["public"]["Enums"]["rental_brand"]
+          created_by: string
+          id: string
+          input: Json
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          brand?: Database["public"]["Enums"]["rental_brand"]
+          created_by?: string
+          id?: string
+          input?: Json
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rental_workspace_files: {
+        Row: {
+          category: string
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string
+          origin: string
+          size_bytes: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          draft_id: string
+          draft_revision: number
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type: string
+          origin: string
+          size_bytes: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          draft_id?: string
+          draft_revision?: number
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string
+          origin?: string
+          size_bytes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_workspace_files_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "rental_workspace_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sale_commission_installments: {
         Row: {
@@ -13771,6 +13919,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      inspection_reorder_rooms: {
+        Args: { p_id: string; p_order: string[] }
+        Returns: undefined
+      }
       inspection_review_issues: { Args: { p_id: string }; Returns: Json }
       inspection_snapshot: { Args: { p_id: string }; Returns: Json }
       internal_worker_headers: { Args: never; Returns: Json }
@@ -14713,6 +14865,16 @@ export type Database = {
         Args: { _targets: string[] }
         Returns: string
       }
+      property_gallery_save_order: {
+        Args: {
+          _expected_gallery_revision: number
+          _ids: string[]
+          _keys: string[]
+          _property_id: string
+        }
+        Returns: number
+      }
+      property_gallery_upload_key: { Args: { _path: string }; Returns: string }
       property_history_fields: {
         Args: never
         Returns: {
@@ -15394,6 +15556,54 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      rental_confirm_workflow_file: {
+        Args: {
+          p_actor: string
+          p_document: string
+          p_id: string
+          p_materialize?: Json
+          p_reviewed: boolean
+          p_revision: string
+        }
+        Returns: Json
+      }
+      rental_contract_data_revision: { Args: { p_id: string }; Returns: string }
+      rental_register_workflow_file: {
+        Args: {
+          p_actor: string
+          p_draft: boolean
+          p_file: Json
+          p_id: string
+          p_revision: string
+        }
+        Returns: Json
+      }
+      rental_save_template_options: {
+        Args: {
+          p_actor: string
+          p_id: string
+          p_options: Json
+          p_revision: string
+        }
+        Returns: string
+      }
+      rental_save_workspace_draft: {
+        Args: {
+          p_actor: string
+          p_id: string
+          p_input: Json
+          p_revision: number
+        }
+        Returns: number
+      }
+      rental_workflow_actor_allowed: {
+        Args: { p_actor: string; p_brand: string; p_owner: string }
+        Returns: boolean
+      }
+      rental_workflow_can_operate: {
+        Args: { p_draft?: boolean; p_id: string }
+        Returns: boolean
       }
       reorder_property_images: {
         Args: {
