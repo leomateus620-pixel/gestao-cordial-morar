@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   normalizeTargets,
@@ -10,6 +11,15 @@ import {
 import type { PropertyImage } from "@/types/property";
 import { workerCallerSecret } from "@/lib/workers/hook-auth";
 import { rebaseGalleryMove, type GalleryMove } from "@/lib/imoveis/gallery-move";
+import {
+  applyGalleryEdits,
+  GALLERY_KEY_PATTERN,
+  galleryUploadKey,
+  mergeGallerySlots,
+  sameGalleryOrder,
+  type GalleryEdit,
+  type GalleryOrderSnapshot,
+} from "@/lib/imoveis/gallery-order";
 
 const BUCKET = "property-images";
 
@@ -23,6 +33,7 @@ type ImageRow = {
   position: number;
   file_name: string;
   content_hash: string | null;
+  processed_checksum: string | null;
   upload_status: string;
   processing_status: string;
   processing_error_message: string | null;
@@ -30,7 +41,7 @@ type ImageRow = {
 };
 
 const IMAGE_COLUMNS =
-  "id, storage_path, original_storage_path, processed_storage_path, thumbnail_storage_path, is_cover, position, file_name, content_hash, upload_status, processing_status, processing_error_message, watermark_variant";
+  "id, storage_path, original_storage_path, processed_storage_path, thumbnail_storage_path, is_cover, position, file_name, content_hash, processed_checksum, upload_status, processing_status, processing_error_message, watermark_variant";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = any;
@@ -82,10 +93,15 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
       }),
   );
 
+  const signedAt = Date.now();
   return rows.map((r) => {
     const url = byPath.get(r.processed_storage_path ?? r.storage_path) ?? "";
     return {
       id: r.id,
+      uploadKey: galleryUploadKey(r.original_storage_path ?? r.storage_path),
+      fileName: r.file_name,
+      assetVersion: r.processed_checksum,
+      signedAt,
       url,
       thumbUrl: thumbByRow.get(r.id) ?? url,
       isCover: r.is_cover,
@@ -99,19 +115,20 @@ async function signImages(supabase: Client, rows: ImageRow[]): Promise<PropertyI
   });
 }
 
-async function listRows(supabase: Client, propertyId: string): Promise<ImageRow[]> {
+async function listRows(supabase: Client, propertyId: string, imageId?: string): Promise<ImageRow[]> {
   // Foto em exclusão pendente nos sites já não faz parte da galeria do Gestão.
-  const { data, error } = await supabase
+  const query = supabase
     .from("property_images")
     .select(IMAGE_COLUMNS)
     .eq("property_id", propertyId)
     .or("pending_remote_delete.is.null,pending_remote_delete.eq.false")
     .order("position", { ascending: true });
+  const { data, error } = await (imageId ? query.eq("id", imageId) : query);
   if (error) throw new Error(error.message);
   return (data ?? []) as ImageRow[];
 }
 
-async function stableGallery(supabase: Client, propertyId: string): Promise<{ rows: ImageRow[]; revision: number }> {
+async function stableGallery(supabase: Client, propertyId: string, includePlan = false) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const readRevision = async () => {
       const { data, error } = await supabase.from("properties").select("gallery_revision").eq("id", propertyId).single();
@@ -120,11 +137,27 @@ async function stableGallery(supabase: Client, propertyId: string): Promise<{ ro
     };
     const before = await readRevision();
     const rows = await listRows(supabase, propertyId);
+    let plan: string[] = [];
+    if (includePlan) {
+      const { data, error } = await supabase.from("property_gallery_upload_order")
+        .select("ordered_keys").eq("property_id", propertyId).maybeSingle();
+      if (error) throw new Error(error.message);
+      plan = data?.ordered_keys ?? [];
+    }
     const after = await readRevision();
-    if (before === after) return { rows, revision: after };
+    if (before === after) return { rows, revision: after, plan };
   }
   throw new Error("A galeria está sendo alterada. Aguarde um instante.");
 }
+
+function rowKey(row: ImageRow) {
+  return galleryUploadKey(row.original_storage_path ?? row.storage_path) ?? row.id;
+}
+
+export type PropertyGallerySnapshot = GalleryOrderSnapshot & {
+  images: PropertyImage[];
+  recovering: { key: string; name: string; status: "reserved" | "missing" }[];
+};
 
 /**
  * Aciona o worker de marca-d'água sem prender a resposta do upload: a chamada
@@ -155,9 +188,33 @@ export const listPropertyImages = createServerFn({ method: "GET" })
 export const getPropertyGallerySnapshot = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { propertyId: string }) => data)
-  .handler(async ({ data, context }): Promise<{ images: PropertyImage[]; revision: number }> => {
-    const snapshot = await stableGallery(context.supabase, data.propertyId);
-    return { images: await signImages(context.supabase, snapshot.rows), revision: snapshot.revision };
+  .handler(async ({ data, context }): Promise<PropertyGallerySnapshot> => {
+    const { rows, revision, plan } = await stableGallery(context.supabase, data.propertyId, true);
+    const activeKeys = rows.map(rowKey);
+    const keys = mergeGallerySlots(activeKeys, plan);
+    const active = new Set(activeKeys);
+    const pending = new Set(keys.filter((key) => !active.has(key)));
+    const recovering = new Map<string, PropertyGallerySnapshot["recovering"][number]>();
+    if (pending.size) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: reservations, error } = await supabaseAdmin.from("property_image_upload_reservations")
+        .select("storage_path, file_name, status").eq("property_id", data.propertyId)
+        .eq("uploaded_by", context.userId).in("status", ["reserved", "missing"]).is("replacement_for", null);
+      if (error) throw new Error(error.message);
+      for (const reservation of reservations) {
+        const key = galleryUploadKey(reservation.storage_path);
+        if (key && pending.has(key) && (reservation.status === "reserved" || reservation.status === "missing")) {
+          recovering.set(key, { key, name: reservation.file_name, status: reservation.status });
+        }
+      }
+    }
+    return {
+      images: await signImages(context.supabase, rows),
+      revision,
+      keys,
+      activeKeys,
+      recovering: [...recovering.values()],
+    };
   });
 
 export type PropertyImageUploadIssue = {
@@ -193,7 +250,7 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
   .inputValidator((data: {
     propertyId: string; fileName: string;
     contentHash?: string; sizeBytes?: number; mimeType?: string | null;
-    replacementFor?: string | null; batchId?: string | null;
+    replacementFor?: string | null; batchId?: string | null; uploadKey?: string;
   }) => data)
   .handler(
     async ({
@@ -208,7 +265,16 @@ export const createPropertyImageUploadUrl = createServerFn({ method: "POST" })
     }> => {
       const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
       const id = crypto.randomUUID();
-      const originalPath = `${data.propertyId}/originais/${id}-${safe}`;
+      if (data.uploadKey && !GALLERY_KEY_PATTERN.test(data.uploadKey))
+        throw new Error("Identificador de foto inválido.");
+      let key = data.uploadKey;
+      if (data.replacementFor) {
+        const [old] = await listRows(context.supabase, data.propertyId, data.replacementFor);
+        if (!old) throw new Error("A foto a substituir foi removida.");
+        key = rowKey(old);
+      }
+      const prefix = key ? `galeria-${key}-` : "";
+      const originalPath = `${data.propertyId}/originais/${prefix}${id}-${safe}`;
       const sign = async (path: string) => {
         const { data: signed, error } = await context.supabase.storage
           .from(BUCKET)
@@ -278,6 +344,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       destinationHash?: string | null;
       width?: number | null;
       height?: number | null;
+      onlyRegisteredImage?: boolean;
     }) => data,
   )
   .handler(
@@ -290,7 +357,6 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       resumed: boolean;
       imageId: string | null;
     }> => {
-      const rows = await listRows(context.supabase, data.propertyId);
       if (!(await storedSize(context.supabase, data.storagePath))) {
         throw new Error("O arquivo ainda não chegou ao servidor. Selecione este arquivo novamente.");
       }
@@ -332,7 +398,9 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
           }
         }
         return {
-          images: await signImages(context.supabase, await listRows(context.supabase, data.propertyId)),
+          images: await signImages(context.supabase, await listRows(
+            context.supabase, data.propertyId, data.onlyRegisteredImage ? outcome.imageId : undefined,
+          )),
           duplicated: outcome.status === "duplicated",
           resumed: false,
           imageId: outcome.imageId,
@@ -362,6 +430,7 @@ export const registerPropertyImage = createServerFn({ method: "POST" })
       };
       const ready = await buildReady();
 
+      const rows = await listRows(context.supabase, data.propertyId);
       const duplicate = data.replacementFor
         ? null
         : rows.find((r) => r.content_hash && r.content_hash === data.contentHash);
@@ -625,15 +694,67 @@ export const setPropertyImageCover = createServerFn({ method: "POST" })
     return signImages(context.supabase, await listRows(context.supabase, data.propertyId));
   });
 
-/**
- * Salva a ordem inteira em uma única chamada ao banco (antes era uma por
- * foto), e não devolve a lista assinada — a tela já mostra a ordem correta.
- */
+const galleryKey = z.string().regex(GALLERY_KEY_PATTERN);
+const galleryEdit = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("append"), keys: z.array(galleryKey) }),
+  z.object({ type: z.literal("discard"), key: galleryKey }),
+  z.object({
+    type: z.literal("move"),
+    move: z.object({
+      imageId: galleryKey,
+      beforeId: galleryKey.nullable(),
+      afterId: galleryKey.nullable(),
+      baseOrderedIds: z.array(galleryKey),
+    }),
+  }),
+]);
+
+async function saveGalleryEdits(supabase: Client, propertyId: string, edits: GalleryEdit[], retry: boolean) {
+  for (let attempt = 0; ; attempt += 1) {
+    const { rows, revision, plan } = await stableGallery(supabase, propertyId, true);
+    const activeKeys = rows.map(rowKey);
+    const keys = applyGalleryEdits({ revision, keys: mergeGallerySlots(activeKeys, plan), activeKeys }, edits, !retry);
+    const byKey = new Map(rows.map((row) => [rowKey(row), row.id]));
+    const retained = keys.filter((key) => byKey.has(key));
+    const ids = retained.map((key) => byKey.get(key)!);
+    const { data: savedRevision, error } = await supabase.rpc("property_gallery_save_order", {
+      _property_id: propertyId,
+      _ids: ids,
+      _keys: keys,
+      _expected_gallery_revision: revision,
+    });
+    if (!error) {
+      if (!sameGalleryOrder(activeKeys, retained)) await kickSyncWorker();
+      return {
+        ok: true as const,
+        order: { revision: Number(savedRevision), keys, activeKeys: retained } satisfies GalleryOrderSnapshot,
+      };
+    }
+    if (attempt >= 4 || !/galeria_desatualizada/i.test(error.message)) throw new Error(error.message);
+  }
+}
+
+/** Confirma vários movimentos com a revisão atual, sem renovar as URLs das fotos. */
 export const reorderPropertyImages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { propertyId: string; orderedIds: string[]; expectedGalleryRevision?: number; move?: GalleryMove | null }) => data)
+  .inputValidator((data: {
+    propertyId: string;
+    orderedIds: string[];
+    expectedGalleryRevision?: number;
+    move?: GalleryMove | null;
+  } | { propertyId: string; edits: GalleryEdit[]; retry: boolean }) => data)
   .handler(
-    async ({ data, context }): Promise<{ ok: true; changed: number; coverId: string | null }> => {
+    async ({ data, context }): Promise<
+      { ok: true; changed: number; coverId: string | null } | { ok: true; order: GalleryOrderSnapshot }
+    > => {
+      if ("edits" in data) {
+        const input = z.object({
+          propertyId: galleryKey,
+          edits: z.array(galleryEdit),
+          retry: z.boolean(),
+        }).parse(data);
+        return saveGalleryEdits(context.supabase, input.propertyId, input.edits, input.retry);
+      }
       let ids = data.orderedIds;
       let expected = data.expectedGalleryRevision;
       let result: unknown = null;

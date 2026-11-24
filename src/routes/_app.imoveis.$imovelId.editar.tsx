@@ -170,6 +170,7 @@ function EditarImovelPage() {
       </div>
 
       <PropertyForm
+        key={imovelId}
         initial={initialValues}
         submitLabel="Salvar alterações"
         pending={update.isPending}

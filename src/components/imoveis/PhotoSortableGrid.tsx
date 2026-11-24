@@ -1,343 +1,331 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 
-/**
- * Reordenação de fotos por arrastar e soltar, sem dependência externa.
- * Funciona com mouse, toque e teclado (setas). O item arrastado segue o
- * ponteiro por transform (sem re-render) e os vizinhos deslizam com FLIP.
- */
-const DRAG_THRESHOLD_PX = 6;
-const FLIP_MS = 180;
-const EDGE_SCROLL_PX = 56;
-const EDGE_SCROLL_SPEED = 14;
+const MOVE_MS = 180;
+const DRAG_THRESHOLD = 6;
+const SCROLL_EDGE = 56;
 
-function arrayMove<T>(list: T[], from: number, to: number): T[] {
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  if (item === undefined) return list;
-  next.splice(to, 0, item);
-  return next;
-}
+type Point = { x: number; y: number };
+type Slot = { id: string; rect: DOMRect };
+type Gesture = {
+  id: string;
+  pointer: number;
+  handle: HTMLElement;
+  card: HTMLElement;
+  start: Point;
+  point: Point;
+  origin: Point;
+  scroller: HTMLElement;
+  viewport: { left: number; top: number; right: number; bottom: number };
+  scrollX: boolean;
+  scrollY: boolean;
+  slots: Slot[];
+  target: string | null;
+  active: boolean;
+};
 
-function prefersReducedMotion() {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
+function reducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export type SortableItemProps = {
-  "data-sort-index": number;
-  draggable: false;
-  ref: (node: HTMLElement | null) => void;
-  onPointerDown: (event: React.PointerEvent<HTMLElement>) => void;
-  onPointerMove: (event: React.PointerEvent<HTMLElement>) => void;
-  onPointerUp: (event: React.PointerEvent<HTMLElement>) => void;
-  onPointerCancel: (event: React.PointerEvent<HTMLElement>) => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
-  style: React.CSSProperties;
-  tabIndex: number;
-  "aria-grabbed": boolean | undefined;
-};
+function getScrollContainer(node: HTMLElement) {
+  for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+    const style = getComputedStyle(parent);
+    if (
+      (/(auto|scroll)/.test(style.overflowY) && parent.scrollHeight > parent.clientHeight) ||
+      (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth)
+    )
+      return parent;
+  }
+  return document.scrollingElement as HTMLElement;
+}
 
-export function usePhotoSorting<T extends { id: string }>({
-  items,
-  onReorder,
-  onDragEnd,
+function scrollSpeed(value: number, start: number, end: number) {
+  if (value < start + SCROLL_EDGE) return -Math.min(20, (start + SCROLL_EDGE - value) / 3);
+  if (value > end - SCROLL_EDGE) return Math.min(20, (value - end + SCROLL_EDGE) / 3);
+  return 0;
+}
+
+function findTarget(slots: Slot[], point: Point) {
+  let closest: string | null = null;
+  let best = Infinity;
+  for (const { id, rect } of slots) {
+    if (
+      point.x >= rect.left &&
+      point.x <= rect.right &&
+      point.y >= rect.top &&
+      point.y <= rect.bottom
+    )
+      return id;
+    const distance = Math.hypot(
+      point.x - (rect.left + rect.width / 2),
+      point.y - (rect.top + rect.height / 2),
+    );
+    if (distance < best && distance <= Math.hypot(rect.width, rect.height) * 0.65) {
+      best = distance;
+      closest = id;
+    }
+  }
+  return closest;
+}
+
+function cardFor(cell: HTMLElement | undefined) {
+  return cell?.querySelector<HTMLElement>("[data-photo-card]");
+}
+
+/** As células guardam a geometria da grade. Apenas os cartões internos recebem transform. */
+export function usePhotoSorting({
+  ids,
+  onMove,
   enabled = true,
 }: {
-  items: T[];
-  onReorder: (orderedIds: string[], movedId: string | null) => void;
-  /** Chamado uma única vez ao soltar, para agrupar efeitos colaterais. */
-  onDragEnd?: () => void;
+  ids: string[];
+  onMove: (id: string, destination: number) => boolean | void;
   enabled?: boolean;
 }) {
-  const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const draggingRef = useRef(false);
-  const dragIdRef = useRef<string | null>(null);
-  const startRef = useRef<{ x: number; y: number; index: number } | null>(null);
-  const grabOffsetRef = useRef({ x: 0, y: 0 });
-  const pointerRef = useRef({ x: 0, y: 0 });
-  const orderRef = useRef(order);
-  orderRef.current = order;
+  const cells = useRef(new Map<string, HTMLElement>());
+  const animations = useRef(new Map<string, Animation>());
+  const before = useRef<Map<string, DOMRect> | null>(null);
+  const restoreFocus = useRef<{ id: string; control: string; show: boolean } | null>(null);
+  const gesture = useRef<Gesture | null>(null);
+  const frame = useRef<number>(0);
+  const [drag, setDrag] = useState<{ id: string; target: string | null } | null>(null);
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
+  const orderKey = ids.join(",");
 
-  // Elementos vivos por id — base para FLIP e para mover o item arrastado.
-  const nodesRef = useRef(new Map<string, HTMLElement>());
-  const rectsRef = useRef(new Map<string, DOMRect>());
-  const scrollFrameRef = useRef<number | null>(null);
+  function captureMove(id: string, control: string, show: boolean) {
+    restoreFocus.current = { id, control, show };
+    if (reducedMotion()) return;
+    before.current = new Map();
+    for (const [key, cell] of cells.current) {
+      const card = cardFor(cell);
+      if (card) before.current.set(key, card.getBoundingClientRect());
+    }
+  }
 
-  const incomingKey = items.map((i) => i.id).join(",");
-  useEffect(() => {
-    if (draggingRef.current) return;
-    setOrder(items.map((i) => i.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomingKey]);
-
-  const positionDragged = useCallback(() => {
-    const id = dragIdRef.current;
-    if (!id) return;
-    const node = nodesRef.current.get(id);
-    if (!node) return;
-    const rect = node.getBoundingClientRect();
-    // getComputedStyle devolve "none" quando não há transform, e o construtor
-    // da matriz lança erro nesse caso — o que interrompia o arraste.
-    const raw = getComputedStyle(node).transform;
-    const current =
-      raw && raw !== "none" ? new DOMMatrixReadOnly(raw) : new DOMMatrixReadOnly();
-    const baseLeft = rect.left - current.m41;
-    const baseTop = rect.top - current.m42;
-    const dx = pointerRef.current.x - grabOffsetRef.current.x - baseLeft;
-    const dy = pointerRef.current.y - grabOffsetRef.current.y - baseTop;
-    node.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.06)`;
-  }, []);
-
-  // FLIP: anima os vizinhos até o novo lugar após cada troca de posição.
   useLayoutEffect(() => {
-    const reduced = prefersReducedMotion();
-    const next = new Map<string, DOMRect>();
-    for (const [id, node] of nodesRef.current) {
-      if (!node.isConnected) continue;
-      const before = rectsRef.current.get(id);
-      if (id === dragIdRef.current) {
-        next.set(id, node.getBoundingClientRect());
-        continue;
+    const old = before.current;
+    before.current = null;
+    if (old && !reducedMotion()) {
+      const moves: { key: string; card: HTMLElement; x: number; y: number }[] = [];
+      for (const [key, rect] of old) {
+        const cell = cells.current.get(key);
+        const card = cardFor(cell);
+        if (!cell || !card) continue;
+        // Mede as células, que não herdam o transform animado dos cartões.
+        const next = cell.getBoundingClientRect();
+        moves.push({ key, card, x: rect.left - next.left, y: rect.top - next.top });
       }
-      const after = node.getBoundingClientRect();
-      next.set(id, after);
-      if (!before || reduced) continue;
-      const dx = before.left - after.left;
-      const dy = before.top - after.top;
-      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-      node.animate(
-        [{ transform: `translate3d(${dx}px, ${dy}px, 0)` }, { transform: "translate3d(0,0,0)" }],
-        { duration: FLIP_MS, easing: "cubic-bezier(0.2, 0, 0, 1)" },
-      );
+      for (const { key, card, x, y } of moves) {
+        animations.current.get(key)?.cancel();
+        if (Math.abs(x) + Math.abs(y) < 1 || !card.animate) continue;
+        const motion = card.animate(
+          [{ transform: `translate3d(${x}px,${y}px,0)` }, { transform: "translate3d(0,0,0)" }],
+          { duration: MOVE_MS, easing: "cubic-bezier(0.2,0,0,1)" },
+        );
+        animations.current.set(key, motion);
+        motion.onfinish = () => {
+          if (animations.current.get(key) === motion) animations.current.delete(key);
+        };
+      }
     }
-    rectsRef.current = next;
-    if (draggingRef.current) positionDragged();
-  }, [order, positionDragged]);
+    const focus = restoreFocus.current;
+    restoreFocus.current = null;
+    if (focus) {
+      const cell = cells.current.get(focus.id);
+      cell
+        ?.querySelector<HTMLElement>(`[data-photo-control="${focus.control}"]`)
+        ?.focus({ preventScroll: true });
+      if (focus.show) cell?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [orderKey]);
 
-  const byId = new Map(items.map((item) => [item.id, item]));
-  const ordered = order.map((id) => byId.get(id)).filter(Boolean) as T[];
-
-  const commit = useCallback((movedId: string | null = null) => {
-    const next = orderRef.current;
-    const original = items.map((i) => i.id);
-    if (next.length === original.length && next.every((id, i) => id === original[i])) return;
-    onReorder(next, movedId);
-  }, [items, onReorder]);
-
-  const moveTo = useCallback((from: number, to: number) => {
-    setOrder((current) => {
-      if (to < 0 || to >= current.length || from === to) return current;
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(8);
-      return arrayMove(current, from, to);
+  function measureSlots(ids: string[]): Slot[] {
+    return ids.flatMap((id) => {
+      const cell = cells.current.get(id);
+      return cell ? [{ id, rect: cell.getBoundingClientRect() }] : [];
     });
+  }
+
+  function draw(active: Gesture, scroll: boolean) {
+    const { scroller, viewport, point } = active;
+    if (
+      scroll &&
+      point.y >= viewport.top - SCROLL_EDGE &&
+      point.y <= viewport.bottom + SCROLL_EDGE &&
+      point.x >= viewport.left - SCROLL_EDGE &&
+      point.x <= viewport.right + SCROLL_EDGE
+    ) {
+      if (active.scrollX)
+        scroller.scrollLeft += scrollSpeed(point.x, viewport.left, viewport.right);
+      if (active.scrollY) scroller.scrollTop += scrollSpeed(point.y, viewport.top, viewport.bottom);
+    }
+    const x = point.x + scroller.scrollLeft - active.origin.x;
+    const y = point.y + scroller.scrollTop - active.origin.y;
+    active.card.style.transform = `translate3d(${x - active.start.x}px,${y - active.start.y}px,0)`;
+    const target = findTarget(active.slots, { x, y });
+    if (active.target !== target) {
+      active.target = target;
+      setDrag({ id: active.id, target });
+    }
+  }
+
+  function animatePointer() {
+    const active = gesture.current;
+    if (!active?.active) return;
+    draw(active, true);
+    frame.current = requestAnimationFrame(animatePointer);
+  }
+
+  const stop = useCallback(() => {
+    const active = gesture.current;
+    if (!active) return;
+    gesture.current = null;
+    cancelAnimationFrame(frame.current);
+    active.card.style.transform = "";
+    if (active.handle.hasPointerCapture?.(active.pointer)) {
+      active.handle.releasePointerCapture(active.pointer);
+    }
+    if (active.active) setDrag(null);
   }, []);
 
-  /**
-   * Índice de destino pela geometria das miniaturas (não por elementFromPoint:
-   * o item arrastado fica por cima do ponteiro e capturaria todos os testes).
-   */
-  /**
-   * Posição real de cada miniatura agora — medir na hora evita usar medidas
-   * antigas (a página pode ter rolado depois que a tela foi montada), que era
-   * o motivo de a foto arrastada não encontrar o lugar de destino.
-   */
-  const liveRect = useCallback((id: string) => {
-    const node = nodesRef.current.get(id);
-    if (!node?.isConnected) return null;
-    return node.getBoundingClientRect();
-  }, []);
-
-  const findTargetIndex = useCallback((x: number, y: number) => {
-    const ids = orderRef.current;
-    let contained = -1;
-    let nearest = -1;
-    let nearestDist = Infinity;
-    let nearestReach = 0;
-    ids.forEach((id, idx) => {
-      if (id === dragIdRef.current) return;
-      const rect = liveRect(id);
-      if (!rect || rect.width === 0) return;
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        contained = idx;
-        return;
-      }
-      const dist = Math.hypot(x - cx, y - cy);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearest = idx;
-        nearestReach = Math.max(rect.width, rect.height) * 0.75;
-      }
-    });
-    if (contained >= 0) return contained;
-    return nearestDist <= nearestReach ? nearest : -1;
-  }, [liveRect]);
-
-  /** Quantas colunas a grade tem (1 quando é uma tira horizontal). */
-  const countColumns = useCallback(() => {
-    const ids = orderRef.current;
-    const first = liveRect(ids[0] ?? "");
-    if (!first) return 1;
-    let columns = 0;
-    for (const id of ids) {
-      const rect = liveRect(id);
-      if (!rect) continue;
-      if (Math.abs(rect.top - first.top) < 4) columns += 1;
-      else break;
+  useEffect(() => {
+    function onEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || !gesture.current) return;
+      event.preventDefault();
+      stop();
     }
-    return Math.max(1, columns);
-  }, [liveRect]);
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      window.removeEventListener("keydown", onEscape);
+      stop();
+    };
+  }, [stop]);
 
-  /** Contêiner rolável mais próximo (a tira pode rolar em um ancestral). */
+  function animateMove(id: string, control: string, action: () => boolean | void, show = false) {
+    captureMove(id, control, show);
+    if (action() !== false) return true;
+    before.current = null;
+    restoreFocus.current = null;
+    return false;
+  }
 
-  const findScroller = useCallback((node: HTMLElement | null) => {
-    let el: HTMLElement | null = node?.parentElement ?? null;
-    while (el) {
-      if (el.scrollWidth > el.clientWidth + 4 || el.scrollHeight > el.clientHeight + 4) return el;
-      el = el.parentElement;
-    }
-    return null;
-  }, []);
+  function move(id: string, destination: number, control: string, show = false) {
+    const current = idsRef.current;
+    if (destination < 0 || destination >= current.length || current[destination] === id) return;
+    animateMove(id, control, () => onMove(id, destination), show);
+  }
 
-  /** Rola a faixa sozinha quando o arraste chega perto das bordas. */
-  const autoScroll = useCallback(() => {
-    scrollFrameRef.current = null;
-    if (!draggingRef.current) return;
-    const id = dragIdRef.current;
-    const node = id ? nodesRef.current.get(id) : null;
-    const scroller = findScroller(node ?? null);
-    if (scroller) {
-      const box = scroller.getBoundingClientRect();
-      const { x, y } = pointerRef.current;
-      if (scroller.scrollWidth > scroller.clientWidth + 4) {
-        if (x < box.left + EDGE_SCROLL_PX) scroller.scrollLeft -= EDGE_SCROLL_SPEED;
-        else if (x > box.right - EDGE_SCROLL_PX) scroller.scrollLeft += EDGE_SCROLL_SPEED;
-      }
-      if (scroller.scrollHeight > scroller.clientHeight + 4) {
-        if (y < box.top + EDGE_SCROLL_PX) scroller.scrollTop -= EDGE_SCROLL_SPEED;
-        else if (y > box.bottom - EDGE_SCROLL_PX) scroller.scrollTop += EDGE_SCROLL_SPEED;
-      }
-    }
-    positionDragged();
-    scrollFrameRef.current = requestAnimationFrame(autoScroll);
-  }, [positionDragged, findScroller]);
-
-
-  const stopDrag = useCallback(() => {
-    const id = dragIdRef.current;
-    const node = id ? nodesRef.current.get(id) : null;
-    if (node) {
-      node.style.transform = "";
-      node.style.zIndex = "";
-      node.style.transition = "";
-    }
-    if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
-    scrollFrameRef.current = null;
-    draggingRef.current = false;
-    dragIdRef.current = null;
-    startRef.current = null;
-    setDraggingId(null);
-    if (typeof document !== "undefined") document.body.style.userSelect = "";
-  }, []);
-
-  useEffect(() => stopDrag, [stopDrag]);
-
-  const getItemProps = useCallback(
-    (index: number): SortableItemProps => ({
-      "data-sort-index": index,
-      draggable: false,
-      tabIndex: enabled ? 0 : -1,
-      "aria-grabbed": enabled ? draggingId === orderRef.current[index] : undefined,
-      style: enabled ? { touchAction: "none", willChange: "transform" } : {},
+  function getItemProps(id: string) {
+    return {
       ref: (node: HTMLElement | null) => {
-        const id = orderRef.current[index];
-        if (!id) return;
-        if (node) nodesRef.current.set(id, node);
+        if (node) cells.current.set(id, node);
+        else cells.current.delete(id);
       },
-      onPointerDown: (event) => {
-        if (!enabled || event.button !== 0) return;
-        startRef.current = { x: event.clientX, y: event.clientY, index };
-        pointerRef.current = { x: event.clientX, y: event.clientY };
-        const rect = event.currentTarget.getBoundingClientRect();
-        grabOffsetRef.current = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      "data-photo-key": id,
+    };
+  }
+
+  function getHandleProps(id: string) {
+    return {
+      "data-photo-control": "handle",
+      style: { touchAction: "none" },
+      onPointerDown: (event: PointerEvent<HTMLElement>) => {
+        if (!enabled || !event.isPrimary || event.button !== 0 || gesture.current) return;
+        const cell = cells.current.get(id);
+        const card = cardFor(cell);
+        if (!cell || !card) return;
+        const scroller = getScrollContainer(cell);
+        const viewport =
+          scroller === document.scrollingElement
+            ? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+            : scroller.getBoundingClientRect();
+        const point = { x: event.clientX, y: event.clientY };
+        gesture.current = {
+          id,
+          pointer: event.pointerId,
+          handle: event.currentTarget,
+          card,
+          scroller,
+          viewport,
+          start: point,
+          point,
+          origin: { x: scroller.scrollLeft, y: scroller.scrollTop },
+          scrollX: scroller.scrollWidth > scroller.clientWidth,
+          scrollY: scroller.scrollHeight > scroller.clientHeight,
+          slots: measureSlots(idsRef.current),
+          target: id,
+          active: false,
+        };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
       },
-      onPointerMove: (event) => {
-        const start = startRef.current;
-        if (!enabled || !start) return;
-        pointerRef.current = { x: event.clientX, y: event.clientY };
-        if (!draggingRef.current) {
-          const moved =
-            Math.abs(event.clientX - start.x) > DRAG_THRESHOLD_PX ||
-            Math.abs(event.clientY - start.y) > DRAG_THRESHOLD_PX;
-          if (!moved) return;
-          draggingRef.current = true;
-          dragIdRef.current = orderRef.current[start.index] ?? null;
-          setDraggingId(dragIdRef.current);
-          document.body.style.userSelect = "none";
-          const node = event.currentTarget as HTMLElement;
-          node.style.zIndex = "30";
-          event.currentTarget.setPointerCapture?.(event.pointerId);
-          scrollFrameRef.current = requestAnimationFrame(autoScroll);
+      onPointerMove: (event: PointerEvent<HTMLElement>) => {
+        const active = gesture.current;
+        if (!active || active.pointer !== event.pointerId) return;
+        active.point = { x: event.clientX, y: event.clientY };
+        if (active.active) return;
+        if (
+          Math.hypot(active.point.x - active.start.x, active.point.y - active.start.y) <
+          DRAG_THRESHOLD
+        )
+          return;
+        active.active = true;
+        animations.current.get(id)?.cancel();
+        setDrag({ id, target: id });
+        frame.current = requestAnimationFrame(animatePointer);
+      },
+      onPointerUp: (event: PointerEvent<HTMLElement>) => {
+        const active = gesture.current;
+        if (!active || active.pointer !== event.pointerId) return;
+        if (active.active) {
+          active.point = { x: event.clientX, y: event.clientY };
+          draw(active, false);
+          const destination = active.target ? idsRef.current.indexOf(active.target) : -1;
+          // O quadro de origem ainda inclui a posição visual da foto arrastada.
+          move(id, destination, "handle");
         }
-        positionDragged();
-        const currentIndex = orderRef.current.findIndex((id) => id === dragIdRef.current);
-        const fromIndex = currentIndex >= 0 ? currentIndex : start.index;
-        const toIndex = findTargetIndex(event.clientX, event.clientY);
-        if (toIndex < 0 || toIndex === fromIndex) return;
-        moveTo(fromIndex, toIndex);
+        stop();
       },
-      onPointerUp: (event) => {
-        event.currentTarget.releasePointerCapture?.(event.pointerId);
-        const wasDragging = draggingRef.current;
-        const movedId = dragIdRef.current;
-        stopDrag();
-        if (!wasDragging) return;
-        commit(movedId);
-        onDragEnd?.();
+      onPointerCancel: (event: PointerEvent<HTMLElement>) => {
+        if (gesture.current?.pointer === event.pointerId) stop();
       },
-      onPointerCancel: () => stopDrag(),
-      onKeyDown: (event) => {
-        if (!enabled) return;
-        const columns = countColumns();
-        const delta =
-          event.key === "ArrowLeft"
-            ? -1
-            : event.key === "ArrowRight"
-              ? 1
-              : event.key === "ArrowUp"
-                ? -columns
-                : event.key === "ArrowDown"
-                  ? columns
-                  : 0;
+      onLostPointerCapture: (event: PointerEvent<HTMLElement>) => {
+        if (gesture.current?.pointer === event.pointerId) stop();
+      },
+      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+        if (!enabled || gesture.current) return;
+        const index = idsRef.current.indexOf(id);
+        if (index < 0) return;
+        let delta = 0;
+        if (event.key === "ArrowLeft") delta = -1;
+        if (event.key === "ArrowRight") delta = 1;
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          const slots = measureSlots(idsRef.current);
+          const columns = slots.filter(
+            ({ rect }) => Math.abs(rect.top - (slots[0]?.rect.top ?? 0)) < 4,
+          ).length;
+          delta = event.key === "ArrowUp" ? -columns : columns;
+        }
         if (!delta) return;
         event.preventDefault();
-        const movedId = orderRef.current[index] ?? null;
-        const target = Math.max(0, Math.min(orderRef.current.length - 1, index + delta));
-        moveTo(index, target);
-        // Teclado grava imediatamente: cada seta é uma decisão do usuário.
-        setTimeout(() => {
-          commit(movedId);
-          onDragEnd?.();
-        }, 0);
+        move(id, Math.max(0, Math.min(idsRef.current.length - 1, index + delta)), "handle", true);
       },
+    };
+  }
 
-    }),
-    [
-      enabled,
-      draggingId,
-      moveTo,
-      commit,
-      autoScroll,
-      positionDragged,
-      stopDrag,
-      onDragEnd,
-      findTargetIndex,
-      countColumns,
-    ],
-
-  );
-
-  return { ordered, draggingId, getItemProps, moveTo, commit };
+  return {
+    getItemProps,
+    getHandleProps,
+    animateMove,
+    move,
+    draggingId: drag?.id ?? null,
+    targetId: drag?.target ?? null,
+  };
 }

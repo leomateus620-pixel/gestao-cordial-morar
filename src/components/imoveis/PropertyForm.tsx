@@ -20,6 +20,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCorretores } from "@/lib/corretores/corretores.functions";
 import { PropertyPhotosStep } from "./PropertyPhotosStep";
+import { useBlocker } from "@tanstack/react-router";
+import { usePropertyMedia } from "@/hooks/usePropertyMedia";
 import { PublishTargetSelector } from "./PublishTargetSelector";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -395,7 +397,7 @@ export function PropertyForm({
   initial: PropertyFormValues;
   submitLabel: string;
   pending?: boolean;
-  onSubmit: (values: PropertyFormValues) => void;
+  onSubmit: (values: PropertyFormValues) => void | Promise<void>;
   onCancel?: () => void;
   showDestinos?: boolean;
   destinos?: PropertyCarteira[];
@@ -422,6 +424,41 @@ export function PropertyForm({
   );
   const [values, setValues] = useState<PropertyFormValues>(initial);
   const [step, setStep] = useState(0);
+  const media = usePropertyMedia(propertyId ?? undefined);
+  const formAction = useRef(false);
+  const [savingPhotos, setSavingPhotos] = useState(false);
+
+  async function savePhotos() {
+    if (!media.hasPendingOrder()) return true;
+    try {
+      await media.flushReorder();
+      return true;
+    } catch {
+      toast.error("Não foi possível salvar a ordem. Tente novamente na etapa Fotos.");
+      return false;
+    }
+  }
+
+  useBlocker({
+    shouldBlockFn: async () => !(await savePhotos()),
+    enableBeforeUnload: media.hasPendingOrder,
+  });
+
+  async function afterSavingPhotos(action: () => void | Promise<void>) {
+    if (formAction.current) return;
+    formAction.current = true;
+    setSavingPhotos(media.hasPendingOrder());
+    try {
+      if (await savePhotos()) await action();
+    } finally {
+      formAction.current = false;
+      setSavingPhotos(false);
+    }
+  }
+
+  function goToStep(index: number) {
+    if (index !== step) void afterSavingPhotos(() => setStep(index));
+  }
   const bairroListId = useId();
   const bairroOptions = useMemo(() => {
     const set = new Set<string>();
@@ -561,8 +598,8 @@ export function PropertyForm({
   const numeroCheck = validateAddressNumber(values.numero);
   const numeroSplit = suggestAddressSplit(values.numero);
   const canSubmit = useMemo(
-    () => !!values.tipo && !pending && numeroCheck.ok,
-    [values.tipo, pending, numeroCheck.ok],
+    () => !!values.tipo && !pending && !savingPhotos && numeroCheck.ok,
+    [values.tipo, pending, savingPhotos, numeroCheck.ok],
   );
 
   return (
@@ -571,16 +608,16 @@ export function PropertyForm({
         e.preventDefault();
         if (!numeroCheck.ok) {
           toast.error(numeroCheck.message);
-          setStep(1);
+          goToStep(1);
           return;
         }
         if (!canSubmit) return;
         if (values.proprietarioEmail && !isValidEmail(values.proprietarioEmail)) {
           toast.error("Informe um e-mail válido para o proprietário.");
-          setStep(0);
+          goToStep(0);
           return;
         }
-        onSubmit(values);
+        void afterSavingPhotos(() => onSubmit(values));
       }}
       className="space-y-5"
     >
@@ -589,7 +626,8 @@ export function PropertyForm({
           <li key={label}>
             <button
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
+              disabled={savingPhotos}
               className={
                 "rounded-full px-3 py-1.5 text-[11px] font-semibold transition " +
                 (i === step
@@ -1114,6 +1152,7 @@ export function PropertyForm({
             </div>
             <div className="rounded-2xl bg-white/50 p-3">
               <PropertyPhotosStep
+                media={media}
                 propertyId={propertyId}
                 destinos={destinos ?? []}
                 onRequestSave={onRequestSave}
@@ -1132,15 +1171,15 @@ export function PropertyForm({
         )}
 
         {step >= BASE_STEPS.length && extras[step - BASE_STEPS.length]
-          ? extras[step - BASE_STEPS.length]!.render({ values, goToStep: setStep })
+          ? extras[step - BASE_STEPS.length]!.render({ values, goToStep })
           : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
+          onClick={() => goToStep(Math.max(0, step - 1))}
+          disabled={step === 0 || savingPhotos}
           className="glass-panel inline-flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold disabled:opacity-40"
         >
           <ChevronLeft className="size-3.5" /> Voltar
@@ -1153,9 +1192,10 @@ export function PropertyForm({
                 toast.error(numeroCheck.message);
                 return;
               }
-              setStep((s) => Math.min(STEPS.length - 1, s + 1));
+              goToStep(Math.min(STEPS.length - 1, step + 1));
             }}
-            className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+            disabled={savingPhotos}
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
           >
             Avançar <ChevronRight className="size-3.5" />
           </button>
@@ -1164,7 +1204,8 @@ export function PropertyForm({
           {onCancel && (
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() => void afterSavingPhotos(onCancel)}
+              disabled={savingPhotos}
               className="glass-panel rounded-full px-4 py-2 text-xs font-semibold"
             >
               Cancelar
@@ -1175,7 +1216,7 @@ export function PropertyForm({
             disabled={!canSubmit}
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
           >
-            {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {pending || savingPhotos ? <Loader2 className="size-3.5 motion-safe:animate-spin" /> : null}
             {submitLabel}
           </button>
         </div>
