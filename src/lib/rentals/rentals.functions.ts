@@ -1,3 +1,4 @@
+import { guaranteePerson } from "./workspace-guarantee";
 import { z } from "zod";
 import { CONTRACT_TEMPLATES } from "./contract-templates";
 import {
@@ -1893,9 +1894,10 @@ function materializeWorkspace(input: RentalWorkspaceInput) {
     tenants: input.tenants.map((t) => ({ ...tenantPayload(t.data), id: t.existingId })),
     guarantees: input.guarantees.map((g) => ({
       tipo: g.tipo,
-      person: g.guarantor
-        ? { ...guarantorPayload(g.guarantor.data), id: g.guarantor.existingId }
-        : null,
+      // Sem fiador a chave é omitida (nunca `null`): a conferência no banco não lê pessoa.
+      ...guaranteePerson(
+        g.guarantor ? { ...guarantorPayload(g.guarantor.data), id: g.guarantor.existingId } : undefined,
+      ),
       valor_caucao: g.tipo === "caucao" ? (g.valorCaucao ?? null) : null,
       seguro_seguradora: orNull(g.seguroSeguradora),
       seguro_apolice: orNull(g.seguroApolice),

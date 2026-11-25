@@ -56,6 +56,7 @@ async function rentalDatabase(t: import("node:test").TestContext) {
     "0108_rental_spouse_versions_exit_inspection",
     "0111_rental_contract_workflow",
     "0112_rental_inspection_scope",
+    "0114_rental_confirm_workflow_file_null_person",
   ]) {
     await db.exec(
       await readFile(new URL(`../../drizzle/migrations/${name}.sql`, import.meta.url), "utf8"),
@@ -276,4 +277,72 @@ test("rascunho, retomada, conferência idempotente e saída com termo na revisã
       .length,
     0,
   );
+});
+
+test("conferência materializa rascunho com seguro-fiança, caução, sem garantia e fiador", async (t) => {
+  const db = await rentalDatabase(t);
+  const base = (garantia: string) => ({
+    property: { apelido: `Casa ${garantia}`, tipo: "casa", logradouro: "Rua Teste", status: "alugado" },
+    tenants: [{ nome: "Pessoa fictícia", telefone: "55000000000" }],
+    contract: {
+      valor_mensal: 1000,
+      data_inicio: "2026-11-24",
+      data_fim: "2027-11-24",
+      dia_vencimento: 10,
+      status: "pendente_assinatura",
+      payment_status: "pendente",
+      garantia_tipo: garantia,
+      template_options: {},
+    },
+  });
+  const cases: Array<[string, Record<string, unknown>[], number]> = [
+    ["seguro_fianca", [{ tipo: "seguro_fianca", seguro_seguradora: "Loft", seguro_valor_mensal: 90 }], 0],
+    ["caucao_null", [{ tipo: "caucao", person: null, valor_caucao: 2000 }], 0],
+    ["sem_garantia", [{ tipo: "sem_garantia", person: null }], 0],
+    ["fiador", [{ tipo: "fiador", person: { nome: "Fiador fictício" } }], 1],
+    [
+      "fiador_conjuge",
+      [{ tipo: "fiador", person: { nome: "Fiador 2" }, conjuge: { nome: "Cônjuge fictício" } }],
+      1,
+    ],
+  ];
+  let n = 10;
+  async function run(guarantees: Record<string, unknown>[], tipo: string) {
+    const id = `70000000-0000-4000-8000-0000000000${n++}`;
+    await db.exec("set role service_role");
+    await db.query("select rental_save_workspace_draft($1,$2,0,$3)", [userId, id, { brand: "cordial" }]);
+    await db.exec("reset role");
+    const path = `${id}/externo.docx`;
+    await db.query("insert into storage.objects values('rental-documents',$1)", [path]);
+    const doc = (
+      await db.query<{ file: { id: string } }>(
+        "select rental_register_workflow_file($1,$2,'1',true,$3) file",
+        [userId, id, { filePath: path, fileName: "Externo.docx", mimeType: "application/octet-stream", category: "contrato_aluguel", origin: "externo", sizeBytes: 10 }],
+      )
+    ).rows[0].file.id;
+    const res = db.query<{ doc: { contractId: string; reviewedAt: string } }>(
+      "select rental_confirm_workflow_file($1,$2,$3,'1',true,$4) doc",
+      [userId, id, doc, { ...base(tipo), guarantees }],
+    );
+    return { id, res };
+  }
+  for (const [tipo, guarantees, fiadores] of cases) {
+    const before = Number((await db.query<{ c: string }>("select count(*) c from rental_guarantors")).rows[0].c);
+    const { id, res } = await run(guarantees, tipo.replace("_null", "").replace("_conjuge", ""));
+    const doc = (await res).rows[0].doc;
+    assert.equal(doc.contractId, id, tipo);
+    assert.ok(doc.reviewedAt, tipo);
+    assert.equal((await db.query("select id from rental_workspace_drafts where id=$1", [id])).rows.length, 0);
+    assert.equal((await db.query("select id from rental_contract_tenants where contract_id=$1", [id])).rows.length, 1);
+    const g = (await db.query<{ guarantor_id: string | null; conjuge: unknown }>(
+      "select guarantor_id, conjuge from rental_contract_guarantors where contract_id=$1", [id])).rows;
+    assert.equal(g.length, 1, tipo);
+    assert.equal(g[0].guarantor_id === null, fiadores === 0, tipo);
+    if (tipo === "fiador_conjuge") assert.ok(g[0].conjuge);
+    assert.equal((await db.query("select id from rental_contract_documents where contract_id=$1 and reviewed_at is not null", [id])).rows.length, 1);
+    const after = Number((await db.query<{ c: string }>("select count(*) c from rental_guarantors")).rows[0].c);
+    assert.equal(after - before, fiadores, tipo);
+  }
+  const { res } = await run([{ tipo: "fiador", person: null }], "fiador");
+  await assert.rejects(res, /Informe o fiador\./);
 });

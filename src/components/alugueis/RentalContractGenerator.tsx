@@ -1,3 +1,4 @@
+import { friendlyWorkflowError, type WorkflowAction } from "@/lib/rentals/workflow-errors";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -292,7 +293,7 @@ export function RentalContractWorkflow({
     if (!focusRentalField(container.current, field)) onFocusField(field);
   };
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, kind: WorkflowAction = "conferir") {
     if (lock.current) return;
     lock.current = true;
     setError(null);
@@ -300,9 +301,7 @@ export function RentalContractWorkflow({
     try {
       await action();
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Não foi possível concluir. Tente novamente.",
-      );
+      setError(friendlyWorkflowError(cause, kind));
     } finally {
       lock.current = false;
       setBusy(false);
@@ -342,7 +341,7 @@ export function RentalContractWorkflow({
         void queryClient.invalidateQueries({ queryKey: ["rental-entry-inspection", id] });
         void queryClient.invalidateQueries({ queryKey: ["rentals", "documents", id] });
       }
-    });
+    }, "gerar");
   }
 
   async function complete(documentId: string, revision?: string) {
@@ -371,7 +370,7 @@ export function RentalContractWorkflow({
         category: "contrato_aluguel",
       });
       setExternalCandidate(null);
-    });
+    }, "anexar");
   }
 
   return (
@@ -541,7 +540,7 @@ export function RentalContractWorkflow({
                           const revision = await persistDraft?.();
                           await complete(doc.id, String(revision));
                         } else await complete(doc.id);
-                      })
+                      }, "conferir")
                     }
                   >
                     Marcar como conferido
@@ -592,7 +591,7 @@ export function RentalContractWorkflow({
                 rememberDocument(result.id);
               }
               await complete(registered, preview.revision);
-            })
+            }, "conferir")
           }
         />
       )}

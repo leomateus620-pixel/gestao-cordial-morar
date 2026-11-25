@@ -1,7 +1,7 @@
 import { createFileRoute, type SearchSchemaInput } from "@tanstack/react-router";
 import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRentalWorkspaceDraft } from "@/lib/rentals/rentals.functions";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,21 @@ import { RentalKpiCards } from "@/components/alugueis/RentalKpiCards";
 import { RentalFilters } from "@/components/alugueis/RentalFilters";
 import { RentalCard } from "@/components/alugueis/RentalCard";
 import { RentalExpandedDetails } from "@/components/alugueis/RentalExpandedDetails";
+import { CompetenceSwitcher } from "@/components/alugueis/CompetenceSwitcher";
+import {
+  effectiveCompetence,
+  parseCompetenciaParam,
+  readRememberedCompetence,
+  rememberCompetence,
+  rentalSearch,
+} from "@/lib/rentals/competence-nav";
+import {
+  buildCompetenceBadges,
+  countPending,
+  eligibleForBadges,
+  hasPending,
+} from "@/lib/rentals/competence-status";
+import { listRentalCompetenceStatus } from "@/lib/rentals/competence-status.functions";
 import { RentalFormModal } from "@/components/alugueis/RentalFormModal";
 import { RentalSkeleton } from "@/components/alugueis/RentalSkeleton";
 import { EmptyRentalState } from "@/components/alugueis/EmptyRentalState";
@@ -44,6 +59,7 @@ export const Route = createFileRoute("/_app/alugueis")({
       periodo?: unknown;
       imobiliaria?: unknown;
       status?: unknown;
+      competencia?: unknown;
     } & SearchSchemaInput,
   ) => ({
     id: typeof search.id === "string" ? search.id : undefined,
@@ -53,6 +69,7 @@ export const Route = createFileRoute("/_app/alugueis")({
     periodo: parseOperationalPeriod(search.periodo),
     imobiliaria: parseAgency(search.imobiliaria),
     status: parseRentalStatus(search.status),
+    competencia: parseCompetenciaParam(search.competencia),
   }),
   component: GuardedPage,
 });
@@ -74,8 +91,11 @@ function Page() {
     periodo,
     imobiliaria,
     status,
+    competencia: competenciaParam,
   } = Route.useSearch();
+  const competencia = effectiveCompetence(competenciaParam);
   const navigate = Route.useNavigate();
+  const queryClient = useQueryClient();
   const r = useRentals({
     initialFilter: status,
     corretorId,
@@ -109,7 +129,7 @@ function Page() {
     setFreshFormId(id ? undefined : nextId);
     setEditing(null);
     setSelectedId(null);
-    void navigate({ search: { formulario: nextId, corretorId, periodo, imobiliaria, status } });
+    void navigate({ search: (prev) => rentalSearch(prev, { formulario: nextId }) });
   }
 
   useEffect(() => {
@@ -127,20 +147,64 @@ function Page() {
     setSelectedId(id);
     void navigate({
       to: ".",
-      search: { id, corretorId, periodo, imobiliaria, status },
+      search: (prev) => rentalSearch(prev, { id }),
     });
   }
 
   function clearSelection() {
     setSelectedId(null);
+    void queryClient.invalidateQueries({ queryKey: ["rentals", "competence-status"] });
     if (highlightedId) {
       void navigate({
         to: ".",
-        search: { corretorId, periodo, imobiliaria, status },
+        search: (prev) => rentalSearch(prev, {}),
         replace: true,
       });
     }
   }
+
+  function changeCompetencia(next: string) {
+    rememberCompetence(next);
+    void navigate({
+      to: ".",
+      search: (prev) => rentalSearch(prev, { competencia: next, id: prev.id, formulario: prev.formulario, etapa: prev.etapa }),
+      replace: true,
+    });
+  }
+
+  // Última escolha da sessão vale só quando a URL não traz a competência; aplicada uma vez.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (competenciaParam) return;
+    const saved = readRememberedCompetence();
+    if (saved && saved !== competencia) changeCompetencia(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const statusContracts = r.contracts.filter((c) => eligibleForBadges(c.status));
+  const statusIds = statusContracts.map((c) => c.id).slice(0, 200);
+  const loadStatus = useServerFn(listRentalCompetenceStatus);
+  const competenceStatus = useQuery({
+    queryKey: ["rentals", "competence-status", competencia, statusIds.join(",")],
+    queryFn: () => loadStatus({ data: { competencia, contractIds: statusIds } }),
+    enabled: statusIds.length > 0,
+    staleTime: 30_000,
+  });
+  const badges = competenceStatus.data
+    ? buildCompetenceBadges(
+        statusContracts,
+        competenceStatus.data.rows,
+        competenceStatus.data.gates,
+        competenceStatus.data.showNf && canViewFinancialInsights,
+      )
+    : {};
+  const pendingCount = countPending(badges);
+  const [onlyPending, setOnlyPending] = useState(false);
+  const visibleContracts = onlyPending
+    ? r.contracts.filter((c) => hasPending(badges[c.id]))
+    : r.contracts;
 
   const k = r.kpis;
 
@@ -254,6 +318,29 @@ function Page() {
         </p>
       )}
 
+      <section className="mb-4 flex flex-wrap items-center gap-3">
+        <CompetenceSwitcher value={competencia} onChange={changeCompetencia} />
+        {competenceStatus.isError && (
+          <span role="status" className="text-xs text-destructive">
+            Não foi possível carregar a situação do mês.
+          </span>
+        )}
+        {competenceStatus.isSuccess && statusIds.length > 0 && (
+          <Button
+            variant={onlyPending ? "default" : "outline"}
+            size="sm"
+            aria-pressed={onlyPending}
+            onClick={() => setOnlyPending((v) => !v)}
+            className="min-h-10"
+          >
+            Pendentes nesta competência
+            <span className="ml-1 rounded-full bg-background/70 px-2 text-xs text-foreground">
+              {pendingCount === 1 ? "1 pendente" : `${pendingCount} pendentes`}
+            </span>
+          </Button>
+        )}
+      </section>
+
       <section className="mb-4">
         <RentalFilters
           filter={r.filter}
@@ -272,14 +359,20 @@ function Page() {
           </div>
         ) : r.allContracts.length === 0 ? (
           <EmptyRentalState onCreate={() => openNew()} />
-        ) : r.contracts.length === 0 ? (
+        ) : visibleContracts.length === 0 ? (
           <div className="glass-panel rounded-3xl p-6 text-center text-xs text-foreground/60">
             Nenhum contrato encontrado para este filtro.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {r.contracts.map((c) => (
-              <RentalCard key={c.id} contract={c} onClick={() => selectContract(c.id)} />
+            {visibleContracts.map((c) => (
+              <RentalCard
+                key={c.id}
+                contract={c}
+                badges={badges[c.id]}
+                badgesLoading={competenceStatus.isLoading && eligibleForBadges(c.status)}
+                onClick={() => selectContract(c.id)}
+              />
             ))}
           </div>
         )}
@@ -314,13 +407,13 @@ function Page() {
               setEditing(null);
               if (editing.field)
                 void navigate({
-                  search: { id, etapa: "vistorias", corretorId, periodo, imobiliaria, status },
+                  search: (prev) => rentalSearch(prev, { id, etapa: "vistorias" }),
                 });
             }
             if (formulario) {
               setFreshFormId(undefined);
               void navigate({
-                search: { corretorId, periodo, imobiliaria, status },
+                search: (prev) => rentalSearch(prev, {}),
                 replace: true,
               });
             }
@@ -345,6 +438,8 @@ function Page() {
 
       <RentalExpandedDetails
         contract={selected}
+        competencia={competencia}
+        onCompetenciaChange={changeCompetencia}
         open={!editing && selectedId !== null && selected !== null}
         returnToInspections={etapa === "vistorias"}
         onContractConfirmed={async () => {

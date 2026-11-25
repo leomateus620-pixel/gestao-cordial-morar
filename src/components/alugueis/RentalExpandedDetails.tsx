@@ -50,7 +50,8 @@ import { canSeeFinancialInsights } from "@/lib/access-control";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
 import { Button } from "@/components/ui/button";
 import { RentalEmissions } from "./RentalEmissions";
-import { currentRentalCompetence } from "@/lib/rentals/receipt-model";
+import { formatCompetenceLong } from "@/lib/rentals/competence-nav";
+import { CompetenceSwitcher } from "./CompetenceSwitcher";
 
 type DetailSection =
   | "vistoria-saida"
@@ -402,7 +403,11 @@ export function RentalExpandedDetails({
   onEdit,
   returnToInspections,
   onContractConfirmed,
+  competencia,
+  onCompetenciaChange,
 }: {
+  competencia: string;
+  onCompetenciaChange: (next: string) => void;
   contract: RentalContractFull | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -416,7 +421,6 @@ export function RentalExpandedDetails({
 }) {
   const [activeSection, setActiveSection] = useState<DetailSection>("resumo");
   const [view, setView] = useState<"emissions" | "details">("emissions");
-  const [competencia, setCompetencia] = useState(() => currentRentalCompetence());
   const [nfRequest, setNfRequest] = useState<{ competencia: string; nonce: number }>();
   const canEmitNfse = canSeeFinancialInsights(useSession());
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -438,7 +442,6 @@ export function RentalExpandedDetails({
     setActiveSection("resumo");
     setView(returnToInspections ? "details" : "emissions");
     setTemplate(undefined);
-    setCompetencia(currentRentalCompetence());
     setNfRequest(undefined);
     setPendingAction(null);
     scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
@@ -632,20 +635,11 @@ export function RentalExpandedDetails({
               aria-labelledby="rental-emissions-tab"
               className="px-4 py-5 sm:px-6 lg:px-8"
             >
-              <div className="mb-5 flex justify-end">
-                <label className="flex items-center gap-3 text-xs font-semibold text-muted-foreground">
-                  Competência
-                  <input
-                    aria-label="Competência das emissões"
-                    type="month"
-                    value={competencia}
-                    onChange={(e) => {
-                      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))
-                        setCompetencia(e.target.value);
-                    }}
-                    className="h-10 rounded-lg border border-input bg-emission-surface px-3 text-sm text-foreground"
-                  />
-                </label>
+              <div className="mb-5 flex flex-wrap items-center justify-end gap-2">
+                <span className="rounded-full bg-emission-surface px-3 py-1 text-xs font-semibold text-foreground ring-1 ring-border">
+                  Competência: {formatCompetenceLong(competencia)}
+                </span>
+                <CompetenceSwitcher compact value={competencia} onChange={onCompetenciaChange} />
               </div>
               <RentalEmissions
                 key={contract.id}

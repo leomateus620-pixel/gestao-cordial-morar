@@ -2,6 +2,7 @@ import { AlertTriangle, CalendarClock, MapPin, User, Wallet } from "lucide-react
 import { brl } from "@/lib/format";
 import { formatRentalDate } from "@/lib/rentals/rental-detail.utils";
 import type { RentalContractFull } from "@/types/rental";
+import type { CompetenceBadge } from "@/lib/rentals/competence-status";
 import { RentalPaymentBadge, RentalStatusBadge } from "./RentalStatusBadge";
 
 function BrandBadge({ brand }: { brand?: string | null }) {
@@ -23,9 +24,13 @@ function BrandBadge({ brand }: { brand?: string | null }) {
 export function RentalCard({
   contract,
   onClick,
+  badges,
+  badgesLoading = false,
 }: {
   contract: RentalContractFull;
   onClick: () => void;
+  badges?: CompetenceBadge[];
+  badgesLoading?: boolean;
 }) {
   const today = new Date();
   const fim = new Date(contract.dataFim);
@@ -108,6 +113,28 @@ export function RentalCard({
               ? "Pagamento em atraso"
               : `Contrato vence em ${diffDias} dia${diffDias === 1 ? "" : "s"}`}
           </div>
+        )}
+        {badgesLoading && !badges && (
+          <div className="mt-3 h-5 w-40 animate-pulse rounded-full bg-muted" aria-hidden />
+        )}
+        {badges && badges.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Situação do mês">
+            {badges.map((b) => (
+              <li
+                key={b.kind}
+                className={
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 " +
+                  (b.state === "emitido" || b.state === "pago"
+                    ? "bg-[color:var(--success)]/10 text-[color:var(--success)] ring-[color:var(--success)]/25"
+                    : b.state === "pendente"
+                      ? "bg-destructive/10 text-destructive ring-destructive/25"
+                      : "bg-muted text-muted-foreground ring-border")
+                }
+              >
+                {b.label}
+              </li>
+            ))}
+          </ul>
         )}
       </article>
     </button>
