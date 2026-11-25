@@ -1,84 +1,105 @@
-# Plano: conferência de contrato sem fiador + competência única em Aluguéis
+# Vistoria no celular: foto que some ao voltar da câmera
 
-## 1) Corrigir "Marcar como conferido" (erro `populate_composite on a scalar`)
+## Diagnóstico (validado no código)
+- O aviso "insuficiência de memória" é do Chrome Android: com a câmera nativa aberta (campo de arquivo com captura, `inspection-workspace.tsx` ~1214), o Android fecha a aba; ao voltar, a página recarrega e o navegador descarta a foto. Nenhum código recupera esse arquivo.
+- O que aumenta o consumo de memória no nosso código (confirmado):
+  - `prepareImage` (`media-client.ts`) decodifica a foto inteira com `createImageBitmap(file)` antes de reduzir para 2048 px.
+  - `useLocalQueue.refresh()` roda `listPending` (todos os registros, com os arquivos) antes e depois de cada envio, e `useObjectUrls` recria as URLs de todas as prévias a cada atualização.
+  - As prévias que ainda não foram enviadas aparecem em 2048 px, e as já enviadas aparecem em tamanho cheio numa grade de 3 colunas.
+  - Se a conversão falhar, o arquivo original é guardado de qualquer jeito, sem limite.
+- Hoje o sistema guarda o cômodo aberto (`sessionStorage`), mas não guarda qual item estava selecionado nem que a câmera tinha sido aberta.
+- Não precisa de migração nem de alteração de dados. O registro no banco (`registerMedia`), o caminho dos arquivos, o bucket e a regra de só apagar do aparelho depois do envio confirmado continuam iguais.
 
-Causa confirmada: `materializeWorkspace` envia `"person": null` para seguro-fiança, caução e sem garantia; `rental_confirm_workflow_file` faz `jsonb_populate_record(NULL::rental_guarantors, entry->'person')` com o null do JSON e lança o erro. No banco, `rental_confirm_workflow_file` é a única função `rental_*` que usa `jsonb_populate_record` (confirmado no catálogo); `rental_save_workspace_draft`, `rental_register_workflow_file`, `rental_save_template_options` e `rental_workflow_*` não têm esse risco e não mudam.
+## O que muda para o usuário (textos)
+- Botões do cômodo: **"Câmera do app"** (principal no celular), **"Câmera do celular"** (a de hoje) e **"Adicionar da galeria"**.
+- Câmera do app em tela cheia: botão de disparo, contador "3 fotos neste cômodo", miniatura da última foto, botão "Concluir", lanterna e zoom só quando o aparelho permitir.
+- Antes de pedir a câmera: "Para tirar fotos sem sair da vistoria, permita o uso da câmera."
+- Se a permissão for negada ou não houver suporte: "Não foi possível abrir a câmera do app. Use a câmera do celular ou a galeria." A câmera nativa abre como hoje.
+- Aviso de retomada: "O celular fechou a página enquanto a câmera estava aberta (pouca memória) e a foto não chegou. Tente a Câmera do app ou escolha da Galeria." Botão "Entendi".
+- Fila: "X fotos aguardando envio · Salvo no aparelho", "Sem internet: as fotos serão enviadas quando a conexão voltar" e "Não foi possível enviar. Tentaremos de novo." Mensagens técnicas do armazenamento deixam de aparecer na tela.
+- Foto grande que não deu para converter: "Esta foto é grande demais para este aparelho. Tire de novo pela Câmera do app."
+- Espaço no aparelho baixo (menos de 200 MB livres ou mais de 90% da cota usada): "O espaço do navegador está quase cheio. Envie as fotos pendentes antes de continuar."
 
-### Número da migração
-Confirmado: `drizzle/migrations` termina na 0113; o ledger aplicado tem 114 entradas (0000–0113, incluindo a 0113 da policy); `supabase/migrations` está fora do journal e não colide. Próximo número: **0114**. O arquivo em `.lovable/drafts` não entra neste trabalho.
+## Etapas
+A) **Câmera dentro do app**: componente novo em tela cheia com câmera traseira.
+- Captura a foto pela função própria de foto do navegador quando houver; senão, tira um quadro do vídeo limitado a 2048 px.
+- Permite várias fotos seguidas. Cada foto passa pelo mesmo caminho de hoje (preparar → `stage` na fila), uma de cada vez.
+- A câmera é desligada ao fechar, ao trocar de aba/ocultar a página e ao sair da tela.
+- No computador sem câmera ou em iPhone antigo, o botão cai na câmera nativa.
 
-### a) Migração 0114 `rental_confirm_workflow_file_null_person`
-- Antes de escrever: ler `pg_get_functiondef` da definição ATUAL no banco e guardar no próprio arquivo como comentário de rollback.
-- `CREATE OR REPLACE` partindo dessa definição atual, preservando exatamente: assinatura, `LANGUAGE plpgsql`, sem SECURITY DEFINER (hoje é invoker), `SET search_path = public`, owner `postgres`. `CREATE OR REPLACE` mantém owner e grants; hoje EXECUTE só para `postgres` e `service_role` — nenhum GRANT novo, nada para anon/authenticated. Validação pós-migração compara `proacl`, `prosecdef`, `proconfig` e owner com os atuais.
-- Mudanças, só estas:
-  - `g := jsonb_populate_record(NULL::public.rental_guarantors, nullif(entry->'person','null'::jsonb));`
-  - `tipo='fiador'` sem pessoa → `RAISE EXCEPTION 'Informe o fiador.' USING ERRCODE='22023';`
-  - `property`, `contract` ou um locatário que não seja objeto JSON → `'Dados do aluguel incompletos. Salve o rascunho novamente.'` (22023). Caminho válido inalterado.
-- Garantia que não é fiador continua com `guarantor_id` nulo (colunas aceitam).
+B) **Menos memória ao preparar a foto**
+- Lê o tamanho da imagem pelo cabeçalho JPEG/PNG/WebP (só os primeiros 64 KB) e decodifica já reduzida (`resizeWidth`/`resizeHeight` + `resizeQuality: "high"`).
+- Sem suporte: decodifica por imagem com decodificação assíncrona e reduz no canvas.
+- Usa canvas fora da tela quando houver.
+- Sempre libera a imagem decodificada e zera o canvas. Nunca usa base64.
+- Gera também uma miniatura de 360 px (JPEG 0,7).
+- Original sem conversão só se for JPEG/PNG de até 15 MB; acima disso, mostra o aviso amigável.
 
-### b) Código
-- `rentals.functions.ts`: `materializeWorkspace` omite `person` quando não há fiador; lógica movida para `src/lib/rentals/workspace-materialize.ts` (pura) para testar.
-- Novo `src/lib/rentals/workflow-errors.ts`: `friendlyWorkflowError(err, acao)` — mantém as mensagens próprias em português da função e do app; troca mensagem crua do Postgres/rede por texto amigável por ação ("Não foi possível conferir/anexar/gerar o contrato ou salvar o rascunho. Tente novamente; se persistir, avise o suporte."). Erro técnico vai para `console.error` e log do servidor.
-- `RentalContractGenerator.tsx` / `useRentalDocuments.ts`: o mesmo tratamento e o mesmo componente de erro em conferir, anexar contrato, gerar contrato e salvar rascunho.
+C) **Fila e prévias**
+- `refresh` deixa de recriar tudo: compara por chave, status e tentativas, e mantém o mesmo arquivo para cada chave.
+- `useObjectUrls` passa a trabalhar por partes: cria URL só para chave nova e revoga só a que saiu.
+- A prévia pendente usa a miniatura; registros antigos sem miniatura usam o arquivo, como hoje.
+- Fotos já enviadas: primeiro checo se o armazenamento aceita versão reduzida na assinatura (`transform` com largura de 400). Se aceitar, uso a miniatura; se não, uso `width`/`height`, `loading="lazy"` e `decoding="async"`. A foto cheia aparece só no visualizador.
+- A miniatura fica como campo opcional no mesmo registro do aparelho, sem mudar a versão do armazenamento local.
 
-### c) Fluxo após a conferência (verificação, sem mudar regras)
-Rascunho vira contrato (contrato, locatários, garantias, documentos migrados, rascunho removido), a pastinha abre o contrato, vistoria de entrada libera; saída segue a regra atual. Contrato já existente (não rascunho) também coberto no teste.
-O rascunho 187e4b31 passa a funcionar sem alteração manual de dados.
+D) **Retomada**
+- Antes de abrir a câmera nativa ou a galeria, grava no aparelho `{usuário, vistoria, cômodo, item, origem, hora}`.
+- Ao abrir a página com um marcador de menos de 15 minutos e sem foto nova desde então: volta ao mesmo cômodo e item e mostra o aviso.
+- O marcador é apagado quando uma foto entra na fila, quando a pessoa fecha o aviso ou quando expira.
+- O item selecionado passa a ser guardado junto com o cômodo.
+- Confirmo pelo teste que os rascunhos (`useDraftRow`) continuam guardando o que foi digitado.
 
-## 2) Competência única na tela de Aluguéis
+E) **Envio mais resistente**
+- Mantém a fila atual: um envio por vez, limite de 5 tentativas e o botão "tentar de novo".
+- Entre falhas, espera cada vez mais (2 s, 4 s, 8 s, 16 s; até 60 s) e não tenta enquanto estiver sem internet.
+- O texto técnico do erro fica só no registro interno; na tela aparece a mensagem amigável.
+- Áudio: hoje `startRecorder` guarda o som em PCM na memória, cerca de 11 MB por minuto em 48 kHz. Limite de 10 minutos por segmento: depois disso, salva e começa outro segmento automaticamente. O microfone continua sendo liberado ao terminar, cancelar ou ser interrompido.
 
-### URL e navegação (`src/routes/_app.alugueis.tsx`)
-- `competencia` no `validateSearch` com a regex atual; ausente/inválida → `undefined` na URL e valor efetivo `currentRentalCompetence()` (mês atual em São Paulo). O mês atual não é gravado na URL.
-- Helper único e testado `rentalSearch(prev, patch)` em `src/lib/rentals/rental-search.ts`: sempre carrega `competencia` + filtros (`corretorId`, `periodo`, `imobiliaria`, `status`); `id`, `formulario` e `etapa` vêm só do `patch` (nunca herdados).
-- Cada navegação da rota:
-
-| Ação | Resultado |
-|---|---|
-| Abrir formulário (linha 112) | `formulario`, filtros, competência; sem `id`/`etapa` |
-| Abrir pastinha (128) | `id`, filtros, competência; sem `formulario`/`etapa` |
-| Fechar pastinha (137, replace) | filtros, competência; remove `id`, `formulario`, `etapa` |
-| Após salvar → vistorias (316) | `id`, `etapa=vistorias`, filtros, competência |
-| Fechar formulário (322, replace) | filtros, competência; remove `formulario`, `id`, `etapa` |
-| Mudar filtro | filtro novo, demais filtros, competência, `id` atual se houver |
-| Mudar competência (topo ou pastinha) | competência nova, resto igual |
-
-- sessionStorage: grava a última escolha; após hidratação, uma única vez (ref de controle), se a URL não tiver `competencia` e houver valor salvo diferente do mês atual, `navigate({ replace: true })`. Sem loop; a consulta usa o valor da URL, então não há busca dupla visível além da troca de chave. URL é a fonte da verdade.
-
-### Seletor no topo
-Novo `CompetenceSwitcher.tsx`: botões mês anterior/próximo, rótulo por extenso ("novembro de 2026"), "Mês atual", e o `input type=month` para escolher mês/ano direto. `aria-label`s; setas do teclado só quando o próprio seletor está focado (nada global). Cabe no celular; tokens atuais.
-
-### Pastinha controlada (`RentalExpandedDetails.tsx`)
-- Props `competencia` e `onCompetenciaChange`; remove o estado local (linha 419) e o reset do `useEffect` (441).
-- Na aba Emissões, chip "Competência: novembro de 2026" com o mesmo seletor; trocar ali atualiza a URL e vale para as próximas pastinhas.
-- `RentalEmissions` e o fluxo de NF (`onNf` → `nfRequest {competencia, nonce}`) recebem a competência exatamente como hoje. Nenhuma regra fiscal, de recibo, de boleto ou da competência padrão da NFS-e muda.
-
-### Selos por competência nos cartões
-Dados confirmados no banco (tabelas e valores permitidos):
-- **Recibo** — `rental_emissions` (`tipo`, `status` ∈ emitindo/emitido/erro, `competencia`). Emitido = existe linha `tipo='recibo'` e `status='emitido'`; `emitindo` = "em andamento"; erro ou nada = pendente.
-- **Boleto** — `rental_boletos` (`estado` ∈ preparando/enviando/registrado/incerto/rejeitado/baixa_solicitada/baixado/liquidado, `ambiente`). Selo só aparece quando a trava atual de produção está aberta para a marca do contrato: a mesma usada por `rental_boleto_prepare` ("production issuance disabled"), ou seja conta da marca em `billing_accounts` com `ambiente='producao'` e `liberado_em` preenchido. Sem isso (hoje), nenhum selo de boleto e nada conta como pendente. Quando ativo: só `ambiente='producao'`; registrado/liquidado = emitido (liquidado = "pago"); preparando/enviando/incerto = "em andamento"; rejeitado/baixa_solicitada/baixado ou nada = pendente.
-- **NF** — `rental_nfse_emissions` (`status` ∈ teste_ok/emitida/erro/cancelada/processando/incerto/nao_emitida). Só para quem `canSeeFinancialInsights`. Se a marca está em modo teste (`nfse_provider_settings.modo_teste`, a mesma configuração que hoje força teste), mostra "NF teste" apenas informativo (com `teste_ok` = "teste ok") e não conta como pendente. Em produção: emitida = emitida; processando/incerto = "em andamento"; erro/cancelada/nao_emitida ou nada = pendente.
-- Selos só para contratos ativos ou pendentes de assinatura; encerrados, vencidos, cancelados e arquivados não recebem selo nem entram no filtro.
-- Nova função `listRentalCompetenceStatus({ competencia, contractIds })` com `requireSupabaseAuth` e `context.supabase` (RLS do usuário): três consultas em lote (`in contract_id` limitado aos contratos visíveis/filtrados, máx. 200 por chamada), sem N+1. Mapeamento puro em `competence-status.ts`.
-- `queryKey ['rentals','competence-status', competencia, contractIdsHash]`; invalidada (`['rentals','competence-status']`) ao emitir recibo, boleto ou NF na pastinha.
-- Filtro rápido "Pendentes nesta competência" com contador (ex.: "12 pendentes"): conta só os selos efetivamente exibidos — recibo sempre; boleto e NF só quando ativos em produção; "NF teste" nunca conta.
-- Carregando/erro discretos; erro não esconde a lista.
-
-## Testes
-- Banco (`tests/sql/rental_confirm_workflow_file.sql`, padrão da suíte, BEGIN … ROLLBACK, claims simuladas): rascunhos sintéticos com seguro-fiança, caução, sem garantia, fiador com e sem cônjuge, fiador sem pessoa (espera "Informe o fiador."); confere contrato, locatários, garantias, documentos, rascunho removido e entrada liberável. Também confere owner/SECURITY/search_path/grants da função.
-- Vitest: `materializeWorkspace` sem `person`; `friendlyWorkflowError` nas quatro ações; parse da competência (válida, inválida, ausente → mês atual SP, virada de mês); anterior/próximo (dez→jan, jan→dez); `rentalSearch` para cada linha da tabela; pastinha controlada; mapeamento dos selos com cada status real; boleto oculto com trava fechada; "NF teste" fora do contador; contratos encerrados sem selo; contador do filtro.
-- Regressão NFS-e/boleto: a competência escolhida chega igual em `nfRequest`/`RentalEmissions`; regras atuais de competência futura e padrão da NFS-e e do boleto inalteradas (testes existentes + um novo de passagem da competência).
-- Fluxo conferido → vistoria de entrada liberada (regra em `entry-inspection`).
-- Depois: typecheck, build e suíte completa (inclui os 15 de fotos e os do PR #51). Sem publicar.
-
-## Validação no preview
-- Rascunho 187e4b31: NÃO clico "Marcar como conferido" (fica para o dono). A chamada da função com o payload desse rascunho só roda no banco compartilhado se a ferramenta garantir uma transação explícita BEGIN … ROLLBACK sem commit automático; se não garantir, não rodo e valido só no PostgreSQL isolado da suíte. O relato final diz qual caminho foi usado.
-- Contrato 0ad62255: competência novembro/2026 escolhida no topo, abrir/fechar pastinhas, trocar no chip, selos coerentes com a aba Emissões; celular.
-
-## Riscos e rollback
-- Função: rollback = nova migração com a definição atual lida do banco (guardada no arquivo da 0114). Só muda casos que hoje dão erro.
-- Tela: só apresentação e uma leitura nova; reverter os arquivos.
-- Não toca fotos (PR #50), policy da 0113, Emissões, contratos/vistorias do PR #51 além do item 1, sync Imobi nem crons.
+F) **Armazenamento**: pede `navigator.storage.persist()` uma vez por aparelho e mostra o aviso quando o espaço estiver baixo.
 
 ## Arquivos
-Novos: `drizzle/migrations/0114_*.sql`, `workspace-materialize.ts`, `workflow-errors.ts`, `rental-search.ts`, `competence-nav.ts`, `competence-status.ts`, `CompetenceSwitcher.tsx`, função de status em lote, testes (SQL e vitest).
-Alterados: `rentals.functions.ts`, `RentalContractGenerator.tsx`, `useRentalDocuments.ts`, `_app.alugueis.tsx`, `RentalExpandedDetails.tsx`, `RentalCard`, `src/lib/rentals/AGENTS.md` (regra da competência única na URL).
+- **Criar:**
+  - `src/lib/vistoria/image-prepare.ts` (cabeçalho, escala, decodificação reduzida, miniatura, limite do original)
+  - `src/lib/vistoria/capture-resume.ts` (marcador)
+  - `src/lib/vistoria/retry-backoff.ts`
+  - `src/lib/vistoria/storage-persist.ts`
+  - `src/components/vistoria/in-app-camera.tsx`
+- **Alterar:**
+  - `media-client.ts` (`prepareImage` delega a `image-prepare`; segmentos de áudio)
+  - `local-store.ts` (campo opcional `thumb`)
+  - `use-inspection.ts` (`refresh` por diferença, espera entre tentativas, `useObjectUrls` incremental, mensagens)
+  - `inspection-workspace.tsx` (botões, marcador, item guardado, avisos)
+  - `photos.tsx` (miniaturas, lazy)
+  - `AGENTS.md` (regra: câmera do app primeiro, marcador de retomada, prévia só por miniatura)
+- **Sem mudança:** fotos dos imóveis (`usePropertyMedia`, `gallery-fallback`, `media-path-rule`), contratos e a 0114, competência única, rotinas do servidor da vistoria, banco e crons.
+
+## Testes (vitest, em `tests/vistoria` ou junto aos módulos)
+- Escala pelo cabeçalho, e `createImageBitmap` simulado com e sem suporte a redução.
+- Miniatura de até 360 px.
+- Original aceito até 15 MB JPEG/PNG; recusado acima disso ou em HEIC.
+- `useObjectUrls` revoga só o que foi removido e não recria o que não mudou.
+- `refresh` com a mesma lista não troca as referências.
+- Marcador: grava antes de abrir, restaura cômodo e item, expira em 15 minutos e é apagado quando a foto chega.
+- Câmera do app: encerra a câmera ao fechar, ao ocultar a página e ao sair da tela; cai na câmera nativa quando a permissão é negada ou não há suporte.
+- Espera entre tentativas: 2/4/8/16 s, limite de 60 s, para em 5 tentativas.
+- Áudio: divide em 10 minutos e libera o microfone.
+- Depois de implementar: verificação de tipos (tsc), build de produção e a bateria completa (todas as configurações vitest, `node --test` e testes de banco isolado), citando os 15 de fotos, os de vistoria (`integrity`, `drafts`, `model`, `pdf`, `entry-inspection`), os do PR #51 (`workflow-db`) e os de competência.
+
+## Validação manual (no preview, sem publicar)
+- Android/Chrome: 10 fotos seguidas pela Câmera do app; 5 fotos grandes pela galeria; modo avião (ficam na fila e são enviadas ao voltar); recarregar a página com o marcador ativo e conferir o aviso e o cômodo/item.
+- iPhone/Safari: as mesmas etapas. O Safari pede permissão da câmera em toda sessão.
+- Playwright no computador: câmera falsa do Chromium para disparo e encerramento, e simulação de falha de envio.
+- Uso uma vistoria de teste. As fotos vão para o banco compartilhado: só faço isso com o seu OK e numa vistoria indicada por você.
+
+## Riscos
+- Algumas câmeras de Android entregam pelo navegador uma resolução menor que a câmera nativa. Peço 1920x1440 ou mais, e a câmera nativa continua disponível.
+- Lanterna e zoom só aparecem onde o aparelho deixar.
+- A Câmera do app reduz a chance de a página ser fechada, mas a câmera nativa continua sujeita a isso; o marcador só avisa.
+- Versão reduzida do armazenamento pode não estar ativa; nesse caso uso o caminho alternativo acima.
+
+## Como desfazer
+- Tudo é código de tela e do navegador, sem migração: basta voltar o commit.
+- O campo de miniatura é opcional e registros antigos continuam funcionando.
+- O marcador e a permissão de armazenamento ficam só no aparelho e podem ser ignorados.
+
+Nada será publicado.
