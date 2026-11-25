@@ -179,7 +179,7 @@ export function NotesBlock(props: {
   );
 }
 
-function NoteCard({
+export function NoteCard({
   note,
   items,
   readOnly,

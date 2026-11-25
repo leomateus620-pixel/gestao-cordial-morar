@@ -75,12 +75,12 @@ Linhas de fotos são medidas por inteiro antes da quebra; legendas muito longas 
 
 ## Como ligar a voz
 
-Hoje o botão Voz **grava e guarda** os áudios; a transcrição fica "aguardando ativação".
+A transcrição dos relatos **liga sozinha** quando a IA do Lovable está conectada (`LOVABLE_API_KEY` presente no servidor). Não é preciso nenhuma outra variável.
 
-1. Conectar a IA do Lovable no conector de IAs (disponibiliza `LOVABLE_API_KEY` no servidor).
-2. Definir o segredo/variável de servidor `VISTORIA_VOZ_ATIVA=true`.
-3. Opcional: `VISTORIA_TRANSCRIBE_MODEL` (padrão `openai/gpt-transcribe`, endpoint `/v1/audio/transcriptions`) e `VISTORIA_ORGANIZE_MODEL` (padrão `openai/gpt-6-astra`, `/v1/responses` com JSON estrito).
-4. Áudios já gravados podem ser transcritos pelo botão "Transcrever agora" em cada relato.
+1. Conectar a IA do Lovable no conector de IAs (disponibiliza `LOVABLE_API_KEY`).
+2. Para **desligar** a transcrição, definir `VISTORIA_VOZ_ATIVA=false`. Qualquer outro valor (ou ausência) mantém ligada. Desligada, o áudio continua salvo e o relato mostra "Transcrição indisponível no momento. O áudio está salvo." (o motivo técnico aparece só para administradores).
+3. Opcional: `VISTORIA_TRANSCRIBE_MODEL` (padrão `openai/gpt-transcribe`, `/v1/audio/transcriptions`) e `VISTORIA_ORGANIZE_MODEL` (padrão `openai/gpt-6-astra`, `/v1/responses` com JSON estrito).
+4. Relatos pendentes são transcritos automaticamente, um por vez, ao abrir a vistoria e ao voltar a internet. Falhas retentáveis (402, 429, 5xx, rede) voltam mais tarde sem gastar tentativa; 400/403 param e mostram "Tentar de novo". Cada relato tem "Excluir áudio" e "Regravar".
 
 ### GPT-Live 1 (conversa ao vivo)
 
