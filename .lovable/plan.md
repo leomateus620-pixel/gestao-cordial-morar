@@ -1,127 +1,133 @@
-# Vistoria no celular: foto que some ao voltar da câmera
+# Vistoria: transcrição dos relatos de voz + excluir/regravar áudio
 
-## Diagnóstico (validado no código)
-- O aviso "insuficiência de memória" é do Chrome Android: com a câmera nativa aberta (campo de arquivo com captura, `inspection-workspace.tsx` ~1214), o Android fecha a aba; ao voltar, a página recarrega e o navegador descarta a foto. Nenhum código recupera esse arquivo.
-- O que aumenta o consumo de memória no nosso código (confirmado):
-  - `prepareImage` (`media-client.ts`) decodifica a foto inteira com `createImageBitmap(file)` antes de reduzir para 2048 px.
-  - `useLocalQueue.refresh()` roda `listPending` (todos os registros, com os arquivos) antes e depois de cada envio, e `useObjectUrls` recria as URLs de todas as prévias a cada atualização.
-  - As prévias que ainda não foram enviadas aparecem em 2048 px, e as já enviadas aparecem em tamanho cheio numa grade de 3 colunas.
-  - Se a conversão falhar, o arquivo original é guardado de qualquer jeito, sem limite.
-- Hoje o sistema guarda o cômodo aberto (`sessionStorage`), mas não guarda qual item estava selecionado nem que a câmera tinha sido aberta.
-- Não precisa de migração nem de alteração de dados. O registro no banco (`registerMedia`), o caminho dos arquivos, o bucket e a regra de só apagar do aparelho depois do envio confirmado continuam iguais.
+## Causa raiz (confirmada só por leitura)
+1. `voice.server.ts` `voiceStatus()` exige `LOVABLE_API_KEY` **e** `VISTORIA_VOZ_ATIVA === "true"`. No servidor: `LOVABLE_API_KEY` existe (gerenciada); `VISTORIA_VOZ_ATIVA` **não existe**. Logo `transcribe.ready=false`.
+2. `inspection-workspace.tsx:107` calcula `voiceReady=false` e passa para `useLocalQueue` → `use-inspection.ts:211` nunca chama `transcribeNote`; `notes-editor.tsx:262` desativa o botão ("Transcrição ainda indisponível").
+3. Quando chamado, `use-inspection.ts:213` descarta erro com `.catch(() => undefined)`; não há estado de falha no banco (CHECK só aceita `pendente_transcricao/transcrito/revisado/descartado`).
+4. `voice.functions.ts:40` usa nome do caminho ou `relato.wav`, e tipo `audio/wav` por reserva, sem olhar o tipo real.
+5. Notas 4925cc2c (5,0 s) e e0c31bfc (3,7 s): `voz`, `audio/wav`, `pendente_transcricao`, revisão 1.
+6. Gateway: `openai/gpt-transcribe` e `openai/gpt-6-astra` existem no catálogo (sem chamada paga).
 
-## O que muda para o usuário (textos)
-- Botões do cômodo: **"Tirar foto"** continua com o mesmo nome, mas agora abre a Câmera do app. **"Adicionar da galeria"** continua visível. "Gravar áudio" e "Descrição" não mudam.
-- A câmera nativa vira uma opção discreta, **"Usar câmera do celular"**, dentro da Câmera do app. Ela também abre sozinha quando a Câmera do app não funciona.
-- Câmera do app em tela cheia: botão de disparo, contador "3 fotos neste cômodo", miniatura da última foto, botão "Concluir", lanterna e zoom só quando o aparelho permitir.
-- Antes de pedir a câmera: "Para tirar fotos sem sair da vistoria, permita o uso da câmera."
-- Se a permissão for negada ou não houver suporte: "Não foi possível abrir a câmera do app. Use a câmera do celular ou a galeria." Nesse caso, a câmera nativa abre sozinha, como hoje.
-- Enquanto uma foto é processada, o botão de disparo fica bloqueado e mostra "Salvando…".
-- Aviso de retomada: "O celular fechou a página enquanto a câmera estava aberta (pouca memória) e a foto não chegou. Tente a Câmera do app ou escolha da Galeria." Botão "Entendi".
-- Fila: "X fotos aguardando envio · Salvo no aparelho", "Sem internet: as fotos serão enviadas quando a conexão voltar" e "Não foi possível enviar. Tentaremos de novo." Mensagens técnicas do armazenamento deixam de aparecer na tela.
-- Foto grande que não deu para converter: "Esta foto é grande demais para este aparelho. Tire de novo pela Câmera do app."
-- Espaço no aparelho baixo (menos de 200 MB livres ou mais de 90% da cota usada): "O espaço do navegador está quase cheio. Envie as fotos pendentes antes de continuar."
+## Tema 1 — Transcrição
+**Ativação:** `ready = hasKey && process.env.VISTORIA_VOZ_ATIVA !== "false"`. GPT-Live continua desligado. `missing` só aparece para admin.
 
-## Etapas
-A) **Câmera dentro do app**: componente novo em tela cheia com câmera traseira.
-- Pede o vídeo em 1920x1440 como preferência, sem exigir essa resolução.
-- Quando houver `ImageCapture.takePhoto`, limita `imageWidth`/`imageHeight` pelo `getPhotoCapabilities`; senão, tira um quadro do vídeo limitado a 2048 px.
-- Toda foto capturada passa pela preparação reduzida (B) antes de ir para a fila.
-- Uma captura por vez: o disparo fica bloqueado enquanto a foto é processada. Permite várias fotos seguidas, cada uma pelo caminho de hoje (preparar → `stage` na fila).
-- A câmera é desligada ao fechar, ao trocar de aba/ocultar a página e ao sair da tela.
-- No computador sem câmera ou em iPhone antigo, o botão cai na câmera nativa.
+**Formatos:** novo `audio-format.ts` (puro): mapa mime→extensão (`audio/wav|x-wav→.wav`, `audio/webm(;codecs=opus)→.webm`, `audio/mp4|x-m4a|aac→.m4a`, `audio/ogg→.ogg`); mime vem da nota, depois do blob, depois da extensão do caminho; nome enviado `relato.<ext>`. Em `media-client.ts`/`use-inspection.ts` a extensão do caminho de envio passa a seguir o mime real (hoje sempre `.wav`).
 
-B) **Menos memória ao preparar a foto**
-- Lê o tamanho da imagem pelo cabeçalho JPEG/PNG/WebP (só os primeiros 64 KB) e decodifica já reduzida (`resizeWidth`/`resizeHeight` + `resizeQuality: "high"`).
-- Leva em conta a orientação EXIF: nas orientações 5 a 8, troca largura e altura antes de calcular a escala.
-- Sem suporte ou com cabeçalho ilegível: decodifica por imagem com decodificação assíncrona e reduz no canvas.
-- Usa canvas fora da tela quando houver.
-- Sempre libera a imagem decodificada e zera o canvas. Nunca usa base64.
-- Gera também uma miniatura de 360 px (JPEG 0,7).
-- Original sem conversão só se for JPEG/PNG de até 15 MB; acima disso, mostra o aviso amigável.
+**WAV longo:** novo `wav-split.ts` (puro): lê cabeçalho RIFF/`fmt `/`data`, divide em segmentos ≤ 24 MB alinhados a `blockAlign`, reescreve cabeçalho de 44 bytes por segmento; transcrição em ordem, texto concatenado com espaço. Outros formatos > 25 MB: recusa "Áudio muito longo para transcrever. Grave em partes menores." Limite máximo aceito 60 MB.
 
-C) **Fila e prévias**
-- `refresh` deixa de recriar tudo: compara por chave, status e tentativas, e mantém o mesmo arquivo para cada chave.
-- `useObjectUrls` passa a trabalhar por partes: cria URL só para chave nova e revoga só a que saiu.
-- A prévia pendente usa a miniatura; registros antigos sem miniatura usam o arquivo, como hoje.
-- Fotos já enviadas: primeiro checo se o armazenamento aceita versão reduzida na assinatura (`transform` com largura de 400). Se aceitar, uso a miniatura; se não, uso `width`/`height`, `loading="lazy"` e `decoding="async"`. A foto cheia aparece só no visualizador.
-- A miniatura fica como campo opcional no mesmo registro do aparelho, sem mudar a versão do armazenamento local.
+**Chamadas:** tempo limite generoso por chamada (5 min transcrição por segmento, 2 min organização) e leitura de resposta limitada (SSE até 1 MB; erro até 8 KB). Organização com falha → `suggestion=null`, transcrição mantida.
 
-D) **Retomada**
-- Antes de abrir a câmera nativa ou a galeria, grava no aparelho `{usuário, vistoria, cômodo, item, origem, hora}`.
-- O marcador guarda também um identificador do carregamento da página. Se a pessoa só cancelou a câmera e a página não recarregou, o identificador é o mesmo: o marcador é apagado em silêncio.
-- O aviso aparece só depois de uma recarga real (identificador diferente), com marcador de menos de 15 minutos e nenhuma foto nova. Nesse caso, a página volta ao mesmo cômodo e item.
-- O marcador é apagado quando uma foto entra na fila, quando a pessoa fecha o aviso ou quando expira.
-- O item selecionado passa a ser guardado junto com o cômodo.
-- Confirmo pelo teste que os rascunhos (`useDraftRow`) continuam guardando o que foi digitado.
+**Fluxo servidor (`transcribeNote` reescrito):**
+1. RPC `inspection_note_transcription_claim(note_id)` (abaixo) — reserva com prazo de 10 min; se outra reserva ativa ou já concluída, devolve a nota sem chamar o provedor.
+2. Baixa áudio, transcreve, organiza.
+3. RPC `inspection_note_transcription_finish(note_id, token, transcript, suggestion, erro)` grava conclusão ou falha (mensagem curta em português, sem detalhe técnico), só se o token ainda for o da reserva e a nota ainda existir.
+4. Retorna a nota; erro do provedor vira estado `falhou`, não exceção crua.
 
-E) **Envio mais resistente**
-- Mantém a fila atual: um envio por vez, limite de 5 tentativas e o botão "tentar de novo".
-- Continuam iguais o limite de 5 tentativas e a regra de só apagar do aparelho depois do envio confirmado.
-- Entre falhas, espera cada vez mais (2 s, 4 s, 8 s, 16 s; até 60 s). Cada registro guarda o horário da próxima tentativa (`nextAttemptAt`).
-- A espera não trava a fila: um registro que ainda está esperando é pulado, e as outras fotos continuam sendo enviadas.
-- Um único temporizador acorda a fila. Ele é limpo ao sair da tela e ao ocultar a página, e não tenta enviar enquanto estiver sem internet.
-- Quando a internet volta ou a pessoa toca "tentar de novo", a espera é ignorada e o envio é tentado na hora.
-- O texto técnico do erro fica só no registro interno; na tela aparece a mensagem amigável.
-- Áudio: hoje `startRecorder` guarda o som em Float32 a 48 kHz, cerca de 11 MB por minuto, e copia tudo de novo ao gerar o WAV.
-  - Passa a reamostrar para 16 kHz em Int16 já durante a gravação, em blocos: cerca de 1,9 MB por minuto.
-  - O WAV é montado a partir do cabeçalho e dos blocos, sem nova cópia contínua.
-  - Continua sendo uma nota por gravação, sem divisão em partes: 30 minutos ficam em cerca de 57 MB, risco aceitável.
-  - O microfone continua sendo liberado ao terminar, cancelar ou ser interrompido.
+**Disparo automático (cliente, `use-inspection.ts`):** novo laço `useTranscriptionRunner` separado da fila de envio (não bloqueia fotos): após envio de nota de voz, ao abrir a vistoria e no evento `online`, pega notas `voz` com `transcription_state in ('pendente','falhou')`, `transcription_attempts < 5`, sem reserva ativa; uma por vez, espera crescente (`backoffDelay`). Assim as notas de 25/11 são processadas ao abrir a a2a5a174, uma vez cada (a reserva impede duplicação entre abas).
 
-F) **Armazenamento**: pede `navigator.storage.persist()` uma vez por aparelho e mostra o aviso quando o espaço estiver baixo.
+**Reprocessamento pelo servidor (opcional, precisa do seu OK separado):** rota `/api/public/hooks/vistoria-transcribe` autenticada por `internal_worker_headers()`, lote de até 5 notas pendentes de vistorias não finalizadas, mesma reserva; agendamento novo pg_cron **a cada hora (24 execuções/dia)**. Não incluo agora; o disparo ao abrir a tela já cobre os critérios.
+
+**Tela (`notes-editor.tsx`):**
+- transcrevendo: "Transcrevendo…" com indicador
+- falhou: "Não foi possível transcrever: <motivo>" + botão "Tentar de novo"
+- pendente: "Aguardando transcrição"
+- desligado (corretor): "Transcrição indisponível no momento. O áudio está salvo."
+- desligado (admin): acrescenta "A transcrição está desligada no servidor."
+- Aviso flutuante só em "Tentar de novo", "Excluir áudio" e "Regravar". Removo os textos técnicos (nomes de variável) da tela, inclusive o aviso em `inspection-workspace.tsx:1463`.
+
+## Tema 2 — Excluir e regravar
+**Excluir áudio:** menu do sistema em cada nota de voz (botões ≥ 44 px, `aria-label`, desativados em somente leitura). Confirmação: "Excluir este áudio? Esta ação não pode ser desfeita." Server fn `deleteVoiceNote(noteId)`: checa `inspection_can_edit`, recusa caminho com `/docs/`, apaga a linha (policy de DELETE existente; a reserva some junto), depois remove o arquivo do bucket; falha ao remover arquivo → evento `note_audio_orphan` em `inspection_events`, tela segue normal. Evento `note_deleted` registrado. No aparelho: remove da fila local itens com a mesma `clientKey` e cancela o laço de transcrição dessa nota. `unreviewed_notes` cai automaticamente (contagem é por linha).
+
+**Regravar:** abre o gravador no mesmo cômodo/item com `replacesNoteId`. O item da fila guarda esse campo; só depois de arquivo enviado **e** nota nova criada, chama `deleteVoiceNote(anterior)`. Falha ou cancelamento → anterior intacto. Nota nova segue transcrição automática.
+
+**Player:** mantém "Ouvir áudio original", `controlsList="nodownload noplaybackrate"`.
+
+## Migração 0116 (próximo número livre; 0115 fica reservada)
+Justificativa: registrar estado, erro, tentativas e reserva com prazo; sem preenchimento em massa (colunas com padrão; só notas `voz` pendentes entram no processamento). `status` atual e CHECK não mudam.
+
+```sql
+ALTER TABLE public.inspection_notes
+  ADD COLUMN transcription_state text NOT NULL DEFAULT 'pendente'
+    CHECK (transcription_state IN ('pendente','transcrevendo','falhou','concluida')),
+  ADD COLUMN transcription_error text CHECK (transcription_error IS NULL OR length(transcription_error) <= 200),
+  ADD COLUMN transcription_attempts integer NOT NULL DEFAULT 0 CHECK (transcription_attempts >= 0),
+  ADD COLUMN transcription_lease_token uuid,
+  ADD COLUMN transcription_lease_until timestamptz;
+
+CREATE INDEX inspection_notes_transcription_idx
+  ON public.inspection_notes (inspection_id)
+  WHERE source = 'voz' AND transcription_state IN ('pendente','falhou','transcrevendo');
+
+CREATE OR REPLACE FUNCTION public.inspection_note_transcription_claim(p_note uuid)
+RETURNS TABLE(claimed boolean, lease_token uuid, note jsonb)
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE r public.inspection_notes; t uuid := gen_random_uuid();
+BEGIN
+  SELECT * INTO r FROM public.inspection_notes WHERE id = p_note FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Relato não encontrado.' USING ERRCODE = 'P0002'; END IF;
+  IF NOT public.inspection_can_edit(r.inspection_id) THEN
+    RAISE EXCEPTION 'Vistoria concluída ou sem acesso para edição.' USING ERRCODE = '42501'; END IF;
+  IF r.source <> 'voz' OR r.audio_path IS NULL OR r.transcription_state = 'concluida'
+     OR r.transcript_original IS NOT NULL
+     OR (r.transcription_lease_until IS NOT NULL AND r.transcription_lease_until > now()) THEN
+    RETURN QUERY SELECT false, NULL::uuid, to_jsonb(r); RETURN;
+  END IF;
+  UPDATE public.inspection_notes
+     SET transcription_state = 'transcrevendo', transcription_error = NULL,
+         transcription_attempts = transcription_attempts + 1,
+         transcription_lease_token = t, transcription_lease_until = now() + interval '10 minutes'
+   WHERE id = p_note RETURNING * INTO r;
+  RETURN QUERY SELECT true, t, to_jsonb(r);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.inspection_note_transcription_finish(
+  p_note uuid, p_token uuid, p_transcript text, p_suggestion jsonb, p_error text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
+DECLARE r public.inspection_notes;
+BEGIN
+  SELECT * INTO r FROM public.inspection_notes WHERE id = p_note FOR UPDATE;
+  IF NOT FOUND OR r.transcription_lease_token IS DISTINCT FROM p_token THEN RETURN NULL; END IF;
+  IF NOT public.inspection_can_edit(r.inspection_id) THEN
+    RAISE EXCEPTION 'Vistoria concluída ou sem acesso para edição.' USING ERRCODE = '42501'; END IF;
+  IF p_error IS NULL AND coalesce(btrim(p_transcript), '') <> '' THEN
+    UPDATE public.inspection_notes SET transcript_original = p_transcript, suggestion = p_suggestion,
+      status = CASE WHEN status = 'pendente_transcricao' THEN 'transcrito' ELSE status END,
+      transcription_state = 'concluida', transcription_error = NULL,
+      transcription_lease_token = NULL, transcription_lease_until = NULL
+    WHERE id = p_note RETURNING * INTO r;
+  ELSE
+    UPDATE public.inspection_notes SET transcription_state = 'falhou',
+      transcription_error = left(coalesce(p_error, 'Não foi possível entender o áudio.'), 200),
+      transcription_lease_token = NULL, transcription_lease_until = NULL
+    WHERE id = p_note RETURNING * INTO r;
+  END IF;
+  RETURN to_jsonb(r);
+END $$;
+
+REVOKE ALL ON FUNCTION public.inspection_note_transcription_claim(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.inspection_note_transcription_finish(uuid, uuid, text, jsonb, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.inspection_note_transcription_claim(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.inspection_note_transcription_finish(uuid, uuid, text, jsonb, text) TO authenticated, service_role;
+```
+- `SECURITY INVOKER`: RLS e policies de UPDATE (`inspection_can_edit`) continuam valendo; nenhuma policy/grant de tabela muda; bloqueios `meta_reviewer`/`atendimentos_viewer` seguem valendo.
+- Avanço de `revision`: o gatilho existente de revisão (0035) dispara em cada UPDATE; o `finish` usa o token como controle otimista da transcrição, e edições do texto aprovado continuam com `.eq("revision")`. Confirmar na implementação que o gatilho de revisão raiz não bloqueia esses UPDATEs.
 
 ## Arquivos
-- **Criar:**
-  - `src/lib/vistoria/image-prepare.ts` (cabeçalho, escala, decodificação reduzida, miniatura, limite do original)
-  - `src/lib/vistoria/capture-resume.ts` (marcador)
-  - `src/lib/vistoria/retry-backoff.ts`
-  - `src/lib/vistoria/storage-persist.ts`
-  - `src/components/vistoria/in-app-camera.tsx`
-- **Alterar:**
-  - `media-client.ts` (`prepareImage` delega a `image-prepare`; segmentos de áudio)
-  - `local-store.ts` (campo opcional `thumb`)
-  - `use-inspection.ts` (`refresh` por diferença, espera entre tentativas, `useObjectUrls` incremental, mensagens)
-  - `inspection-workspace.tsx` (botões, marcador, item guardado, avisos)
-  - `photos.tsx` (miniaturas, lazy)
-  - `AGENTS.md` (regra: câmera do app primeiro, marcador de retomada, prévia só por miniatura)
-- **Sem mudança (confirmado no escopo):**
-  - Fotos dos imóveis: `usePropertyMedia`, `gallery-fallback` e `media-path-rule`.
-  - Contratos/conferido e a migração 0114.
-  - Competência única de Aluguéis.
-  - Sync do Imobi, crons, banco e rotinas do servidor da vistoria.
-- **Continua valendo:** o limite de 5 tentativas e a regra de só apagar do aparelho depois do envio confirmado.
+Criar: `src/lib/vistoria/audio-format.ts`, `wav-split.ts`, `transcription-runner.ts` (lógica pura de seleção/espera), testes correspondentes, `tests/vistoria-ui/notes-voice.vitest.tsx`, `tests/sql/0116_transcription.test` (PGlite).
+Alterar: `voice.server.ts`, `voice.functions.ts` (+ `deleteVoiceNote`), `use-inspection.ts`, `media-client.ts` (só extensão), `local-store.ts` (remover por clientKey, campo `replacesNoteId`), `notes-editor.tsx`, `inspection-workspace.tsx`, `types.ts`, `docs/vistoria-inteligente.md`, `src/lib/vistoria/AGENTS.md`, `AGENTS.md` (substituir regra de voz).
 
-## Testes (vitest, em `tests/vistoria` ou junto aos módulos)
-- Escala pelo cabeçalho, incluindo fotos com orientação EXIF 6 e 8 (largura e altura trocadas), cabeçalho ilegível caindo no caminho alternativo, e `createImageBitmap` simulado com e sem suporte a redução.
-- Miniatura de até 360 px.
-- Original aceito até 15 MB JPEG/PNG; recusado acima disso ou em HEIC.
-- `useObjectUrls` revoga só o que foi removido e não recria o que não mudou.
-- `refresh` com a mesma lista não troca as referências.
-- Câmera do app: disparo bloqueado durante o processamento, `takePhoto` com tamanho limitado, e a foto sempre passando pela preparação reduzida.
-- Espera entre tentativas: as outras fotos seguem sendo enviadas, o temporizador é limpo ao sair da tela, e a volta da internet ou "tentar de novo" envia na hora.
-- Marcador: sem aviso quando é o mesmo carregamento da página (câmera só cancelada); grava antes de abrir, restaura cômodo e item, expira em 15 minutos e é apagado quando a foto chega.
-- Câmera do app: encerra a câmera ao fechar, ao ocultar a página e ao sair da tela; cai na câmera nativa quando a permissão é negada ou não há suporte.
-- Espera entre tentativas: 2/4/8/16 s, limite de 60 s, para em 5 tentativas.
-- Áudio: guarda em 16 kHz Int16, gera um WAV válido (cabeçalho e duração) e libera o microfone.
-- Depois de implementar: verificação de tipos (tsc), build de produção e a bateria completa (todas as configurações vitest, `node --test` e testes de banco isolado), citando os 15 de fotos, os de vistoria (`integrity`, `drafts`, `model`, `pdf`, `entry-inspection`), os do PR #51 (`workflow-db`) e os de competência.
+## Testes
+`voiceStatus` sem variável / com `"false"`; WAV, WebM, MP4, OGG com nome e extensão; divisão de WAV > 25 MB (cabeçalhos e ordem); não-WAV grande recusado; erro 402/429/500 → `falhou` com mensagem em português; organização falha → transcrição mantida; duas reivindicações simultâneas → uma chamada ao gateway (simulado); token antigo não grava; runner: pendente/falhou, limite 5, espera crescente, não bloqueia fila de fotos; estados da tela; exclusão (permissão, vistoria finalizada bloqueada, `docs/` recusado, arquivo removido, fila local limpa, contagem atualizada); regravação (anterior só sai depois da nova, falha mantém anterior); migração em PGlite. Depois: tsc, build de produção, suíte completa (todas as configs vitest, `node --test`, banco isolado) com números, incluindo fotos (15), PR #51, competência e vistoria.
 
-## Validação manual (no preview, sem publicar)
-- Android/Chrome: 10 fotos seguidas pela Câmera do app; 5 fotos grandes pela galeria; modo avião (ficam na fila e são enviadas ao voltar); recarregar a página com o marcador ativo e conferir o aviso e o cômodo/item.
-- iPhone/Safari: as mesmas etapas. O Safari pede permissão da câmera em toda sessão.
-- Nenhuma foto vai para uma vistoria real nos meus testes.
-- No Playwright, uso câmera falsa e simulo o armazenamento e o registro das fotos: disparo, fila, falha, modo avião e recarga com marcador.
-- O teste real no celular fica com você, numa vistoria de teste que você indicar.
+## Validação após publicar (você)
+Abrir a2a5a174 → as duas notas viram "Transcrevendo…" e depois texto, uma vez cada; gravar nota nova no Android e no iPhone; excluir e regravar.
 
 ## Riscos
-- Algumas câmeras de Android entregam pelo navegador uma resolução menor que a câmera nativa. Peço 1920x1440 ou mais, e a câmera nativa continua disponível.
-- Lanterna e zoom só aparecem onde o aparelho deixar.
-- A Câmera do app reduz a chance de a página ser fechada, mas a câmera nativa continua sujeita a isso; o marcador só avisa.
-- Versão reduzida do armazenamento pode não estar ativa; nesse caso uso o caminho alternativo acima.
+- Custo de IA: ~1 transcrição por nota + 1 organização; teto de 5 tentativas.
+- Provedor rejeitar WebM/M4A de algum aparelho → fica `falhou` com mensagem, áudio preservado.
+- Memória do servidor ao dividir WAV de 57 MB: processo por segmento, limite de 60 MB.
 
-## Como desfazer
-- Tudo é código de tela e do navegador, sem migração: basta voltar o commit.
-- O campo de miniatura é opcional e registros antigos continuam funcionando.
-- O marcador e a permissão de armazenamento ficam só no aparelho e podem ser ignorados.
+## Rollback
+Código: reverter o commit. Banco: `DROP FUNCTION` das duas funções, `DROP INDEX`, e colunas marcadas `DEPRECATED` (sem apagar). Desligar a voz sem publicar: `VISTORIA_VOZ_ATIVA=false`.
 
-Nada será publicado.
+Nada é publicado até seu OK.
