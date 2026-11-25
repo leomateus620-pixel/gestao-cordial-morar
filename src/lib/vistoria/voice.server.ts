@@ -14,11 +14,12 @@ export type VoiceStatus = {
 
 export function voiceStatus(): VoiceStatus {
   const hasKey = Boolean(process.env.LOVABLE_API_KEY);
-  const enabled = process.env.VISTORIA_VOZ_ATIVA === "true";
+  // Ligada sempre que a conexão de IA existir; desligamento opcional só com "false".
+  const enabled = process.env.VISTORIA_VOZ_ATIVA !== "false";
   const liveEnabled = process.env.VISTORIA_LIVE_ATIVA === "true";
   const missing: string[] = [];
   if (!hasKey) missing.push("Conexão de IA do Lovable (LOVABLE_API_KEY)");
-  if (!enabled) missing.push("Ativação da voz na vistoria (VISTORIA_VOZ_ATIVA=true)");
+  if (!enabled) missing.push("Transcrição desligada no servidor (VISTORIA_VOZ_ATIVA=false)");
   return {
     transcribe: {
       ready: hasKey && enabled,
@@ -43,13 +44,44 @@ function headers() {
   return { Authorization: `Bearer ${key}`, "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" };
 }
 
+export const SSE_MAX_BYTES = 1024 * 1024;
+export const ERROR_BODY_MAX_BYTES = 8 * 1024;
+export const TRANSCRIBE_TIMEOUT_MS = 5 * 60_000;
+export const ORGANIZE_TIMEOUT_MS = 2 * 60_000;
+
+/** Lê no máximo `max` bytes do corpo e cancela o resto. */
+export async function readBounded(res: Response, max: number): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let out = "";
+  let n = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    out += dec.decode(value.subarray(0, Math.max(0, value.byteLength - Math.max(0, n - max))), { stream: true });
+    if (n >= max) {
+      await reader.cancel().catch(() => undefined);
+      break;
+    }
+  }
+  return out;
+}
+
 async function* sseEvents(res: Response): AsyncGenerator<any> {
   const reader = res.body!.getReader();
   const dec = new TextDecoder();
   let buf = "";
+  let total = 0;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
+    total += value.byteLength;
+    if (total > SSE_MAX_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      throw new VoiceProviderError("Resposta da transcrição grande demais.", 502);
+    }
     buf += dec.decode(value, { stream: true });
     let idx: number;
     while ((idx = buf.indexOf("\n\n")) >= 0) {
@@ -81,7 +113,7 @@ export class VoiceProviderError extends Error {
 
 async function ensureOk(res: Response) {
   if (res.ok) return;
-  const body = await res.text().catch(() => "");
+  const body = await readBounded(res, ERROR_BODY_MAX_BYTES).catch(() => "");
   let msg = body;
   try {
     msg = JSON.parse(body)?.error?.message ?? JSON.parse(body)?.message ?? body;
@@ -90,34 +122,52 @@ async function ensureOk(res: Response) {
   }
   const human =
     res.status === 402
-      ? "Créditos de IA esgotados no workspace."
+      ? "créditos de IA esgotados. Tentaremos de novo mais tarde."
       : res.status === 403
-        ? `Acesso ao modelo negado: ${msg}`
+        ? "acesso ao serviço de transcrição negado."
         : res.status === 429
-          ? "Limite de uso momentâneo atingido; tente em alguns instantes."
-          : res.status === 400
-            ? `Áudio ou pedido inválido: ${msg}`
-            : `Falha no provedor de voz (${res.status}).`;
+          ? "serviço ocupado no momento. Tentaremos de novo em instantes."
+          : res.status === 400 || res.status === 413 || res.status === 415
+            ? "o áudio não pôde ser lido. Grave novamente ou digite."
+            : "o serviço de transcrição falhou. Tentaremos de novo.";
+  void msg; // detalhe do provedor nunca vai para a tela
   throw new VoiceProviderError(human.slice(0, 300), res.status);
+}
+
+/** Chamada ao provedor com tempo limite; falha de rede/tempo vira erro retentável (status 0/408). */
+async function providerFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+    throw new VoiceProviderError(
+      timeout ? "a transcrição demorou demais. Tentaremos de novo." : "sem conexão com o serviço de transcrição.",
+      timeout ? 408 : 0,
+    );
+  }
 }
 
 export async function transcribeAudio(file: Blob, filename: string): Promise<string> {
   const st = voiceStatus().transcribe;
-  if (!st.ready) throw new VoiceProviderError(`Voz não configurada: ${st.missing.join("; ")}`, 412);
+  if (!st.ready) throw new VoiceProviderError("transcrição indisponível no momento.", 412);
   const form = new FormData();
   form.append("model", st.model);
   form.append("file", file, filename);
   form.append("response_format", "json");
   form.append("stream", "true");
   form.append("languages", "pt");
-  const res = await fetch(`${GATEWAY}/v1/audio/transcriptions`, { method: "POST", headers: headers(), body: form });
+  const res = await providerFetch(`${GATEWAY}/v1/audio/transcriptions`, {
+    method: "POST",
+    headers: headers(),
+    body: form,
+  }, TRANSCRIBE_TIMEOUT_MS);
   await ensureOk(res);
   let text = "";
   let final: string | null = null;
   for await (const ev of sseEvents(res)) {
     if (ev.type === "transcript.text.delta" && typeof ev.delta === "string") text += ev.delta;
     if (ev.type === "transcript.text.done" && typeof ev.text === "string") final = ev.text;
-    if (ev.type === "error") throw new VoiceProviderError(String(ev.error?.message ?? "Falha na transcrição"), 502);
+    if (ev.type === "error") throw new VoiceProviderError("o serviço de transcrição falhou. Tentaremos de novo.", 502);
   }
   return (final ?? text).trim();
 }
@@ -144,7 +194,7 @@ const ORGANIZE_SCHEMA = {
 export async function organizeTranscript(transcript: string, roomName: string): Promise<OrganizedObservation[]> {
   if (!transcript.trim()) return [];
   const model = process.env.VISTORIA_ORGANIZE_MODEL || "openai/gpt-6-astra";
-  const res = await fetch(`${GATEWAY}/v1/responses`, {
+  const res = await providerFetch(`${GATEWAY}/v1/responses`, {
     method: "POST",
     headers: { ...headers(), "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -164,7 +214,7 @@ export async function organizeTranscript(transcript: string, roomName: string): 
         { role: "user", content: `Ambiente: ${roomName}\nRelato transcrito:\n"""${transcript.slice(0, 6000)}"""` },
       ],
     }),
-  });
+  }, ORGANIZE_TIMEOUT_MS);
   await ensureOk(res);
   let out = "";
   for await (const ev of sseEvents(res)) {

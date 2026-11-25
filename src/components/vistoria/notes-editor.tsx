@@ -16,7 +16,11 @@ import {
   updateNote,
   type InspectionFull,
 } from "@/lib/vistoria/vistoria.functions";
-import { transcribeNote } from "@/lib/vistoria/voice.functions";
+import { deleteVoiceNote, transcribeNote } from "@/lib/vistoria/voice.functions";
+import { pendingKey, removePending } from "@/lib/vistoria/local-store";
+import { transcriptionLabel, transcriptionView } from "@/lib/vistoria/transcription-runner";
+import type { useTranscriptionRunner } from "@/lib/vistoria/use-inspection";
+type Runner = ReturnType<typeof useTranscriptionRunner>;
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
@@ -33,6 +37,9 @@ export function NotesBlock(props: {
   readOnly: boolean;
   saver: Saver;
   voiceReady: boolean;
+  voiceAdmin?: boolean;
+  runner?: Runner;
+  onRerecord?: (note: NoteRow) => void;
   inspectionId: string;
   currentCtx: React.MutableRefObject<VoiceContext | null>;
   mode: "none" | "texto";
@@ -160,6 +167,9 @@ export function NotesBlock(props: {
             readOnly={props.readOnly}
             saver={props.saver}
             voiceReady={props.voiceReady}
+            voiceAdmin={Boolean(props.voiceAdmin)}
+            runner={props.runner}
+            onRerecord={props.onRerecord}
             currentCtx={props.currentCtx}
             inspectionId={props.inspectionId}
           />
@@ -175,6 +185,9 @@ function NoteCard({
   readOnly,
   saver,
   voiceReady,
+  voiceAdmin,
+  runner,
+  onRerecord,
   currentCtx,
   inspectionId,
 }: {
@@ -183,12 +196,16 @@ function NoteCard({
   readOnly: boolean;
   saver: Saver;
   voiceReady: boolean;
+  voiceAdmin: boolean;
+  runner?: Runner;
+  onRerecord?: (note: NoteRow) => void;
   currentCtx: React.MutableRefObject<VoiceContext | null>;
   inspectionId: string;
 }) {
   const upd = useServerFn(updateNote);
   const updItem = useServerFn(updateItem);
   const transcribe = useServerFn(transcribeNote);
+  const removeVoice = useServerFn(deleteVoiceNote);
   const sign = useServerFn(signInspectionFiles);
   const qc = useQueryClient();
   const useSessionId = useSession()?.id;
@@ -196,37 +213,59 @@ function NoteCard({
   const { controller, pending } = useDrafts();
   const approved = draft.value.approved_text ?? note.transcript_original ?? "";
   const [busy, setBusy] = useState(false);
-  const [transcriptionError, setTranscriptionError] = useState(false);
+  const [confirm, setConfirm] = useState<null | "excluir" | "regravar">(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [target, setTarget] = useState<Record<number, string>>({});
   const obs: OrganizedObservation[] = note.suggestion?.observacoes ?? [];
   const label = {
-    pendente_transcricao: "Áudio aguardando transcrição",
+    pendente_transcricao: "Aguardando transcrição",
     transcrito: "Aguardando sua revisão",
     revisado: "Revisado",
     descartado: "Descartado",
   }[note.status as string];
 
+  const view = transcriptionView(note, Date.now());
+  const tLabel = transcriptionLabel(view, { voiceReady, isAdmin: voiceAdmin, error: note.transcription_error });
+  const hasApproved = Boolean(note.approved_text?.trim()) || note.status === "revisado";
+
   async function runTranscribe() {
-    const origin: VoiceContext = {
-      inspectionId,
-      roomId: note.room_id,
-      sessionId: currentCtx.current?.sessionId ?? "",
-    };
+    void currentCtx;
     setBusy(true);
-    setTranscriptionError(false);
     try {
-      const row = await transcribe({ data: { noteId: note.id } });
-      qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, useSessionId), (f) =>
-        f && row ? { ...f, notes: replaceRow(f.notes, row) } : f,
-      );
-      // Resposta atrasada não preenche outro cômodo: só aplica se ainda estivermos aqui.
-      toast.info("Transcrição salva no relato do ambiente de origem. Revise antes de aprovar.");
+      const row = runner
+        ? await runner.retryNow(note.id)
+        : ((await transcribe({ data: { noteId: note.id, manual: true } })) as NoteRow | null);
+      if (row && !runner)
+        qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, useSessionId), (f) =>
+          f ? { ...f, notes: replaceRow(f.notes, row) } : f,
+        );
+      if (row?.transcript_original) toast.success("Transcrição salva. Revise antes de aprovar.");
+      else if (row?.transcription_state === "falhou")
+        toast.error(`Não foi possível transcrever: ${row.transcription_error ?? "tente de novo."}`);
     } catch (e) {
-      setTranscriptionError(true);
-      toast.error(e instanceof Error ? e.message : "Falha na transcrição");
+      toast.error(e instanceof Error ? e.message : "Não foi possível transcrever agora.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function runDelete() {
+    setBusy(true);
+    try {
+      const res = await removeVoice({ data: { noteId: note.id, reason: "excluir" } });
+      runner?.forget(note.id);
+      if (useSessionId)
+        await removePending(pendingKey(useSessionId, inspectionId, res.clientKey)).catch(() => undefined);
+      qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, useSessionId), (f) =>
+        f ? { ...f, notes: f.notes.filter((n) => n.id !== note.id) } : f,
+      );
+      void qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, useSessionId) });
+      toast.success("Áudio excluído.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível excluir o áudio.");
+    } finally {
+      setBusy(false);
+      setConfirm(null);
     }
   }
 
@@ -238,12 +277,17 @@ function NoteCard({
           {fmt(note.created_at)}
         </span>
         <span className="text-[11px] font-semibold" role="status">
-          {busy ? "Processando…" : label}
+          {view === "nenhum" || view === "concluida" ? label : null}
         </span>
       </div>
       {note.audio_path &&
         (audioUrl ? (
-          <audio controls src={audioUrl} className="mt-2 w-full" />
+          <audio
+            controls
+            controlsList="nodownload noplaybackrate"
+            src={audioUrl}
+            className="mt-2 w-full"
+          />
         ) : (
           <button
             type="button"
@@ -256,22 +300,79 @@ function NoteCard({
             Ouvir áudio original
           </button>
         ))}
-      {note.status === "pendente_transcricao" && !readOnly && (
-        <button
-          type="button"
-          disabled={!voiceReady || busy}
-          onClick={() => void runTranscribe()}
-          className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-xl border border-input px-3 text-xs font-semibold disabled:opacity-50"
-        >
-          {busy && <Loader2 className="size-3 animate-spin" />}
-          {busy
-            ? "Processando áudio…"
-            : voiceReady
-              ? transcriptionError
-                ? "Tentar transcrição novamente"
-                : "Transcrever áudio"
-              : "Transcrição ainda indisponível"}
-        </button>
+      {tLabel && (
+        <div className="mt-2 flex flex-wrap items-center gap-2" role="status" aria-live="polite">
+          <p className="inline-flex items-center gap-1 text-xs text-foreground/70">
+            {(tLabel.spinner || busy) && <Loader2 className="size-3 animate-spin" />}
+            {tLabel.text}
+          </p>
+          {tLabel.retry && !readOnly && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void runTranscribe()}
+              className="inline-flex min-h-11 items-center rounded-xl border border-input px-3 text-xs font-semibold disabled:opacity-50"
+            >
+              Tentar de novo
+            </button>
+          )}
+        </div>
+      )}
+      {note.source === "voz" && !readOnly && (
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            disabled={busy || !onRerecord}
+            aria-label="Regravar este áudio"
+            onClick={() => (hasApproved ? setConfirm("regravar") : onRerecord?.(note))}
+            className="min-h-11 flex-1 rounded-xl border border-input px-3 text-xs font-semibold disabled:opacity-50"
+          >
+            Regravar
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label="Excluir este áudio"
+            onClick={() => setConfirm("excluir")}
+            className="min-h-11 flex-1 rounded-xl border border-destructive/40 px-3 text-xs font-semibold text-destructive disabled:opacity-50"
+          >
+            Excluir áudio
+          </button>
+        </div>
+      )}
+      {confirm && (
+        <div role="alertdialog" aria-label="Confirmar" className="mt-2 rounded-xl border border-input bg-background p-3">
+          <p className="text-sm">
+            {confirm === "excluir"
+              ? hasApproved
+                ? "Excluir este áudio? O texto aprovado deste relato também será removido. Esta ação não pode ser desfeita."
+                : "Excluir este áudio? Esta ação não pode ser desfeita."
+              : "Regravar substitui este áudio e remove o texto aprovado deste relato depois que o novo for salvo. Continuar?"}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              className="min-h-11 flex-1 rounded-xl border border-input text-xs font-semibold"
+              onClick={() => setConfirm(null)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="min-h-11 flex-1 rounded-xl bg-destructive text-xs font-semibold text-destructive-foreground disabled:opacity-50"
+              onClick={() => {
+                if (confirm === "excluir") void runDelete();
+                else {
+                  setConfirm(null);
+                  onRerecord?.(note);
+                }
+              }}
+            >
+              {confirm === "excluir" ? "Excluir" : "Regravar"}
+            </button>
+          </div>
+        </div>
       )}
       {note.transcript_original && (
         <details className="mt-2 rounded-xl bg-foreground/4 p-2" open={note.status !== "revisado"}>

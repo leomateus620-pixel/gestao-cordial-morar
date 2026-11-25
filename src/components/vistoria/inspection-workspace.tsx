@@ -82,6 +82,9 @@ import { DataTab } from "./inspection-data";
 import { ReviewTab } from "./inspection-review";
 import { ItemCard, NoPhotoReason } from "./item-editor";
 import { NotesBlock } from "./notes-editor";
+import { useTranscriptionRunner } from "@/lib/vistoria/use-inspection";
+import type { NoteRow } from "@/lib/vistoria/types";
+type Runner = ReturnType<typeof useTranscriptionRunner>;
 import { PhotosBlock } from "./photos";
 type Saver = ReturnType<typeof useSaver>;
 type Queue = ReturnType<typeof useLocalQueue>;
@@ -105,7 +108,15 @@ export function VistoriaWorkspace({
     staleTime: 60_000,
   });
   const voiceReady = Boolean(voice.data?.transcribe.ready);
-  const queue = useLocalQueue(session?.id, vistoriaId, voiceReady);
+  const voiceAdmin = Boolean(voice.data?.isAdmin);
+  const queue = useLocalQueue(session?.id, vistoriaId);
+  const runner = useTranscriptionRunner(
+    session?.id,
+    vistoriaId,
+    full.data?.notes,
+    voiceReady,
+    full.data?.inspection.status === "concluida",
+  );
   const saver = useSaver(vistoriaId);
   const [tab, setTab] = useState<Tab>("ambientes");
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -301,7 +312,8 @@ export function VistoriaWorkspace({
           queue={queue}
           userId={session?.id}
           voiceReady={voiceReady}
-          voiceMissing={[]}
+          voiceAdmin={voiceAdmin}
+          runner={runner}
           onReview={() => setTab("revisao")}
           jump={jump}
         />
@@ -421,7 +433,8 @@ function RoomsTab(props: {
   queue: Queue;
   userId?: string;
   voiceReady: boolean;
-  voiceMissing: string[];
+  voiceAdmin: boolean;
+  runner: Runner;
   onReview: () => void;
   jump: { kind: string; itemId?: string } | null;
 }) {
@@ -566,6 +579,7 @@ function RoomsTab(props: {
           blob,
           mime: "audio/wav",
           seconds,
+          replacesNoteId: ctx.replacesNoteId ?? null,
           takenAt: new Date().toISOString(),
           timeSource: "captura",
           status: "local",
@@ -590,13 +604,14 @@ function RoomsTab(props: {
     await saveSegment(cur.rec, cur.ctx);
   }, [saveSegment]);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (replaces?: NoteRow) => {
     if (!room || recRef.current) return;
     const ctx: VoiceContext = {
       inspectionId: insp.id,
       roomId: room.id,
       sessionId: sessionId.current,
-      itemId: evidenceItem,
+      itemId: replaces ? replaces.item_id : evidenceItem,
+      replacesNoteId: replaces?.id ?? null,
     };
     try {
       const rec = await startRecorder(() => {
@@ -1250,6 +1265,9 @@ function RoomsTab(props: {
                   readOnly={readOnly}
                   saver={saver}
                   voiceReady={props.voiceReady}
+                  voiceAdmin={props.voiceAdmin}
+                  runner={props.runner}
+                  onRerecord={(n) => void startRecording(n)}
                   inspectionId={insp.id}
                   currentCtx={currentCtx}
                   mode={mode}
@@ -1461,8 +1479,8 @@ function RoomsTab(props: {
               </button>
               <p className="text-xs text-foreground/60">
                 {props.voiceReady
-                  ? "O áudio será salvo antes da transcrição."
-                  : "O áudio será salvo; transcrição ainda indisponível."}
+                  ? "O áudio é salvo e transcrito automaticamente."
+                  : "Transcrição indisponível no momento. O áudio será salvo."}
               </p>
             </div>
           )}

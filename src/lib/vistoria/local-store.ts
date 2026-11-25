@@ -27,6 +27,8 @@ export type PendingEntry = {
   error?: string | null;
   /** Próxima tentativa (ms epoch) depois de uma falha. */
   nextAttemptAt?: number | null;
+  /** Regravação: relato de voz a substituir só depois que este for confirmado. */
+  replacesNoteId?: string | null;
   createdAt: string;
 };
 

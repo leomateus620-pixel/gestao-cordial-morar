@@ -32,14 +32,26 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
   },
 }));
-vi.mock("@tanstack/react-start", () => ({ useServerFn: () => async () => ({ id: "n" }) }));
+const srv = vi.hoisted(() => ({ deleted: [] as string[], delFail: false, order: [] as string[] }));
+vi.mock("@tanstack/react-start", () => ({
+  useServerFn: (fn: { kind?: string }) => async (a: { data: { noteId?: string } }) => {
+    if (fn?.kind === "del") {
+      srv.order.push("delete");
+      if (srv.delFail) throw new Error("falhou");
+      srv.deleted.push(a.data.noteId!);
+      return { ok: true };
+    }
+    if (fn?.kind === "note") srv.order.push("note");
+    return { id: "n" };
+  },
+}));
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: async () => undefined }),
   useQuery: () => ({}),
 }));
 vi.mock("@/lib/auth-mock", () => ({ useSession: () => ({ id: "u" }) }));
-vi.mock("@/lib/vistoria/vistoria.functions", () => ({ registerMedia: {}, createNote: {}, getInspection: {} }));
-vi.mock("@/lib/vistoria/voice.functions", () => ({ transcribeNote: {} }));
+vi.mock("@/lib/vistoria/vistoria.functions", () => ({ registerMedia: {}, createNote: { kind: "note" }, getInspection: {} }));
+vi.mock("@/lib/vistoria/voice.functions", () => ({ transcribeNote: {}, deleteVoiceNote: { kind: "del" } }));
 
 import { useLocalQueue, useObjectUrls } from "@/lib/vistoria/use-inspection";
 
@@ -116,7 +128,7 @@ describe("fila com espera crescente", () => {
     db.rows.set(entry("a").key, entry("a"));
     db.rows.set(entry("b").key, entry("b"));
     db.fail.add("a");
-    const { unmount } = renderHook(() => useLocalQueue("u", INSP, false));
+    const { unmount } = renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual(["b"]);
     const a = db.rows.get(entry("a").key)!;
@@ -132,7 +144,7 @@ describe("fila com espera crescente", () => {
   it("temporizador acorda a fila e é limpo ao sair da tela", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     db.rows.set(entry("a").key, entry("a", { status: "erro", attempts: 1, nextAttemptAt: Date.now() + 2000 }));
-    const { unmount } = renderHook(() => useLocalQueue("u", INSP, false));
+    const { unmount } = renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual([]);
     expect(vi.getTimerCount()).toBe(1);
@@ -147,7 +159,7 @@ describe("fila com espera crescente", () => {
 
   it("voltar a internet ignora a espera e envia na hora", async () => {
     db.rows.set(entry("a").key, entry("a", { status: "erro", attempts: 2, nextAttemptAt: Date.now() + 60_000 }));
-    renderHook(() => useLocalQueue("u", INSP, false));
+    renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual([]);
     await act(async () => void window.dispatchEvent(new Event("online")));
@@ -157,12 +169,47 @@ describe("fila com espera crescente", () => {
 
   it("5 falhas aguardam 'tentar de novo', que envia na hora", async () => {
     db.rows.set(entry("a").key, entry("a", { status: "erro", attempts: 5 }));
-    const { result } = renderHook(() => useLocalQueue("u", INSP, false));
+    const { result } = renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual([]);
     expect(db.rows.has(entry("a").key)).toBe(true);
     await act(async () => void (await result.current.retry(entry("a").key)));
     await settle();
     expect(db.uploads).toEqual(["a"]);
+  });
+});
+
+describe("regravar relato de voz", () => {
+  const voice = (k: string, extra: Partial<PendingEntry> = {}) =>
+    entry(k, { kind: "voice", mime: "audio/wav", seconds: 5, replacesNoteId: "old-note", ...extra } as Partial<PendingEntry>);
+
+  it("o anterior só é excluído depois do áudio e do relato novos confirmados", async () => {
+    srv.deleted = []; srv.order = []; srv.delFail = false;
+    db.rows.set(voice("v").key, voice("v"));
+    renderHook(() => useLocalQueue("u", INSP));
+    await settle();
+    expect(db.uploads).toContain("v");
+    expect(srv.order).toEqual(["note", "delete"]);
+    expect(srv.deleted).toEqual(["old-note"]);
+  });
+
+  it("falha no envio do novo mantém o anterior", async () => {
+    srv.deleted = []; srv.order = [];
+    db.fail.add("w");
+    db.rows.set(voice("w").key, voice("w"));
+    renderHook(() => useLocalQueue("u", INSP));
+    await settle();
+    expect(srv.deleted).toEqual([]);
+    expect(db.rows.get(voice("w").key)?.status).toBe("erro");
+  });
+
+  it("falha ao excluir o anterior não perde o novo nem trava a fila", async () => {
+    srv.deleted = []; srv.order = []; srv.delFail = true;
+    db.rows.set(voice("x").key, voice("x"));
+    renderHook(() => useLocalQueue("u", INSP));
+    await settle();
+    expect(srv.order).toEqual(["note", "delete"]);
+    expect(db.rows.has(voice("x").key)).toBe(false);
+    srv.delFail = false;
   });
 });

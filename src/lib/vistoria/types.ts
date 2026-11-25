@@ -94,6 +94,12 @@ export type NoteRow = {
   status: "pendente_transcricao" | "transcrito" | "revisado" | "descartado";
   revision: number;
   created_at: string;
+  audio_mime?: string | null;
+  transcription_state?: "pendente" | "transcrevendo" | "falhou" | "concluida" | null;
+  transcription_error?: string | null;
+  transcription_attempts?: number | null;
+  transcription_next_at?: string | null;
+  transcription_lease_until?: string | null;
 };
 export type InspectionData = {
   inspection: InspectionRow;

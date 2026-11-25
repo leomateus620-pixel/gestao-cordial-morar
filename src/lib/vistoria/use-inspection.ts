@@ -21,7 +21,10 @@ import {
   registerMedia,
   type InspectionFull,
 } from "./vistoria.functions";
-import { transcribeNote } from "./voice.functions";
+import { deleteVoiceNote, transcribeNote } from "./voice.functions";
+import { extFromMime } from "./audio-format";
+import { nextTranscriptionWake, pickNextTranscription } from "./transcription-runner";
+import type { NoteRow } from "./types";
 
 export const BUCKET = "inspection-media";
 export const inspectionKey = (id: string, userId?: string) =>
@@ -118,12 +121,11 @@ export function replaceRow<T extends { id: string }>(list: T[], row: T): T[] {
 export function useLocalQueue(
   userId: string | undefined,
   inspectionId: string,
-  voiceReady: boolean,
 ) {
   const qc = useQueryClient();
   const register = useServerFn(registerMedia);
   const addNote = useServerFn(createNote);
-  const transcribe = useServerFn(transcribeNote);
+  const removeNote = useServerFn(deleteVoiceNote);
   const [pending, setPending] = useState<PendingEntry[]>([]);
   const running = useRef(false);
   const pausedRooms = useRef(new Set<string>());
@@ -170,7 +172,7 @@ export function useLocalQueue(
         await patchPending(e.key, { status: "enviando" });
         await refresh();
         try {
-          const ext = e.kind === "photo" ? "jpg" : "wav";
+          const ext = e.kind === "photo" ? "jpg" : (extFromMime(e.mime) ?? "wav");
           const path = mediaPath(e.inspectionId, e.roomId, e.clientKey, ext);
           const up = await supabase.storage
             .from(BUCKET)
@@ -194,7 +196,7 @@ export function useLocalQueue(
               },
             });
           } else {
-            const note = await addNote({
+            await addNote({
               data: {
                 inspectionId: e.inspectionId,
                 roomId: e.roomId,
@@ -208,12 +210,13 @@ export function useLocalQueue(
               },
             });
             await removePending(e.key);
-            if (voiceReady && note?.id)
-              void transcribe({ data: { noteId: note.id } })
-                .catch(() => undefined)
-                .finally(() =>
-                  qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, userId) }),
-                );
+            // Regravação: o anterior só sai depois do novo confirmado. Falha aqui
+            // mantém os dois (nunca deixa o relato sem áudio).
+            if (e.replacesNoteId)
+              await removeNote({ data: { noteId: e.replacesNoteId, reason: "regravar" } }).catch((err) =>
+                console.warn("[vistoria] relato anterior mantido", err),
+              );
+            // A transcrição automática roda à parte (useTranscriptionRunner).
           }
           await removePending(e.key);
           await qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, userId) });
@@ -238,7 +241,7 @@ export function useLocalQueue(
       finish.current();
       scheduleWake.current();
     }
-  }, [userId, inspectionId, register, addNote, transcribe, voiceReady, qc, refresh]);
+  }, [userId, inspectionId, register, addNote, removeNote, qc, refresh]);
 
   /** Ignora a espera dos que ainda têm tentativas e tenta na hora. */
   const kick = useCallback(async () => {
@@ -396,4 +399,89 @@ export function useObjectUrls(entries: PendingEntry[]) {
     };
   }, []);
   return urls;
+}
+
+/**
+ * Transcrição automática dos relatos de voz, uma por vez, separada da fila de
+ * envio. Dispara ao abrir a vistoria, quando os relatos mudam (envio novo) e ao
+ * reconectar. Desligada → não roda e não conta tentativa.
+ */
+export function useTranscriptionRunner(
+  userId: string | undefined,
+  inspectionId: string,
+  notes: NoteRow[] | undefined,
+  voiceReady: boolean,
+  readOnly: boolean,
+) {
+  const qc = useQueryClient();
+  const transcribe = useServerFn(transcribeNote);
+  const running = useRef(false);
+  const localWait = useRef(new Map<string, { until: number; fails: number }>());
+  const notesRef = useRef(notes ?? []);
+  notesRef.current = notes ?? [];
+  const [tick, setTick] = useState(0);
+  const enabled = Boolean(userId) && voiceReady && !readOnly;
+
+  const waits = () => new Map([...localWait.current].map(([k, v]) => [k, v.until]));
+
+  const run = useCallback(async () => {
+    if (!enabled || running.current || !navigator.onLine) return;
+    running.current = true;
+    try {
+      for (;;) {
+        const next = pickNextTranscription(notesRef.current, Date.now(), waits());
+        if (!next) break;
+        try {
+          const row = (await transcribe({ data: { noteId: next.id } })) as NoteRow | null;
+          // Evita repetir a mesma nota antes de a lista atualizar.
+          localWait.current.set(next.id, { until: Date.now() + 5_000, fails: 0 });
+          if (row?.id)
+            qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, userId), (f) =>
+              f ? { ...f, notes: f.notes.some((n) => n.id === row.id) ? replaceRow(f.notes, row) : f.notes } : f,
+            );
+          // Sem avanço (outra tela reservou): espera curta para não repetir já.
+          if (!row || row.transcription_state === "transcrevendo" || row.transcription_state === "falhou")
+            localWait.current.set(next.id, { until: Date.now() + backoffDelay(1), fails: 0 });
+        } catch (err) {
+          console.warn("[vistoria] transcrição adiada", err);
+          const fails = (localWait.current.get(next.id)?.fails ?? 0) + 1;
+          localWait.current.set(next.id, { until: Date.now() + backoffDelay(fails), fails });
+        }
+        if (!navigator.onLine) break;
+      }
+    } finally {
+      running.current = false;
+      setTick((t) => t + 1);
+    }
+  }, [enabled, transcribe, qc, inspectionId, userId]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    void run();
+    const wait = nextTranscriptionWake(notesRef.current, Date.now(), waits());
+    const t = wait === null ? null : setTimeout(() => void run(), Math.min(wait + 100, 2_147_000_000));
+    const online = () => void run();
+    window.addEventListener("online", online);
+    return () => {
+      if (t) clearTimeout(t);
+      window.removeEventListener("online", online);
+    };
+  }, [enabled, run, notes, tick]);
+
+  /** "Tentar de novo" manual: ignora esperas locais e libera o limite no servidor. */
+  const retryNow = useCallback(
+    async (noteId: string) => {
+      localWait.current.delete(noteId);
+      const row = (await transcribe({ data: { noteId, manual: true } })) as NoteRow | null;
+      if (row?.id)
+        qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, userId), (f) =>
+          f ? { ...f, notes: replaceRow(f.notes, row) } : f,
+        );
+      return row;
+    },
+    [transcribe, qc, inspectionId, userId],
+  );
+  /** Exclusão: esquece a nota no laço local. */
+  const forget = useCallback((noteId: string) => localWait.current.delete(noteId), []);
+  return { retryNow, forget };
 }

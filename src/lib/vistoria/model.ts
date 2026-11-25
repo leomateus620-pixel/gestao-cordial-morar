@@ -362,6 +362,8 @@ export type VoiceContext = {
   roomId: string;
   sessionId: string;
   itemId?: string | null;
+  /** Regravação: relato de voz substituído depois da confirmação do novo. */
+  replacesNoteId?: string | null;
 };
 export function sameVoiceContext(a: VoiceContext | null, b: VoiceContext | null): boolean {
   return Boolean(
@@ -415,7 +417,7 @@ export function mediaPath(
   inspectionId: string,
   roomId: string,
   clientKey: string,
-  ext: "jpg" | "wav" | "webm" | "mp4",
+  ext: "jpg" | "wav" | "webm" | "mp4" | "m4a" | "ogg",
 ) {
   if (!UUID.test(inspectionId) || !UUID.test(roomId)) throw new Error("Identificador inválido");
   if (!/^[a-zA-Z0-9_-]{8,120}$/.test(clientKey)) throw new Error("Chave local inválida");

@@ -4327,6 +4327,12 @@ export type Database = {
           status: string
           suggestion: Json | null
           transcript_original: string | null
+          transcription_attempts: number
+          transcription_error: string | null
+          transcription_lease_token: string | null
+          transcription_lease_until: string | null
+          transcription_next_at: string | null
+          transcription_state: string | null
           updated_at: string
         }
         Insert: {
@@ -4346,6 +4352,12 @@ export type Database = {
           status?: string
           suggestion?: Json | null
           transcript_original?: string | null
+          transcription_attempts?: number
+          transcription_error?: string | null
+          transcription_lease_token?: string | null
+          transcription_lease_until?: string | null
+          transcription_next_at?: string | null
+          transcription_state?: string | null
           updated_at?: string
         }
         Update: {
@@ -4365,6 +4377,12 @@ export type Database = {
           status?: string
           suggestion?: Json | null
           transcript_original?: string | null
+          transcription_attempts?: number
+          transcription_error?: string | null
+          transcription_lease_token?: string | null
+          transcription_lease_until?: string | null
+          transcription_next_at?: string | null
+          transcription_state?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -13905,6 +13923,29 @@ export type Database = {
           p_to: string
         }
         Returns: Json
+      }
+      inspection_note_transcription_claim: {
+        Args: { p_note: string; p_segments?: number }
+        Returns: {
+          claimed: boolean
+          lease_token: string
+          note: Json
+        }[]
+      }
+      inspection_note_transcription_finish: {
+        Args: {
+          p_error: string
+          p_note: string
+          p_retryable?: boolean
+          p_suggestion: Json
+          p_token: string
+          p_transcript: string
+        }
+        Returns: Json
+      }
+      inspection_note_transcription_renew: {
+        Args: { p_note: string; p_token: string }
+        Returns: boolean
       }
       inspection_reopen: {
         Args: { p_expected_revision: number; p_id: string; p_reason: string }
