@@ -55,22 +55,23 @@ Novo `CompetenceSwitcher.tsx`: botões mês anterior/próximo, rótulo por exten
 ### Selos por competência nos cartões
 Dados confirmados no banco (tabelas e valores permitidos):
 - **Recibo** — `rental_emissions` (`tipo`, `status` ∈ emitindo/emitido/erro, `competencia`). Emitido = existe linha `tipo='recibo'` e `status='emitido'`; `emitindo` = "em andamento"; erro ou nada = pendente.
-- **Boleto** — `rental_boletos` (`estado` ∈ preparando/enviando/registrado/incerto/rejeitado/baixa_solicitada/baixado/liquidado, `ambiente`). Só conta `ambiente='producao'`. Emitido = registrado ou liquidado (liquidado mostrado como "pago"); preparando/enviando/incerto = "em andamento"; rejeitado/baixa_solicitada/baixado ou nada = pendente. Boletos de sandbox não geram selo.
-- **NF** — `rental_nfse_emissions` (`status` ∈ teste_ok/emitida/erro/cancelada/processando/incerto/nao_emitida). Emitida = `emitida`; processando/incerto = "em andamento"; erro/cancelada/nao_emitida/teste_ok ou nada = pendente. Só para quem `canSeeFinancialInsights`; para os demais a NF nem é consultada.
+- **Boleto** — `rental_boletos` (`estado` ∈ preparando/enviando/registrado/incerto/rejeitado/baixa_solicitada/baixado/liquidado, `ambiente`). Selo só aparece quando a trava atual de produção está aberta para a marca do contrato: a mesma usada por `rental_boleto_prepare` ("production issuance disabled"), ou seja conta da marca em `billing_accounts` com `ambiente='producao'` e `liberado_em` preenchido. Sem isso (hoje), nenhum selo de boleto e nada conta como pendente. Quando ativo: só `ambiente='producao'`; registrado/liquidado = emitido (liquidado = "pago"); preparando/enviando/incerto = "em andamento"; rejeitado/baixa_solicitada/baixado ou nada = pendente.
+- **NF** — `rental_nfse_emissions` (`status` ∈ teste_ok/emitida/erro/cancelada/processando/incerto/nao_emitida). Só para quem `canSeeFinancialInsights`. Se a marca está em modo teste (`nfse_provider_settings.modo_teste`, a mesma configuração que hoje força teste), mostra "NF teste" apenas informativo (com `teste_ok` = "teste ok") e não conta como pendente. Em produção: emitida = emitida; processando/incerto = "em andamento"; erro/cancelada/nao_emitida ou nada = pendente.
+- Selos só para contratos ativos ou pendentes de assinatura; encerrados, vencidos, cancelados e arquivados não recebem selo nem entram no filtro.
 - Nova função `listRentalCompetenceStatus({ competencia, contractIds })` com `requireSupabaseAuth` e `context.supabase` (RLS do usuário): três consultas em lote (`in contract_id` limitado aos contratos visíveis/filtrados, máx. 200 por chamada), sem N+1. Mapeamento puro em `competence-status.ts`.
 - `queryKey ['rentals','competence-status', competencia, contractIdsHash]`; invalidada (`['rentals','competence-status']`) ao emitir recibo, boleto ou NF na pastinha.
-- Filtro rápido "Pendentes nesta competência" sobre os selos exibidos.
+- Filtro rápido "Pendentes nesta competência" com contador (ex.: "12 pendentes"): conta só os selos efetivamente exibidos — recibo sempre; boleto e NF só quando ativos em produção; "NF teste" nunca conta.
 - Carregando/erro discretos; erro não esconde a lista.
 
 ## Testes
 - Banco (`tests/sql/rental_confirm_workflow_file.sql`, padrão da suíte, BEGIN … ROLLBACK, claims simuladas): rascunhos sintéticos com seguro-fiança, caução, sem garantia, fiador com e sem cônjuge, fiador sem pessoa (espera "Informe o fiador."); confere contrato, locatários, garantias, documentos, rascunho removido e entrada liberável. Também confere owner/SECURITY/search_path/grants da função.
-- Vitest: `materializeWorkspace` sem `person`; `friendlyWorkflowError` nas quatro ações; parse da competência (válida, inválida, ausente → mês atual SP, virada de mês); anterior/próximo (dez→jan, jan→dez); `rentalSearch` para cada linha da tabela; pastinha controlada; mapeamento dos selos com cada status real.
+- Vitest: `materializeWorkspace` sem `person`; `friendlyWorkflowError` nas quatro ações; parse da competência (válida, inválida, ausente → mês atual SP, virada de mês); anterior/próximo (dez→jan, jan→dez); `rentalSearch` para cada linha da tabela; pastinha controlada; mapeamento dos selos com cada status real; boleto oculto com trava fechada; "NF teste" fora do contador; contratos encerrados sem selo; contador do filtro.
 - Regressão NFS-e/boleto: a competência escolhida chega igual em `nfRequest`/`RentalEmissions`; regras atuais de competência futura e padrão da NFS-e e do boleto inalteradas (testes existentes + um novo de passagem da competência).
 - Fluxo conferido → vistoria de entrada liberada (regra em `entry-inspection`).
 - Depois: typecheck, build e suíte completa (inclui os 15 de fotos e os do PR #51). Sem publicar.
 
 ## Validação no preview
-- Rascunho 187e4b31: NÃO clico "Marcar como conferido" (fica para o dono). Valido pelo teste de banco e por uma chamada da função dentro de transação com ROLLBACK usando o payload montado a partir desse rascunho; nada é gravado.
+- Rascunho 187e4b31: NÃO clico "Marcar como conferido" (fica para o dono). A chamada da função com o payload desse rascunho só roda no banco compartilhado se a ferramenta garantir uma transação explícita BEGIN … ROLLBACK sem commit automático; se não garantir, não rodo e valido só no PostgreSQL isolado da suíte. O relato final diz qual caminho foi usado.
 - Contrato 0ad62255: competência novembro/2026 escolhida no topo, abrir/fechar pastinhas, trocar no chip, selos coerentes com a aba Emissões; celular.
 
 ## Riscos e rollback
