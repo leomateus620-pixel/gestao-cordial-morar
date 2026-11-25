@@ -1,62 +1,62 @@
 // Preparação de fotos e gravação de áudio no navegador.
 
-/** Redimensiona (máx. 2048 px), aplica orientação e regrava em JPEG (remove EXIF/GPS). */
-export async function prepareImage(file: File): Promise<{ blob: Blob; width: number; height: number }> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
-  try {
-    const max = 2048;
-    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-    const width = Math.round(bitmap.width * scale);
-    const height = Math.round(bitmap.height * scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Sem suporte a imagem neste aparelho");
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    const blob = await new Promise<Blob>((res, rej) =>
-      canvas.toBlob((b) => (b ? res(b) : rej(new Error("Falha ao converter a foto"))), "image/jpeg", 0.85),
-    );
-    canvas.width = canvas.height = 0;
-    return { blob, width, height };
-  } finally {
-    bitmap.close();
-  }
+import { prepareImageReduced, type PreparedImage } from "./image-prepare";
+
+/** Redimensiona (máx. 2048 px) com decodificação reduzida, aplica orientação, regrava em JPEG (remove EXIF/GPS) e gera miniatura. */
+export function prepareImage(file: Blob): Promise<PreparedImage> {
+  return prepareImageReduced(file);
 }
 
-function encodeWav(chunks: Float32Array[], inRate: number, outRate = 16000): Blob {
+export const WAV_RATE = 16000;
+
+/**
+ * Reamostra para 16 kHz em Int16 enquanto grava (~1,9 MB/min em vez de
+ * ~11 MB/min em Float32 a 48 kHz). Mantém a posição fracionária entre blocos.
+ */
+export function createPcmResampler(inRate: number, outRate = WAV_RATE) {
   const ratio = inRate / outRate;
-  const total = chunks.reduce((s, c) => s + c.length, 0);
-  const outLen = Math.floor(total / ratio);
-  const flat = new Float32Array(total);
-  let o = 0;
-  for (const c of chunks) {
-    flat.set(c, o);
-    o += c.length;
-  }
-  const buf = new ArrayBuffer(44 + outLen * 2);
-  const v = new DataView(buf);
+  let pos = 0; // posição (em amostras de entrada) da próxima saída, relativa ao bloco atual
+  let total = 0;
+  return {
+    push(d: Float32Array): Int16Array {
+      const n = pos < d.length ? Math.floor((d.length - 1 - pos) / ratio) + 1 : 0;
+      const out = new Int16Array(Math.max(0, n));
+      for (let i = 0; i < out.length; i++) {
+        const s = Math.max(-1, Math.min(1, d[Math.floor(pos + i * ratio)] ?? 0));
+        out[i] = s < 0 ? s * 32768 : s * 32767;
+      }
+      pos = pos + out.length * ratio - d.length;
+      total += out.length;
+      return out;
+    },
+    get samples() {
+      return total;
+    },
+  };
+}
+
+/** Monta o WAV a partir do cabeçalho e dos blocos, sem juntar tudo num único array. */
+export function wavFromInt16(chunks: Int16Array[], rate = WAV_RATE): Blob {
+  const samples = chunks.reduce((s, c) => s + c.length, 0);
+  const h = new ArrayBuffer(44);
+  const v = new DataView(h);
   const tag = (off: number, s: string) => {
     for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
   };
   tag(0, "RIFF");
-  v.setUint32(4, 36 + outLen * 2, true);
+  v.setUint32(4, 36 + samples * 2, true);
   tag(8, "WAVE");
   tag(12, "fmt ");
   v.setUint32(16, 16, true);
   v.setUint16(20, 1, true);
   v.setUint16(22, 1, true);
-  v.setUint32(24, outRate, true);
-  v.setUint32(28, outRate * 2, true);
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true);
   v.setUint16(32, 2, true);
   v.setUint16(34, 16, true);
   tag(36, "data");
-  v.setUint32(40, outLen * 2, true);
-  for (let i = 0; i < outLen; i++) {
-    const s = Math.max(-1, Math.min(1, flat[Math.floor(i * ratio)] ?? 0));
-    v.setInt16(44 + i * 2, s * (s < 0 ? 32768 : 32767), true);
-  }
-  return new Blob([buf], { type: "audio/wav" });
+  v.setUint32(40, samples * 2, true);
+  return new Blob([h, ...(chunks as BlobPart[])], { type: "audio/wav" });
 }
 
 export type Recorder = {
@@ -79,11 +79,13 @@ export async function startRecorder(onInterrupted?: () => void): Promise<Recorde
   await ctx.resume();
   const source = ctx.createMediaStreamSource(stream);
   const node = ctx.createScriptProcessor(4096, 1, 1);
-  const chunks: Float32Array[] = [];
+  const chunks: Int16Array[] = [];
+  const resampler = createPcmResampler(ctx.sampleRate);
   let lastLevel = 0;
   node.onaudioprocess = (e) => {
     const d = e.inputBuffer.getChannelData(0);
-    chunks.push(new Float32Array(d));
+    const out = resampler.push(d);
+    if (out.length) chunks.push(out);
     let peak = 0;
     for (let i = 0; i < d.length; i += 64) peak = Math.max(peak, Math.abs(d[i]));
     lastLevel = peak;
@@ -119,12 +121,12 @@ export async function startRecorder(onInterrupted?: () => void): Promise<Recorde
     async stop() {
       if (done) throw new Error("Gravação já encerrada");
       done = true;
-      const rate = ctx.sampleRate;
       release();
-      const samples = chunks.reduce((s, c) => s + c.length, 0);
-      const seconds = samples / rate;
+      const seconds = resampler.samples / WAV_RATE;
       if (seconds < 0.6) throw new Error("Gravação muito curta. Fale por mais tempo.");
-      return { blob: encodeWav(chunks, rate), seconds };
+      const blob = wavFromInt16(chunks);
+      chunks.length = 0;
+      return { blob, seconds };
     },
   };
 }

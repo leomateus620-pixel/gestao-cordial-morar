@@ -94,6 +94,9 @@ export function PhotosBlock(props: {
                 <img
                   src={localUrls[p.key]}
                   alt="Foto aguardando envio"
+                  width={p.width ?? undefined}
+                  height={p.height ?? undefined}
+                  decoding="async"
                   className="size-full object-cover opacity-70"
                 />
               )}
@@ -113,7 +116,7 @@ export function PhotosBlock(props: {
                     Enviando
                   </span>
                 ) : (
-                  <span>Só no aparelho</span>
+                  <span>Salvo no aparelho</span>
                 )}
               </div>
             </div>
@@ -322,8 +325,12 @@ function InspectionImage({
   renew,
   loading = false,
   large = false,
+  width,
+  height,
 }: {
   url?: string;
+  width?: number | null;
+  height?: number | null;
   alt: string;
   renew: () => Promise<unknown>;
   loading?: boolean;
@@ -346,6 +353,8 @@ function InspectionImage({
     <img
       src={url}
       alt={alt}
+      width={width ?? undefined}
+      height={height ?? undefined}
       loading="lazy"
       decoding="async"
       className={

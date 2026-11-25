@@ -13,6 +13,8 @@ export type PendingEntry = {
   clientKey: string;
   kind: PendingKind;
   blob: Blob;
+  /** Miniatura (≈360 px) só para prévia local; registros antigos não têm. */
+  thumb?: Blob | null;
   mime: string;
   width?: number | null;
   height?: number | null;
@@ -23,8 +25,39 @@ export type PendingEntry = {
   status: PendingStatus;
   attempts: number;
   error?: string | null;
+  /** Próxima tentativa (ms epoch) depois de uma falha. */
+  nextAttemptAt?: number | null;
   createdAt: string;
 };
+
+const sameMeta = (a: PendingEntry, b: PendingEntry) =>
+  a.key === b.key &&
+  a.status === b.status &&
+  a.attempts === b.attempts &&
+  (a.error ?? null) === (b.error ?? null) &&
+  (a.nextAttemptAt ?? null) === (b.nextAttemptAt ?? null) &&
+  (a.caption ?? null) === (b.caption ?? null) &&
+  a.roomId === b.roomId &&
+  a.itemId === b.itemId;
+
+/**
+ * Mantém as mesmas referências para registros que não mudaram (o arquivo de
+ * cada chave nunca muda), evitando recriar prévias a cada atualização da fila.
+ */
+export function stabilizePending(prev: PendingEntry[], next: PendingEntry[]): PendingEntry[] {
+  const byKey = new Map(prev.map((e) => [e.key, e]));
+  let changed = prev.length !== next.length;
+  const out = next.map((e, i) => {
+    const old = byKey.get(e.key);
+    if (old && sameMeta(old, e)) {
+      if (prev[i] !== old) changed = true;
+      return old;
+    }
+    changed = true;
+    return e;
+  });
+  return changed ? out : prev;
+}
 
 const DB = "gestao-vistoria";
 const STORE = "pending";

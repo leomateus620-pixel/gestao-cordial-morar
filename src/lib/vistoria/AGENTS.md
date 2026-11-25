@@ -1,0 +1,3 @@
+# Vistoria
+
+- Vistoria photos: "Tirar foto" opens the in-app camera (getUserMedia, tracks stopped on close/hidden/unmount) with native camera only as secondary/fallback; every photo goes through image-prepare (reduced decode + thumbnail, original only JPEG/PNG ≤15 MB) one at a time; native/gallery opens arm a capture-resume marker shown only after a real reload; local previews use thumbnails via incremental object URLs; upload retries use per-entry backoff (nextAttemptAt) without blocking others — why: Android kills the tab while the native camera is open and full-size decodes/previews exhaust memory.

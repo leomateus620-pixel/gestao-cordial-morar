@@ -15,6 +15,17 @@ import { cn } from "@/lib/utils";
 import { DraftStatus, useDraftRow, useDrafts } from "@/lib/vistoria/drafts";
 import { discardRoomPending, newClientKey, type PendingEntry } from "@/lib/vistoria/local-store";
 import { prepareImage, startRecorder, type Recorder } from "@/lib/vistoria/media-client";
+import { canKeepOriginal, TOO_BIG_MESSAGE } from "@/lib/vistoria/image-prepare";
+import {
+  armCaptureMarker,
+  clearCaptureMarker,
+  readResumeMarker,
+  RESUME_MESSAGE,
+  type CaptureMarker,
+  type CaptureOrigin,
+} from "@/lib/vistoria/capture-resume";
+import { checkDeviceStorage, LOW_MESSAGE } from "@/lib/vistoria/storage-persist";
+import { CAMERA_FAILED, InAppCamera, supportsInAppCamera } from "./in-app-camera";
 import {
   itemResolved,
   KIND_LABEL,
@@ -342,6 +353,18 @@ function SaveIndicator({
 }) {
   const local = pending.length;
   const errors = pending.filter((p) => p.status === "erro").length;
+  const photosWaiting = pending.filter((p) => p.kind === "photo").length;
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
   return (
     <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[11px]" aria-live="polite">
       {state.kind === "saving" && (
@@ -374,7 +397,12 @@ function SaveIndicator({
       {local > 0 && (
         <span className={errors ? "text-destructive" : "text-amber-700"}>
           <CloudOff className="mr-1 inline size-3" />
-          {local} arquivo(s) só neste aparelho{errors ? ` · ${errors} com erro` : ""}
+          {photosWaiting > 0
+            ? `${photosWaiting} ${photosWaiting === 1 ? "foto aguardando" : "fotos aguardando"} envio`
+            : `${local} arquivo(s) aguardando envio`}
+          {" · Salvo no aparelho"}
+          {offline ? " · Sem internet: as fotos serão enviadas quando a conexão voltar" : ""}
+          {errors ? ` · ${errors} com erro` : ""}
         </span>
       )}
     </p>
@@ -419,6 +447,59 @@ function RoomsTab(props: {
   const [mode, setMode] = useState<"none" | "texto">("none");
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
+  const [camOpen, setCamOpen] = useState(false);
+  const [resume, setResume] = useState<CaptureMarker | null>(null);
+  const [storageLow, setStorageLow] = useState(false);
+  const itemKey = `vistoria:${props.userId}:${insp.id}:item`;
+  const safeStore = () => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  };
+  // Marcador de retomada e aviso de espaço: só na primeira montagem.
+  useEffect(() => {
+    if (!props.userId) return;
+    const store = safeStore();
+    const m = store ? readResumeMarker(store, props.userId, insp.id) : null;
+    if (m) {
+      setResume(m);
+      if (data.rooms.some((r) => r.id === m.roomId)) setRoomId(m.roomId);
+    }
+    void checkDeviceStorage(navigator.storage, store ?? undefined).then(setStorageLow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.userId, insp.id]);
+  function armMarker(origin: CaptureOrigin, itemId: string | null) {
+    const store = safeStore();
+    if (!store || !props.userId || !room) return;
+    armCaptureMarker(store, { userId: props.userId, inspectionId: insp.id, roomId: room.id, itemId, origin });
+  }
+  function clearMarker() {
+    const store = safeStore();
+    if (store && props.userId) clearCaptureMarker(store, props.userId, insp.id);
+  }
+  // Câmera nativa cancelada sem recarregar: o foco volta à página → apaga em silêncio.
+  useEffect(() => {
+    const back = () => window.setTimeout(clearMarker, 1500);
+    window.addEventListener("focus", back);
+    return () => window.removeEventListener("focus", back);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.userId, insp.id]);
+  function openNative(itemId: string | null) {
+    armMarker("camera", itemId);
+    camRef.current?.click();
+  }
+  function openGallery(itemId: string | null) {
+    setEvidenceItem(itemId);
+    armMarker("galeria", itemId);
+    galRef.current?.click();
+  }
+  function openCamera(itemId: string | null) {
+    setEvidenceItem(itemId);
+    if (supportsInAppCamera()) setCamOpen(true);
+    else openNative(itemId);
+  }
   useEffect(() => {
     if (!props.jump) return;
     setArea(
@@ -597,8 +678,74 @@ function RoomsTab(props: {
     setEvidenceItem(null);
     setMode("none");
   }, [roomId]);
+  // Depois do reset acima: volta ao item guardado (retomada ou mesmo cômodo).
+  useEffect(() => {
+    if (!roomId) return;
+    if (resume && resume.roomId === roomId) {
+      setEvidenceItem(resume.itemId);
+      return;
+    }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(itemKey) || "null") as {
+        roomId: string;
+        itemId: string | null;
+      } | null;
+      if (saved?.roomId === roomId && data.items.some((i) => i.id === saved.itemId))
+        setEvidenceItem(saved.itemId);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, resume]);
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      sessionStorage.setItem(itemKey, JSON.stringify({ roomId, itemId: evidenceItem }));
+    } catch {
+      /* ignore */
+    }
+  }, [roomId, evidenceItem, itemKey]);
 
   /* ---------- Fotos ---------- */
+  // Uma foto por vez: prepara reduzida (com miniatura) e só então guarda na fila.
+  async function stagePhoto(
+    file: Blob & { name?: string },
+    source: "captura" | "importacao",
+    ctxRoom: string,
+    ctxItem: string | null,
+  ) {
+    if (!props.userId) return false;
+    const base = {
+      userId: props.userId,
+      inspectionId: insp.id,
+      roomId: ctxRoom,
+      itemId: ctxItem,
+      clientKey: newClientKey(),
+      kind: "photo" as const,
+      takenAt: new Date().toISOString(),
+      timeSource: source,
+      status: "local" as const,
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      const { blob, width, height, thumb } = await prepareImage(file);
+      return queue.stage({ ...base, blob, thumb, mime: "image/jpeg", width, height });
+    } catch {
+      // Original só se for JPEG/PNG de até 15 MB; senão, aviso amigável.
+      if (canKeepOriginal(file)) return queue.stage({ ...base, blob: file, mime: file.type });
+      toast.error(`${file.name ? `${file.name}: ` : ""}${TOO_BIG_MESSAGE}`);
+      return false;
+    }
+  }
+  async function afterStaged(ok: number) {
+    if (!ok) return;
+    clearMarker();
+    setResume(null);
+    void markStarted();
+    await queue.refresh();
+    void queue.process();
+  }
   async function onFiles(files: FileList | null, source: "captura" | "importacao") {
     if (!files?.length || !room || !props.userId) return;
     const ctxRoom = room.id;
@@ -609,54 +756,15 @@ function RoomsTab(props: {
         toast.error(`${file.name}: não é uma imagem.`);
         continue;
       }
-      try {
-        const { blob, width, height } = await prepareImage(file);
-        await queue.stage({
-          userId: props.userId,
-          inspectionId: insp.id,
-          roomId: ctxRoom,
-          itemId: ctxItem,
-          clientKey: newClientKey(),
-          kind: "photo",
-          blob,
-          mime: "image/jpeg",
-          width,
-          height,
-          takenAt: new Date().toISOString(),
-          timeSource: source,
-          status: "local",
-          attempts: 0,
-          createdAt: new Date().toISOString(),
-        });
-        ok++;
-      } catch (e) {
-        // Se a conversão falhar, guarda o original para não perder a foto.
-        if (file.type === "image/jpeg" || file.type === "image/png") {
-          await queue.stage({
-            userId: props.userId,
-            inspectionId: insp.id,
-            roomId: ctxRoom,
-            itemId: ctxItem,
-            clientKey: newClientKey(),
-            kind: "photo",
-            blob: file,
-            mime: file.type,
-            takenAt: new Date().toISOString(),
-            timeSource: source,
-            status: "local",
-            attempts: 0,
-            createdAt: new Date().toISOString(),
-          });
-          ok++;
-        } else
-          toast.error(`${file.name}: ${e instanceof Error ? e.message : "não foi possível ler"}`);
-      }
+      if (await stagePhoto(file, source, ctxRoom, ctxItem)) ok++;
     }
-    if (ok) {
-      void markStarted();
-      await queue.refresh();
-      void queue.process();
-    }
+    await afterStaged(ok);
+  }
+  async function onCameraShot(blob: Blob) {
+    if (!room) return;
+    const ok = await stagePhoto(blob, "captura", room.id, evidenceItem);
+    if (!ok) throw new Error("não salvo");
+    await afterStaged(1);
   }
 
   if (!data.rooms.length && readOnly)
@@ -667,8 +775,35 @@ function RoomsTab(props: {
   const roomNotes = room ? data.notes.filter((n) => n.room_id === room.id) : [];
   const roomPending = room ? queue.pending.filter((p) => p.roomId === room.id) : [];
 
+  const roomPhotoCount =
+    roomMedia.length + roomPending.filter((p) => p.kind === "photo").length;
+
   return (
     <div>
+      {resume && (
+        <div
+          role="alert"
+          className="mb-3 flex flex-wrap items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <p className="min-w-0 flex-1">{RESUME_MESSAGE}</p>
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-amber-400 px-3 font-semibold"
+            onClick={() => {
+              clearMarker();
+              setResume(null);
+            }}
+          >
+            Entendi
+          </button>
+        </div>
+      )}
+      {storageLow && (
+        <p role="alert" className="mb-3 rounded-xl border border-destructive/40 p-3 text-sm text-destructive">
+          {LOW_MESSAGE}
+        </p>
+      )}
       {!rental && (
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -1005,16 +1140,14 @@ function RoomsTab(props: {
                 icon={<Camera className="size-5" />}
                 label="Tirar foto"
                 onClick={() => {
-                  setEvidenceItem(null);
-                  camRef.current?.click();
+                  openCamera(null);
                 }}
               />
               <BarButton
                 icon={<Plus className="size-5" />}
                 label="Adicionar fotos"
                 onClick={() => {
-                  setEvidenceItem(null);
-                  galRef.current?.click();
+                  openGallery(null);
                 }}
               />
               <BarButton
@@ -1050,8 +1183,7 @@ function RoomsTab(props: {
                       type="button"
                       className="min-h-11 rounded-xl border px-3"
                       onClick={() => {
-                        setEvidenceItem(null);
-                        camRef.current?.click();
+                        openCamera(null);
                       }}
                     >
                       Foto geral
@@ -1060,8 +1192,7 @@ function RoomsTab(props: {
                       type="button"
                       className="min-h-11 rounded-xl border px-3"
                       onClick={() => {
-                        setEvidenceItem(null);
-                        galRef.current?.click();
+                        openGallery(null);
                       }}
                     >
                       Importar da galeria
@@ -1095,10 +1226,7 @@ function RoomsTab(props: {
                       onTouched={markStarted}
                       forceOpen={props.jump?.itemId === it.id}
                       photos={roomMedia.filter((m) => m.item_id === it.id).length}
-                      onPhoto={() => {
-                        setEvidenceItem(it.id);
-                        camRef.current?.click();
-                      }}
+                      onPhoto={() => openCamera(it.id)}
                       onNarrate={() => {
                         setEvidenceItem(it.id);
                         setArea("relatos");
@@ -1146,10 +1274,7 @@ function RoomsTab(props: {
                     saver={saver}
                     onTouched={markStarted}
                     photos={roomMedia.filter((m) => m.item_id === it.id).length}
-                    onPhoto={() => {
-                      setEvidenceItem(it.id);
-                      camRef.current?.click();
-                    }}
+                    onPhoto={() => openCamera(it.id)}
                     onNarrate={() => {
                       setEvidenceItem(it.id);
                       setMode("texto");
@@ -1211,6 +1336,20 @@ function RoomsTab(props: {
         </AlertDialogContent>
       </AlertDialog>
 
+      <InAppCamera
+        open={camOpen}
+        title={[room?.name, data.items.find((i) => i.id === evidenceItem)?.name].filter(Boolean).join(" · ")}
+        count={roomPhotoCount}
+        onClose={() => setCamOpen(false)}
+        onCapture={onCameraShot}
+        onNative={(reason) => {
+          if (reason === "falha")
+            toast.error(CAMERA_FAILED, {
+              action: { label: "Usar câmera do celular", onClick: () => openNative(evidenceItem) },
+            });
+          openNative(evidenceItem);
+        }}
+      />
       <input
         ref={camRef}
         type="file"
@@ -1278,8 +1417,7 @@ function RoomsTab(props: {
                 icon={<Camera className="size-5" />}
                 label="Foto"
                 onClick={() => {
-                  setEvidenceItem(null);
-                  camRef.current?.click();
+                  openCamera(null);
                 }}
               />
               <BarButton

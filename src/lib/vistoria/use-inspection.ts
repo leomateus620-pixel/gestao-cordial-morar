@@ -10,8 +10,10 @@ import {
   patchPending,
   putPending,
   removePending,
+  stabilizePending,
   type PendingEntry,
 } from "./local-store";
+import { backoffDelay, friendlyUploadError, isDue, nextWakeIn } from "./retry-backoff";
 import { mediaPath } from "./model";
 import {
   createNote,
@@ -131,13 +133,19 @@ export function useLocalQueue(
   const volatile = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
+  const wakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleWake = useRef<() => void>(() => undefined);
+  const clearWake = () => {
+    if (wakeTimer.current) clearTimeout(wakeTimer.current);
+    wakeTimer.current = null;
+  };
 
   const refresh = useCallback(async () => {
     if (!userId) return;
     try {
       const list = await listPending(userId, inspectionId);
       if (alive.current) {
-        setPending(list);
+        setPending((prev) => stabilizePending(prev, list));
         setError(null);
       }
     } catch {
@@ -156,7 +164,9 @@ export function useLocalQueue(
       for (const e of list) {
         if (!alive.current) break;
         if (pausedRooms.current.has(e.roomId)) continue;
-        if (e.status === "erro" && e.attempts >= 5) continue; // aguarda "tentar de novo" manual
+        // Esgotado (5 falhas) aguarda "tentar de novo"; em espera é pulado sem travar os outros.
+        if (!isDue(e, Date.now())) continue;
+        if (!navigator.onLine) break;
         await patchPending(e.key, { status: "enviando" });
         await refresh();
         try {
@@ -208,41 +218,82 @@ export function useLocalQueue(
           await removePending(e.key);
           await qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, userId) });
         } catch (err) {
+          // Detalhe técnico só no console; na tela, mensagem amigável.
+          console.warn("[vistoria] falha no envio", err);
+          const attempts = e.attempts + 1;
           await patchPending(e.key, {
             status: "erro",
-            attempts: e.attempts + 1,
-            error: err instanceof Error ? err.message.slice(0, 200) : "Falha no envio",
+            attempts,
+            error: friendlyUploadError(navigator.onLine),
+            nextAttemptAt: Date.now() + backoffDelay(attempts),
           });
         }
         await refresh();
       }
     } catch (e) {
-      setError(
-        `Falha ao acessar a fila neste aparelho: ${e instanceof Error ? e.message : "armazenamento indisponível"}`,
-      );
+      console.warn("[vistoria] fila local indisponível", e);
+      setError("Não foi possível acessar as fotos guardadas neste aparelho. Não feche esta tela.");
     } finally {
       running.current = false;
       finish.current();
+      scheduleWake.current();
     }
   }, [userId, inspectionId, register, addNote, transcribe, voiceReady, qc, refresh]);
 
+  /** Ignora a espera dos que ainda têm tentativas e tenta na hora. */
+  const kick = useCallback(async () => {
+    if (!userId) return;
+    try {
+      for (const e of await listPending(userId, inspectionId))
+        if (e.status === "erro" && e.attempts < 5 && e.nextAttemptAt)
+          await patchPending(e.key, { nextAttemptAt: null });
+    } catch {
+      /* refresh mostra o erro */
+    }
+    await refresh();
+    await process();
+  }, [userId, inspectionId, refresh, process]);
+
   useEffect(() => {
     alive.current = true;
+    scheduleWake.current = () => {
+      clearWake();
+      if (!alive.current || document.visibilityState === "hidden" || !navigator.onLine || !userId)
+        return;
+      void listPending(userId, inspectionId)
+        .then((list) => {
+          const wait = nextWakeIn(list, Date.now());
+          if (wait === null || !alive.current || document.visibilityState === "hidden") return;
+          clearWake();
+          wakeTimer.current = setTimeout(() => {
+            wakeTimer.current = null;
+            void refresh().then(process);
+          }, wait + 50);
+        })
+        .catch(() => undefined);
+    };
     void refresh().then(process);
-    const online = () => void process();
+    const online = () => void kick();
+    const offline = () => clearWake();
     window.addEventListener("online", online);
-    const vis = () => document.visibilityState === "visible" && void process();
+    window.addEventListener("offline", offline);
+    const vis = () => {
+      if (document.visibilityState === "visible") void process();
+      else clearWake();
+    };
     document.addEventListener("visibilitychange", vis);
     return () => {
       alive.current = false;
+      clearWake();
       window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
       document.removeEventListener("visibilitychange", vis);
     };
-  }, [refresh, process]);
+  }, [refresh, process, kick, userId, inspectionId]);
 
   const retry = useCallback(
     async (key: string) => {
-      await patchPending(key, { status: "local", attempts: 0, error: null });
+      await patchPending(key, { status: "local", attempts: 0, error: null, nextAttemptAt: null });
       await refresh();
       await process();
     },
@@ -310,14 +361,39 @@ export function useLocalQueue(
   };
 }
 
-/** URLs de prévia locais, revogadas ao trocar a lista ou desmontar. */
+/**
+ * URLs de prévia locais, incrementais: cria só para chave nova (usando a
+ * miniatura quando houver) e revoga só a que saiu; tudo é revogado ao desmontar.
+ */
 export function useObjectUrls(entries: PendingEntry[]) {
+  const map = useRef(new Map<string, string>());
   const [urls, setUrls] = useState<Record<string, string>>({});
   useEffect(() => {
-    const map: Record<string, string> = {};
-    for (const e of entries) if (e.kind === "photo") map[e.key] = URL.createObjectURL(e.blob);
-    setUrls(map);
-    return () => Object.values(map).forEach((u) => URL.revokeObjectURL(u));
+    const cur = map.current;
+    const wanted = new Set<string>();
+    let changed = false;
+    for (const e of entries) {
+      if (e.kind !== "photo") continue;
+      wanted.add(e.key);
+      if (!cur.has(e.key)) {
+        cur.set(e.key, URL.createObjectURL(e.thumb ?? e.blob));
+        changed = true;
+      }
+    }
+    for (const [k, u] of cur)
+      if (!wanted.has(k)) {
+        URL.revokeObjectURL(u);
+        cur.delete(k);
+        changed = true;
+      }
+    if (changed) setUrls(Object.fromEntries(cur));
   }, [entries]);
+  useEffect(() => {
+    const cur = map.current;
+    return () => {
+      for (const u of cur.values()) URL.revokeObjectURL(u);
+      cur.clear();
+    };
+  }, []);
   return urls;
 }
