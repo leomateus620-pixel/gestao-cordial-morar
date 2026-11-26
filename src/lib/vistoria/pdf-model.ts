@@ -1,6 +1,7 @@
 import { emptyMeters, STATUS_LABEL, type InspectionStatus, type Meters } from "./model";
 import type { PdfModel } from "./pdf";
 import type { InspectionFull } from "./vistoria.functions";
+import { inspectionPropertyCodes } from "./ui";
 
 const FURNISHED: Record<string, string> = {
   nao_informado: "Não informado",
@@ -24,13 +25,7 @@ export function toPdfModel(
   const i = full.inspection;
   const cad = i.property_snapshot?.cadastro ?? {};
   const conf = i.property_snapshot?.confirmado ?? {};
-  const codes =
-    [
-      cad.codigo_cordial && `Cordial ${cad.codigo_cordial}`,
-      cad.codigo_morar && `Morar ${cad.codigo_morar}`,
-    ]
-      .filter(Boolean)
-      .join(" · ") || (cad.codigo ? `Código ${cad.codigo}` : "Sem código");
+  const codes = inspectionPropertyCodes(cad) || "Sem código";
   return {
     brand: i.agency === "morar" ? "morar" : "cordial",
     numero: i.numero,

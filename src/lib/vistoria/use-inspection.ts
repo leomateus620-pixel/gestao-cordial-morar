@@ -2,12 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth-mock";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   cacheInspection,
   cachedInspection,
   listPending,
   patchPending,
+  pendingKey,
   putPending,
   removePending,
   stabilizePending,
@@ -24,7 +25,8 @@ import {
 import { deleteVoiceNote, transcribeNote } from "./voice.functions";
 import { extFromMime } from "./audio-format";
 import { nextTranscriptionWake, pickNextTranscription } from "./transcription-runner";
-import type { NoteRow } from "./types";
+import type { MediaRow, NoteRow } from "./types";
+import { MAX_SIDE } from "./image-prepare";
 
 export const BUCKET = "inspection-media";
 export const inspectionKey = (id: string, userId?: string) =>
@@ -118,21 +120,28 @@ export function replaceRow<T extends { id: string }>(list: T[], row: T): T[] {
  * Fila local → servidor, concorrência 1. Remove do aparelho só depois do
  * registro confirmado. Retoma ao abrir a tela e ao reconectar.
  */
-export function useLocalQueue(
-  userId: string | undefined,
-  inspectionId: string,
-) {
+export function useLocalQueue(userId: string | undefined, inspectionId: string) {
   const qc = useQueryClient();
   const register = useServerFn(registerMedia);
   const addNote = useServerFn(createNote);
   const removeNote = useServerFn(deleteVoiceNote);
-  const [pending, setPending] = useState<PendingEntry[]>([]);
+  const [stored, setPending] = useState<PendingEntry[]>([]);
+  const [sendingKey, setSendingKey] = useState<string | null>(null);
+  const pending = useMemo(
+    () =>
+      stored.map((entry) =>
+        entry.status === "enviando" && entry.key !== sendingKey
+          ? { ...entry, status: "local" as const }
+          : entry,
+      ),
+    [stored, sendingKey],
+  );
   const running = useRef(false);
   const pausedRooms = useRef(new Set<string>());
   const completion = useRef<Promise<void>>(Promise.resolve());
   const finish = useRef<() => void>(() => undefined);
   const [unpersisted, setUnpersisted] = useState<PendingEntry[]>([]);
-  const volatile = useRef(false);
+  const volatile = useRef(new Map<string, PendingEntry>());
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
   const wakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,7 +165,7 @@ export function useLocalQueue(
   }, [userId, inspectionId]);
 
   const process = useCallback(async () => {
-    if (!userId || running.current || !navigator.onLine) return;
+    if (!userId || running.current || !navigator.onLine || document.hidden) return;
     running.current = true;
     completion.current = new Promise((resolve) => {
       finish.current = resolve;
@@ -164,11 +173,12 @@ export function useLocalQueue(
     try {
       const list = await listPending(userId, inspectionId);
       for (const e of list) {
-        if (!alive.current) break;
+        if (!alive.current || document.visibilityState === "hidden") break;
         if (pausedRooms.current.has(e.roomId)) continue;
         // Esgotado (5 falhas) aguarda "tentar de novo"; em espera é pulado sem travar os outros.
         if (!isDue(e, Date.now())) continue;
         if (!navigator.onLine) break;
+        setSendingKey(e.key);
         await patchPending(e.key, { status: "enviando" });
         await refresh();
         try {
@@ -181,7 +191,7 @@ export function useLocalQueue(
             throw new Error(up.error.message);
           if (!alive.current || pausedRooms.current.has(e.roomId)) continue;
           if (e.kind === "photo") {
-            await register({
+            const saved: MediaRow = await register({
               data: {
                 inspectionId: e.inspectionId,
                 roomId: e.roomId,
@@ -195,6 +205,14 @@ export function useLocalQueue(
                 caption: e.caption ?? null,
               },
             });
+            if (saved?.id && alive.current) {
+              const queryKey = inspectionKey(inspectionId, userId);
+              await qc.cancelQueries({ queryKey, exact: true });
+              qc.setQueryData<InspectionFull>(
+                queryKey,
+                (full) => full && { ...full, media: replaceRow(full.media, saved) },
+              );
+            }
           } else {
             await addNote({
               data: {
@@ -213,16 +231,16 @@ export function useLocalQueue(
             // Regravação: o anterior só sai depois do novo confirmado. Falha aqui
             // mantém os dois (nunca deixa o relato sem áudio).
             if (e.replacesNoteId)
-              await removeNote({ data: { noteId: e.replacesNoteId, reason: "regravar" } }).catch((err) =>
-                console.warn("[vistoria] relato anterior mantido", err),
+              await removeNote({ data: { noteId: e.replacesNoteId, reason: "regravar" } }).catch(
+                (err) => console.warn("[vistoria] relato anterior mantido", err),
               );
             // A transcrição automática roda à parte (useTranscriptionRunner).
           }
           await removePending(e.key);
-          await qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, userId) });
+          void qc.invalidateQueries({ queryKey: inspectionKey(inspectionId, userId) });
         } catch (err) {
           // Detalhe técnico só no console; na tela, mensagem amigável.
-          console.warn("[vistoria] falha no envio", err);
+          console.warn("[vistoria] falha no envio", (err as { name?: string })?.name);
           const attempts = e.attempts + 1;
           await patchPending(e.key, {
             status: "erro",
@@ -237,6 +255,7 @@ export function useLocalQueue(
       console.warn("[vistoria] fila local indisponível", e);
       setError("Não foi possível acessar as fotos guardadas neste aparelho. Não feche esta tela.");
     } finally {
+      if (alive.current) setSendingKey(null);
       running.current = false;
       finish.current();
       scheduleWake.current();
@@ -303,27 +322,30 @@ export function useLocalQueue(
     [refresh, process],
   );
   const stage = async (entry: Omit<PendingEntry, "key">) => {
+    const key = pendingKey(entry.userId, entry.inspectionId, entry.clientKey);
     try {
       await putPending(entry);
+      if (volatile.current.delete(key)) setUnpersisted([...volatile.current.values()]);
       return true;
     } catch (e) {
       const failed = {
         ...entry,
-        key: `${entry.userId}|${entry.inspectionId}|${entry.clientKey}`,
-        error: `Não salvo no aparelho: ${e instanceof Error ? e.message : "armazenamento indisponível"}`,
+        key,
+        error:
+          (e as { name?: string })?.name === "QuotaExceededError"
+            ? "Sem espaço no armazenamento do navegador. Libere espaço e tente salvar novamente"
+            : "Não foi possível gravar no armazenamento do navegador",
       };
-      volatile.current = true;
-      setUnpersisted((cur) => [...cur.filter((p) => p.key !== failed.key), failed]);
+      volatile.current.set(key, failed);
+      setUnpersisted([...volatile.current.values()]);
       return false;
     }
   };
   const retryLocal = async (key: string) => {
-    const entry = unpersisted.find((p) => p.key === key);
+    const entry = volatile.current.get(key);
     if (!entry) return;
     const ok = await stage(entry);
     if (ok) {
-      volatile.current = unpersisted.some((p) => p.key !== key);
-      setUnpersisted((cur) => cur.filter((p) => p.key !== key));
       await refresh();
       void process();
     }
@@ -352,14 +374,16 @@ export function useLocalQueue(
     stage,
     retryLocal,
     pauseRoom,
-    hasUnpersisted: () => volatile.current,
+    hasUnpersisted: () => volatile.current.size > 0,
     resumeRoom: (roomId: string) => {
       pausedRooms.current.delete(roomId);
       void process();
     },
     forgetRoom: (roomId: string) => {
-      volatile.current = unpersisted.some((p) => p.roomId !== roomId);
-      setUnpersisted((cur) => cur.filter((p) => p.roomId !== roomId));
+      for (const [key, entry] of volatile.current) {
+        if (entry.roomId === roomId) volatile.current.delete(key);
+      }
+      setUnpersisted([...volatile.current.values()]);
     },
   };
 }
@@ -377,9 +401,12 @@ export function useObjectUrls(entries: PendingEntry[]) {
     let changed = false;
     for (const e of entries) {
       if (e.kind !== "photo") continue;
+      const image =
+        e.thumb ?? (e.width && e.height && Math.max(e.width, e.height) <= MAX_SIDE ? e.blob : null);
+      if (!image) continue;
       wanted.add(e.key);
       if (!cur.has(e.key)) {
-        cur.set(e.key, URL.createObjectURL(e.thumb ?? e.blob));
+        cur.set(e.key, URL.createObjectURL(image));
         changed = true;
       }
     }
@@ -437,10 +464,21 @@ export function useTranscriptionRunner(
           localWait.current.set(next.id, { until: Date.now() + 5_000, fails: 0 });
           if (row?.id)
             qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, userId), (f) =>
-              f ? { ...f, notes: f.notes.some((n) => n.id === row.id) ? replaceRow(f.notes, row) : f.notes } : f,
+              f
+                ? {
+                    ...f,
+                    notes: f.notes.some((n) => n.id === row.id)
+                      ? replaceRow(f.notes, row)
+                      : f.notes,
+                  }
+                : f,
             );
           // Sem avanço (outra tela reservou): espera curta para não repetir já.
-          if (!row || row.transcription_state === "transcrevendo" || row.transcription_state === "falhou")
+          if (
+            !row ||
+            row.transcription_state === "transcrevendo" ||
+            row.transcription_state === "falhou"
+          )
             localWait.current.set(next.id, { until: Date.now() + backoffDelay(1), fails: 0 });
         } catch (err) {
           console.warn("[vistoria] transcrição adiada", err);
@@ -459,7 +497,8 @@ export function useTranscriptionRunner(
     if (!enabled) return;
     void run();
     const wait = nextTranscriptionWake(notesRef.current, Date.now(), waits());
-    const t = wait === null ? null : setTimeout(() => void run(), Math.min(wait + 100, 2_147_000_000));
+    const t =
+      wait === null ? null : setTimeout(() => void run(), Math.min(wait + 100, 2_147_000_000));
     const online = () => void run();
     window.addEventListener("online", online);
     return () => {

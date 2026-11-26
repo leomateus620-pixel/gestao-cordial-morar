@@ -15,8 +15,18 @@ export const Route = createFileRoute("/_app/vistorias/$vistoriaId")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  validateSearch: (search: { formulario?: unknown } & SearchSchemaInput) => ({
+  validateSearch: (
+    search: {
+      formulario?: unknown;
+      central?: unknown;
+      comodo?: unknown;
+      revisao?: unknown;
+    } & SearchSchemaInput,
+  ) => ({
     formulario: search.formulario === true ? (true as const) : undefined,
+    central: search.central === true ? (true as const) : undefined,
+    revisao: search.revisao === true ? (true as const) : undefined,
+    comodo: typeof search.comodo === "string" ? search.comodo.slice(0, 80) : undefined,
   }),
   component: () => (
     <RequireModuleAccess module="vistorias">
@@ -28,10 +38,16 @@ export const Route = createFileRoute("/_app/vistorias/$vistoriaId")({
 function VistoriaPage() {
   const { vistoriaId } = Route.useParams();
   const user = useSession();
-  const { formulario } = Route.useSearch();
+  const { formulario, central, comodo, revisao } = Route.useSearch();
   return (
     <InspectionDraftProvider key={`${user?.id}:${vistoriaId}`} inspectionId={vistoriaId}>
-      <VistoriaWorkspace vistoriaId={vistoriaId} returnToRentalForm={formulario} />
+      <VistoriaWorkspace
+        vistoriaId={vistoriaId}
+        returnToRentalForm={formulario}
+        fromCentral={central}
+        resumeRoom={comodo}
+        openReview={revisao}
+      />
     </InspectionDraftProvider>
   );
 }

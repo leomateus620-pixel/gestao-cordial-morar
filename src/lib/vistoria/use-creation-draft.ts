@@ -5,22 +5,32 @@ import { DraftController } from "./draft-controller";
 import { draftKey, type DraftScope } from "./draft-model";
 import { listDrafts, putDraft, removeDraft } from "./local-store";
 /** The UUID travels with the durable form: a retry never creates a second inspection. */
-export function useCreationDraft<T extends object>(userId: string | undefined, initial: () => T) {
+export function useCreationDraft<T extends object>(
+  userId: string | undefined,
+  initial: () => T,
+  inspectionId = "new",
+) {
   const current = useRef<{
     userId: string | undefined;
+    inspectionId: string;
     defaults: T;
     controller: DraftController;
   } | null>(null);
-  if (!current.current || current.current.userId !== userId)
+  if (
+    !current.current ||
+    current.current.userId !== userId ||
+    current.current.inspectionId !== inspectionId
+  )
     current.current = {
       userId,
+      inspectionId,
       defaults: initial(),
       controller: new DraftController({ put: putDraft, remove: removeDraft }, async () => 0),
     };
   const { defaults, controller } = current.current;
   const scope: DraftScope = {
     userId: userId ?? "signed-out",
-    inspectionId: "new",
+    inspectionId,
     roomId: null,
     entity: "creation",
     entityId: "form",
@@ -51,7 +61,7 @@ export function useCreationDraft<T extends object>(userId: string | undefined, i
     controller.resume();
     setReady(false);
     if (userId)
-      void listDrafts(userId, "new")
+      void listDrafts(userId, inspectionId)
         .then((entries) => {
           if (alive) {
             controller.hydrate(entries);
@@ -63,7 +73,7 @@ export function useCreationDraft<T extends object>(userId: string | undefined, i
       alive = false;
       controller.stop();
     };
-  }, [controller, userId]);
+  }, [controller, inspectionId, userId]);
   useEffect(() => {
     const before = (e: BeforeUnloadEvent) => {
       const view = controller.snapshot()[key];

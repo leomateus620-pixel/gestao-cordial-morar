@@ -22,6 +22,13 @@ import { useCreationDraft } from "@/lib/vistoria/use-creation-draft";
 import { useFieldViewport } from "@/lib/vistoria/use-field-viewport";
 import { getContractEntryInspectionState } from "@/lib/rentals/rentals.functions";
 import {
+  readRememberedCompetence,
+  rentalSearch,
+  type RentalSearch,
+} from "@/lib/rentals/competence-nav";
+import { entryInspectionAction, exitInspectionAction } from "@/lib/rentals/entry-inspection";
+import { inspectionAddress, inspectionPropertyCodes } from "@/lib/vistoria/ui";
+import {
   createInspection,
   getContractInspectionProperty,
   listInspectionResponsibles,
@@ -29,7 +36,7 @@ import {
   type PropertyForInspection,
 } from "@/lib/vistoria/vistoria.functions";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowDown, ArrowLeft, ArrowUp, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -57,39 +64,44 @@ function toLocalInput(d: Date) {
 }
 const numOrNull = (v: string) => (v.trim() === "" ? null : Math.max(0, Math.floor(Number(v))));
 
-export function CreationWorkspace() {
+export function CreationWorkspace({
+  contractId,
+  rentalKind = "entrada",
+}: {
+  contractId?: string;
+  rentalKind?: "entrada" | "saida";
+} = {}) {
   useFieldViewport();
   const session = useSession();
   const navigate = useNavigate();
   const search = useServerFn(searchInspectionProperties);
   const create = useServerFn(createInspection);
   const responsiblesFn = useServerFn(listInspectionResponsibles);
-  // A vistoria pode ser aberta a partir de um contrato (?contrato=…): o imóvel e o
-  // tipo vêm do contrato, e a criação fica travada em "entrada".
-  const routeSearch = useSearch({ from: "/_app/vistorias/nova" });
-  const contractId = routeSearch.contrato;
-  const rentalKind: "entrada" | "saida" = routeSearch.tipo === "saida" ? "saida" : "entrada";
   const entryStateFn = useServerFn(getContractEntryInspectionState);
   const contractPropertyFn = useServerFn(getContractInspectionProperty);
-  const draft = useCreationDraft(session?.id, () => ({
-    id: crypto.randomUUID(),
-    step: 0,
-    q: "",
-    prop: null as PropertyForInspection | null,
-    kind: "entrada" as InspectionKind,
-    agency: "cordial" as "cordial" | "morar",
-    responsibleId: "",
-    when: toLocalInput(new Date()),
-    participants: [] as Array<{ nome: string; papel: string }>,
-    furnished: "nao_informado" as "nao_informado" | "nao" | "semimobiliado" | "mobiliado",
-    cleaning: "nao_informado" as "nao_informado" | "limpo" | "parcial" | "sujo" | "nao_se_aplica",
-    keys: [] as Array<{ descricao: string; quantidade: number }>,
-    meters: emptyMeters(),
-    counts: { tipo: "", dormitorios: "", suites: "", banheiros: "", vagas: "", salas: "" },
-    rooms: [] as PlanRoom[],
-    planConfirmed: false,
-    newRoom: { name: "", kind: "outro" as RoomKind },
-  }));
+  const draft = useCreationDraft(
+    session?.id,
+    () => ({
+      id: crypto.randomUUID(),
+      step: 0,
+      q: "",
+      prop: null as PropertyForInspection | null,
+      kind: rentalKind as InspectionKind,
+      agency: "cordial" as "cordial" | "morar",
+      responsibleId: "",
+      when: toLocalInput(new Date()),
+      participants: [] as Array<{ nome: string; papel: string }>,
+      furnished: "nao_informado" as "nao_informado" | "nao" | "semimobiliado" | "mobiliado",
+      cleaning: "nao_informado" as "nao_informado" | "limpo" | "parcial" | "sujo" | "nao_se_aplica",
+      keys: [] as Array<{ descricao: string; quantidade: number }>,
+      meters: emptyMeters(),
+      counts: { tipo: "", dormitorios: "", suites: "", banheiros: "", vagas: "", salas: "" },
+      rooms: [] as PlanRoom[],
+      planConfirmed: false,
+      newRoom: { name: "", kind: "outro" as RoomKind },
+    }),
+    contractId ? `new:${contractId}:${rentalKind}` : "new",
+  );
   const {
     id,
     step,
@@ -149,7 +161,7 @@ export function CreationWorkspace() {
   });
 
   const entry = useQuery({
-    queryKey: ["inspection-entry-contract", contractId ?? null],
+    queryKey: ["inspection-entry-contract", session?.id, contractId],
     enabled: Boolean(contractId),
     queryFn: () => {
       if (!contractId) throw new Error("Contrato inválido.");
@@ -158,7 +170,7 @@ export function CreationWorkspace() {
   });
 
   const contractProperty = useQuery({
-    queryKey: ["inspection-entry-property", contractId ?? null],
+    queryKey: ["inspection-entry-property", session?.id, contractId],
     enabled: Boolean(contractId),
     // Imóvel que não existe mais deve aparecer na hora, sem nova tentativa.
     retry: false,
@@ -168,10 +180,44 @@ export function CreationWorkspace() {
     },
   });
 
-  // Vistoria aberta pelo contrato: entra com o imóvel do contrato e o tipo em entrada.
+  const agreement = entry.data;
+  const rentalAction =
+    !contractId || !agreement
+      ? null
+      : rentalKind === "saida"
+        ? exitInspectionAction({
+            contractId,
+            entry: {
+              id: agreement.existingInspectionId,
+              status: agreement.existingInspectionStatus,
+              hasDocument: agreement.entryHasDocument,
+            },
+            existingExitId: agreement.exitInspectionId,
+          })
+        : entryInspectionAction({
+            contractId,
+            gate: {
+              unlocked: agreement.unlocked,
+              reviewedDocumentId: null,
+              reviewedAt: agreement.reviewedAt,
+              missing: agreement.missing,
+            },
+            existingInspectionId: agreement.existingInspectionId,
+          });
+  const existingId = rentalAction?.kind === "open" ? rentalAction.inspectionId : undefined;
+  useEffect(() => {
+    if (existingId)
+      void navigate({
+        to: "/vistorias/$vistoriaId",
+        params: { vistoriaId: existingId },
+        replace: true,
+      });
+  }, [existingId, navigate]);
+
+  // O imóvel da locação vem do contrato após a leitura das permissões.
   useEffect(() => {
     const p = contractProperty.data;
-    if (!p || prop || (rentalKind === "saida" && !entry.data)) return;
+    if (!draft.ready || !p || prop || rentalAction?.kind !== "start") return;
     choose(p);
     setKind(rentalKind);
     // Vistoria de aluguel começa vazia; na saída sugere só os nomes da entrada.
@@ -184,9 +230,8 @@ export function CreationWorkspace() {
           }))
         : [],
     );
-    if (step === 0) setStep(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractProperty.data, prop, step, entry.data]);
+  }, [contractProperty.data, prop, rentalAction?.kind, draft.ready]);
 
   const contractProp = contractProperty.data ?? null;
 
@@ -194,7 +239,7 @@ export function CreationWorkspace() {
     const term = q.trim();
     let current = true;
     setSearchError("");
-    if (term.length < 2) {
+    if (contractId || term.length < 2) {
       setResults([]);
       setSearching(false);
       return;
@@ -218,7 +263,7 @@ export function CreationWorkspace() {
       current = false;
       clearTimeout(timer);
     };
-  }, [q, search]);
+  }, [contractId, q, search]);
 
   const isFurnished = furnished === "mobiliado" || furnished === "semimobiliado";
   const confirmed = useMemo(
@@ -288,14 +333,7 @@ export function CreationWorkspace() {
     if (!prop || !session) return;
     if (!when) return toast.error("Informe data e hora.");
     if (busy) return;
-    if (contractId && rentalKind === "entrada" && entry.data?.existingInspectionId) {
-      toast.error("Este contrato já tem uma vistoria de entrada.");
-      return;
-    }
-    if (contractId && rentalKind === "saida" && entry.data?.exitInspectionId) {
-      toast.error("Este contrato já tem uma vistoria de saída.");
-      return;
-    }
+    if (contractId && rentalAction?.kind !== "start") return;
     setBusy(true);
     try {
       await draft.flush();
@@ -306,7 +344,7 @@ export function CreationWorkspace() {
           propertyId: prop.id,
           contractId: contractId ?? null,
           ...(contractId ? { rentalKind } : {}),
-          kind,
+          kind: contractId ? rentalKind : kind,
           agency,
           responsibleId: responsibleId || null,
           inspectedAt: new Date(when).toISOString(),
@@ -330,6 +368,18 @@ export function CreationWorkspace() {
     }
   }
 
+  const exitLocation = contractId
+    ? {
+        to: "/alugueis" as const,
+        search: rentalSearch<RentalSearch>(
+          { competencia: readRememberedCompetence() },
+          { id: contractId, etapa: "vistorias" },
+        ),
+      }
+    : { to: "/vistorias" as const };
+  const blocked =
+    contractId && (rentalAction?.kind !== "start" || contractProperty.isError || !contractProp);
+  const selectedKind = contractId ? rentalKind : kind;
   const fam = propertyFamily(counts.tipo);
 
   if (!draft.ready)
@@ -339,17 +389,17 @@ export function CreationWorkspace() {
       </p>
     );
   return (
-    <div className="inspection-workspace mx-auto w-full max-w-2xl pb-32">
+    <div className="inspection-workspace mx-auto w-full max-w-3xl pb-36">
       <header className="sticky top-0 z-20 -mx-4 mb-4 border-b bg-background px-4 py-2">
         <div className="flex items-center gap-2">
           <Link
-            to="/vistorias"
-            aria-label="Voltar"
+            {...exitLocation}
+            aria-label={contractId ? "Voltar à locação" : "Voltar às vistorias"}
             className="grid size-11 place-items-center rounded-xl hover:bg-foreground/5"
           >
             <ArrowLeft className="size-5" />
           </Link>
-          <h1 className="flex-1 text-lg font-bold tracking-tight">Nova vistoria</h1>
+          <h1 className="flex-1 text-xl font-bold tracking-tight">Nova vistoria</h1>
           <button
             type="button"
             className="min-h-11 px-2 text-sm"
@@ -365,10 +415,10 @@ export function CreationWorkspace() {
               ? "Gravando no aparelho…"
               : draft.status
                 ? "No aparelho · criação recuperável"
-                : "Escolha o imóvel para começar"}
+                : null}
         </p>
         <ol aria-label="Etapas da criação" className="mt-3 grid grid-cols-4 gap-1 text-xs">
-          {["Imóvel", "Preparação", "Ambientes", "Iniciar"].map((label, i) => (
+          {["Imóvel e tipo", "Preparação", "Cômodos", "Revisão"].map((label, i) => (
             <li
               key={label}
               aria-current={step === i ? "step" : undefined}
@@ -384,60 +434,40 @@ export function CreationWorkspace() {
           ))}
         </ol>
       </header>
-      {contractId && (
-        <div className="mb-4 rounded-xl border border-primary/18 bg-primary/[0.07] p-3 text-sm">
-          {entry.isLoading ? (
-            <p className="flex items-center gap-2 text-foreground/70">
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-              Conferindo o contrato…
-            </p>
-          ) : entry.isError ? (
-            <p role="alert" className="text-destructive">
-              Não foi possível conferir o contrato. Volte ao contrato e abra a vistoria por lá.
-            </p>
-          ) : rentalKind === "entrada" && entry.data?.existingInspectionId ? (
-            <p role="alert" className="font-semibold text-amber-900">
-              Este contrato já tem uma vistoria de entrada.{" "}
-              <Link
-                to="/vistorias/$vistoriaId"
-                params={{ vistoriaId: entry.data.existingInspectionId }}
-                className="underline"
-              >
-                Abrir a vistoria existente
-              </Link>
-            </p>
-          ) : contractProperty.isError ? (
-            <p role="alert" className="font-semibold text-destructive">
-              Este contrato ainda não tem um imóvel de aluguel ligado. Escolha o imóvel abaixo para
-              começar a vistoria.
-            </p>
-          ) : contractProp && prop && prop.id === contractProp.id ? (
-            <p className="font-semibold text-primary">
-              Vistoria de {rentalKind === "saida" ? "saída" : "entrada"} do contrato — o imóvel já foi selecionado.
+      {contractId && blocked && (
+        <div className="mb-4 rounded-xl border border-primary/20 bg-card p-4 text-sm">
+          {existingId ? (
+            <Link
+              to="/vistorias/$vistoriaId"
+              params={{ vistoriaId: existingId }}
+              className="inline-flex min-h-11 items-center font-semibold text-primary"
+            >
+              Abrir vistoria de {rentalKind === "saida" ? "saída" : "entrada"}
+            </Link>
+          ) : rentalAction?.kind === "blocked" ? (
+            <p role="status">{rentalAction.reason}</p>
+          ) : entry.isError || contractProperty.isError ? (
+            <p role="alert">
+              Confira o contrato e o imóvel da locação antes de iniciar a vistoria.
             </p>
           ) : (
-            <p className="flex items-center gap-2 font-semibold text-primary">
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-              Carregando o imóvel do contrato…
+            <p role="status" className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin" aria-hidden /> Conferindo a locação…
             </p>
           )}
         </div>
       )}
-      {contractId && contractProp && prop && prop.id !== contractProp.id && (
-        <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-3 text-sm">
-          <p className="font-semibold text-amber-900">
-            A criação aberta está em outro imóvel. Esta vistoria é do imóvel do contrato.
+      {prop && step > 0 && !blocked && (
+        <div className="mb-4 rounded-2xl border border-primary/25 bg-card px-4 py-3 sm:px-5">
+          <p className="text-sm font-semibold text-primary">
+            Vistoria de {KIND_LABEL[selectedKind].toLocaleLowerCase("pt-BR")}
           </p>
-          <button
-            type="button"
-            className="mt-1 min-h-11 text-primary underline"
-            onClick={() => {
-              choose(contractProp);
-              setKind(rentalKind);
-            }}
-          >
-            Usar o imóvel do contrato
-          </button>
+          <p className="mt-1 break-words text-base font-semibold">
+            {inspectionAddress(prop) || "Endereço não informado"}
+          </p>
+          {inspectionPropertyCodes(prop) && (
+            <p className="mt-1 text-sm text-foreground/60">{inspectionPropertyCodes(prop)}</p>
+          )}
         </div>
       )}
       {draft.recoveries.length > 0 && (
@@ -495,7 +525,7 @@ export function CreationWorkspace() {
             apagada.
           </DialogDescription>
           <Link
-            to="/vistorias"
+            {...exitLocation}
             className="min-h-11 rounded-xl bg-primary p-3 text-center text-primary-foreground"
           >
             Continuar depois
@@ -505,7 +535,7 @@ export function CreationWorkspace() {
             className="min-h-11 text-destructive"
             onClick={async () => {
               await draft.clear();
-              void navigate({ to: "/vistorias" });
+              void navigate(exitLocation);
             }}
           >
             Descartar só o rascunho local
@@ -513,9 +543,9 @@ export function CreationWorkspace() {
         </DialogContent>
       </Dialog>
 
-      {step === 0 && (
-        <section className="premium-card mb-4 rounded-2xl p-4">
-          <h2 className="mb-2 text-sm font-semibold">1. Imóvel</h2>
+      {step === 0 && !blocked && (
+        <section className="premium-card mb-4 rounded-2xl p-4 sm:p-5">
+          <h2 className="mb-3 text-base font-semibold">Imóvel</h2>
           {results.some((p, i) =>
             results.some(
               (other, j) =>
@@ -538,30 +568,23 @@ export function CreationWorkspace() {
           {prop ? (
             <div className="flex items-start justify-between gap-2 rounded-xl bg-primary/6 p-3">
               <div className="min-w-0 text-sm">
-                <p className="font-semibold">
-                  {[
-                    prop.codigo_cordial && `Cordial ${prop.codigo_cordial}`,
-                    prop.codigo_morar && `Morar ${prop.codigo_morar}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || `Código ${prop.codigo ?? "—"}`}
+                <p className="break-words text-base font-semibold">
+                  {inspectionAddress(prop) || "Endereço não informado"}
                 </p>
-                <p className="text-foreground/65">
-                  {prop.tipo} ·{" "}
-                  {[prop.logradouro, prop.numero, prop.complemento].filter(Boolean).join(", ")} ·{" "}
-                  {[prop.bairro, prop.cidade, prop.uf, prop.carteira && `Carteira ${prop.carteira}`]
-                    .filter(Boolean)
-                    .join(" · ")}
+                <p className="mt-1 text-foreground/65">
+                  {[prop.tipo, inspectionPropertyCodes(prop)].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setProp(null)}
-                aria-label="Trocar imóvel"
-                className="grid size-11 shrink-0 place-items-center rounded-xl"
-              >
-                <X className="size-4" />
-              </button>
+              {!contractId && (
+                <button
+                  type="button"
+                  onClick={() => setProp(null)}
+                  aria-label="Trocar imóvel"
+                  className="grid size-11 shrink-0 place-items-center rounded-xl"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -569,7 +592,6 @@ export function CreationWorkspace() {
                 <span className="sr-only">Buscar imóvel</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/40" />
                 <Input
-                  autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Código Cordial, Morar ou endereço"
@@ -587,20 +609,11 @@ export function CreationWorkspace() {
                       onClick={() => choose(p)}
                       className="min-h-11 w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-foreground/5"
                     >
-                      <span className="font-semibold">
-                        {[
-                          p.codigo_cordial && `Cordial ${p.codigo_cordial}`,
-                          p.codigo_morar && `Morar ${p.codigo_morar}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || p.codigo}
-                      </span>{" "}
+                      <span className="block break-words font-semibold">
+                        {inspectionAddress(p) || "Endereço não informado"}
+                      </span>
                       <span className="text-foreground/65">
-                        {p.tipo} ·{" "}
-                        {[p.logradouro, p.numero, p.complemento].filter(Boolean).join(", ")} ·{" "}
-                        {[p.bairro, p.cidade, p.uf, p.carteira && `Carteira ${p.carteira}`]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {[p.tipo, inspectionPropertyCodes(p)].filter(Boolean).join(" · ")}
                       </span>
                     </button>
                   </li>
@@ -616,37 +629,45 @@ export function CreationWorkspace() {
         </section>
       )}
 
-      {prop && (
+      {step === 0 && !blocked && (
+        <fieldset className="premium-card mb-4 rounded-2xl p-4 sm:p-5">
+          <div className="mb-3 text-base font-semibold" id="creation-inspection-kind">
+            Tipo de vistoria
+          </div>
+          {contractId ? (
+            <p className="font-medium text-primary">{KIND_LABEL[rentalKind]}</p>
+          ) : (
+            <div
+              role="group"
+              aria-labelledby="creation-inspection-kind"
+              className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+            >
+              {INSPECTION_KINDS.map((k) => (
+                <button
+                  type="button"
+                  key={k}
+                  aria-pressed={kind === k}
+                  className={cn(
+                    "min-h-11 rounded-xl border px-2 text-sm font-medium",
+                    kind === k
+                      ? "border-primary bg-primary/10 font-semibold text-primary"
+                      : "border-border",
+                  )}
+                  onClick={() => setKind(k)}
+                >
+                  {KIND_LABEL[k]}
+                </button>
+              ))}
+            </div>
+          )}
+        </fieldset>
+      )}
+
+      {prop && !blocked && (
         <>
           {step === 1 && (
-            <section className="premium-card mb-4 space-y-3 rounded-2xl p-4">
-              <h2 className="text-sm font-semibold">Preparação da visita</h2>
-              <div>
-                <span className={label}>Tipo</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {INSPECTION_KINDS.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      aria-pressed={kind === k}
-                      disabled={Boolean(contractId)}
-                      onClick={() => setKind(k)}
-                      className={cn(
-                        "min-h-11 rounded-xl border text-sm font-medium",
-                        kind === k ? "border-primary bg-primary/10 text-primary" : "border-input",
-                        contractId && "disabled:opacity-60",
-                      )}
-                    >
-                      {KIND_LABEL[k]}
-                    </button>
-                  ))}
-                </div>
-                {contractId && (
-                  <p className="mt-1 text-xs text-foreground/60">
-                    Tipo travado em {rentalKind === "saida" ? "saída" : "entrada"}: esta vistoria pertence a um contrato.
-                  </p>
-                )}
-              </div>
+            <section className="premium-card mb-4 space-y-4 rounded-2xl p-4 sm:p-5">
+              <h2 className="text-base font-semibold">Data e equipe</h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label>
                   <span className={label}>Data e hora (horário local)</span>
@@ -862,9 +883,9 @@ export function CreationWorkspace() {
           )}
 
           {step === 2 && (
-            <section className="premium-card mb-4 space-y-3 rounded-2xl p-4">
+            <section className="premium-card mb-4 space-y-4 rounded-2xl p-4 sm:p-5">
               <div>
-                <h2 className="text-sm font-semibold">Ambientes do imóvel</h2>
+                <h2 className="text-base font-semibold">Cômodos do imóvel</h2>
                 <p className="mt-0.5 text-xs text-foreground/55">
                   Dormitórios já incluem suítes, e banheiros já incluem os das suítes, como no
                   cadastro. Ajuste e confirme.
@@ -1007,23 +1028,10 @@ export function CreationWorkspace() {
         </>
       )}
 
-      {step === 3 && prop && (
+      {step === 3 && prop && !blocked && (
         <section className="premium-card space-y-3 rounded-2xl p-4">
-          <h2 className="text-lg font-bold">Tudo preparado para a visita</h2>
-          <p className="font-semibold">
-            {prop.tipo} ·{" "}
-            {[prop.logradouro, prop.numero, prop.complemento].filter(Boolean).join(", ")}
-          </p>
-          <p className="text-sm">
-            {[prop.bairro, prop.cidade, prop.uf].filter(Boolean).join(" · ")}
-          </p>
-          <p className="text-sm">
-            Cordial {prop.codigo_cordial || "—"} · Morar {prop.codigo_morar || "—"} · Carteira{" "}
-            {prop.carteira || "Não informada"}
-          </p>
-          <p>
-            {KIND_LABEL[kind]} · {new Date(when).toLocaleString("pt-BR")}
-          </p>
+          <h2 className="text-base font-semibold">Confira a data e os cômodos</h2>
+          <p className="text-sm">{new Date(when).toLocaleString("pt-BR")}</p>
           <p className="text-sm">
             Responsável:{" "}
             {responsibles.data?.options.find((p) => p.id === responsibleId)?.nome || session?.nome}
@@ -1041,49 +1049,51 @@ export function CreationWorkspace() {
           </p>
         </section>
       )}
-      <footer className="inspection-footer fixed inset-x-0 bottom-0 z-40 px-4 pt-3">
-        <div className="mx-auto flex max-w-2xl gap-2">
-          {step > 0 && (
+      {!blocked && (
+        <footer className="inspection-footer fixed inset-x-0 bottom-0 z-40 px-4 pt-3">
+          <div className="mx-auto flex max-w-3xl gap-2">
+            {step > 0 && (
+              <button
+                type="button"
+                className="min-h-12 rounded-xl border px-4"
+                onClick={() => {
+                  setStep(step - 1);
+                  window.scrollTo({ top: 0 });
+                }}
+              >
+                Voltar
+              </button>
+            )}
             <button
               type="button"
-              className="min-h-12 rounded-xl border px-4"
+              disabled={
+                busy ||
+                Boolean(draft.error) ||
+                !prop ||
+                (step === 1 && !when) ||
+                (step >= 2 && (!planConfirmed || !rooms.length))
+              }
               onClick={() => {
-                setStep(step - 1);
-                window.scrollTo({ top: 0 });
+                if (step < 3) {
+                  setStep(step + 1);
+                  window.scrollTo({ top: 0 });
+                } else void submit();
               }}
+              className="min-h-12 flex-1 rounded-xl bg-primary px-3 font-semibold text-primary-foreground disabled:opacity-40"
             >
-              Voltar
+              {busy
+                ? "Criando…"
+                : step === 0
+                  ? "Preparar vistoria"
+                  : step === 3
+                    ? "Iniciar vistoria"
+                    : step === 1
+                      ? "Selecionar cômodos"
+                      : "Revisar vistoria"}
             </button>
-          )}
-          <button
-            type="button"
-            disabled={
-              busy ||
-              Boolean(draft.error) ||
-              !prop ||
-              (step === 1 && !when) ||
-              (step >= 2 && (!planConfirmed || !rooms.length))
-            }
-            onClick={() => {
-              if (step < 3) {
-                setStep(step + 1);
-                window.scrollTo({ top: 0 });
-              } else void submit();
-            }}
-            className="min-h-12 flex-1 rounded-xl bg-primary px-3 font-semibold text-primary-foreground disabled:opacity-40"
-          >
-            {busy
-              ? "Criando…"
-              : step === 0
-                ? "Confirmar este imóvel"
-                : step === 3
-                  ? "Iniciar vistoria"
-                  : step === 1
-                    ? "Confirmar ambientes"
-                    : "Revisar preparação"}
-          </button>
-        </div>
-      </footer>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

@@ -80,7 +80,11 @@ export function RentalEntryInspection({
       ? STATUS_LABEL[status as InspectionStatus]
       : null;
   const openLabel =
-    status === "concluida" && hasDoc ? "Ver termo" : `Continuar vistoria de ${word}`;
+    status === "concluida" && hasDoc
+      ? "Ver termo"
+      : status === "em_revisao"
+        ? `Revisar vistoria de ${word}`
+        : `Continuar vistoria de ${word}`;
 
   return (
     <section
@@ -128,10 +132,13 @@ export function RentalEntryInspection({
                   navigate({
                     to: "/vistorias/$vistoriaId",
                     params: { vistoriaId: action.inspectionId },
-                    search: { formulario: returnToForm ? true : undefined },
+                    search: {
+                      formulario: returnToForm ? true : undefined,
+                      revisao: status === "em_revisao" ? true : undefined,
+                    },
                   })
                 }
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground hover:opacity-90"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground hover:opacity-90"
               >
                 <ClipboardCheck className="size-4" />
                 {openLabel}
@@ -146,7 +153,7 @@ export function RentalEntryInspection({
           {action?.kind === "start" && !preventStart && (
             <div className="space-y-2">
               {isExit && state.entryRooms.length > 0 && (
-                <label className="flex min-h-9 items-center gap-2 text-sm text-muted-foreground">
+                <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={suggestRooms}

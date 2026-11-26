@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { armCaptureMarker, clearCaptureMarker, markerKey, readResumeMarker, RESUME_TTL_MS } from "./capture-resume";
+import {
+  armCaptureMarker,
+  clearCaptureMarker,
+  markerKey,
+  readResumeMarker,
+  RESUME_TTL_MS,
+} from "./capture-resume";
 
 function mem() {
   const m = new Map<string, string>();
@@ -11,7 +17,13 @@ function mem() {
     removeItem: (k: string) => void m.delete(k),
   };
 }
-const base = { userId: "u", inspectionId: "i", roomId: "sala", itemId: "piso", origin: "camera" as const };
+const base = {
+  userId: "u",
+  inspectionId: "i",
+  roomId: "sala",
+  itemId: "piso",
+  origin: "camera" as const,
+};
 
 test("grava antes de abrir e restaura cômodo/item depois de recarga real", () => {
   const s = mem();
@@ -22,14 +34,14 @@ test("grava antes de abrir e restaura cômodo/item depois de recarga real", () =
   assert.equal(r?.itemId, "piso");
 });
 
-test("mesmo carregamento (câmera só cancelada): sem aviso e apaga", () => {
+test("mesmo carregamento: sem aviso enquanto o seletor ainda pode entregar o arquivo", () => {
   const s = mem();
   armCaptureMarker(s, base, 1000, "load-a");
   assert.equal(readResumeMarker(s, "u", "i", 2000, "load-a"), null);
-  assert.equal(s.m.size, 0);
+  assert.equal(s.m.size, 1);
 });
 
-test("expira em 15 minutos", () => {
+test("expira após um dia", () => {
   const s = mem();
   armCaptureMarker(s, base, 0, "a");
   assert.equal(readResumeMarker(s, "u", "i", RESUME_TTL_MS, "b"), null);
@@ -49,4 +61,12 @@ test("isolado por usuário e vistoria", () => {
   assert.equal(readResumeMarker(s, "outro", "i", 10, "b"), null);
   assert.equal(readResumeMarker(s, "u", "outra", 10, "b"), null);
   assert.ok(readResumeMarker(s, "u", "i", 10, "b"));
+});
+
+test("só a tentativa correspondente pode apagar o marcador em outra aba ou seleção", () => {
+  const s = mem();
+  const old = armCaptureMarker(s, { ...base, clientKey: "foto-velha" }, 0, "a");
+  const next = armCaptureMarker(s, { ...base, clientKey: "foto-nova", roomId: "cozinha" }, 1, "b");
+  clearCaptureMarker(s, "u", "i", old);
+  assert.deepEqual(readResumeMarker(s, "u", "i", 10, "c"), next);
 });

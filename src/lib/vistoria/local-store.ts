@@ -186,12 +186,20 @@ export async function listPending(userId: string, inspectionId: string): Promise
   return all.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 export async function patchPending(key: string, patch: Partial<PendingEntry>) {
-  const cur = await tx<PendingEntry | undefined>("readonly", (s) => s.get(key));
-  if (!cur) return;
-  await tx("readwrite", (s) => s.put({ ...cur, ...patch, key }));
+  await tx("readwrite", (s) => {
+    const read = s.get(key);
+    read.addEventListener("success", () => {
+      if (read.result) s.put({ ...read.result, ...patch, key });
+    });
+    return read;
+  });
 }
 export async function removePending(key: string) {
   await tx("readwrite", (s) => s.delete(key));
+}
+
+export async function hasPendingMedia(userId: string, inspectionId: string, clientKey: string) {
+  return (await tx("readonly", (s) => s.count(pendingKey(userId, inspectionId, clientKey)))) > 0;
 }
 
 export function newClientKey() {

@@ -4,8 +4,18 @@
 export const MAX_SIDE = 2048;
 export const THUMB_SIDE = 360;
 export const ORIGINAL_LIMIT = 15 * 1024 * 1024;
+// A decodificação integral de uma foto comum de 12 MP ainda é suportada
+// em navegadores sem resize. Evita alocar o quadro inteiro de fotos de 48 MP.
+export const MAX_FALLBACK_PIXELS = 16_000_000;
 export const TOO_BIG_MESSAGE =
-  "Esta foto é grande demais para este aparelho. Tire de novo pela Câmera do app.";
+  "O navegador não conseguiu preparar esta foto com pouca memória. Tire outra pela câmera do app ou escolha uma imagem menor.";
+
+export class ImageMemoryError extends Error {
+  constructor() {
+    super(TOO_BIG_MESSAGE);
+    this.name = "ImageMemoryError";
+  }
+}
 
 export type ImageHeader = { width: number; height: number; orientation: number };
 
@@ -21,7 +31,8 @@ function u32(b: Uint8Array, o: number, le: boolean) {
 function exifOrientation(b: Uint8Array, start: number, end: number): number {
   // start aponta para "Exif\0\0"
   if (end - start < 14) return 1;
-  if (String.fromCharCode(b[start]!, b[start + 1]!, b[start + 2]!, b[start + 3]!) !== "Exif") return 1;
+  if (String.fromCharCode(b[start]!, b[start + 1]!, b[start + 2]!, b[start + 3]!) !== "Exif")
+    return 1;
   const t = start + 6;
   const le = b[t] === 0x49 && b[t + 1] === 0x49;
   if (!le && !(b[t] === 0x4d && b[t + 1] === 0x4d)) return 1;
@@ -56,7 +67,11 @@ export function readImageHeader(b: Uint8Array): ImageHeader | null {
         orientation: 1,
       };
     if (kind === "VP8 ")
-      return { width: u16(b, 26, true) & 0x3fff, height: u16(b, 28, true) & 0x3fff, orientation: 1 };
+      return {
+        width: u16(b, 26, true) & 0x3fff,
+        height: u16(b, 28, true) & 0x3fff,
+        orientation: 1,
+      };
     if (kind === "VP8L") {
       const bits = u32(b, 21, true);
       return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1, orientation: 1 };
@@ -91,7 +106,9 @@ export function readImageHeader(b: Uint8Array): ImageHeader | null {
 
 /** Tamanho como a foto aparece (orientações 5–8 giram 90°). */
 export function orientedSize(h: ImageHeader) {
-  return h.orientation >= 5 ? { width: h.height, height: h.width } : { width: h.width, height: h.height };
+  return h.orientation >= 5
+    ? { width: h.height, height: h.width }
+    : { width: h.width, height: h.height };
 }
 
 export function fitWithin(width: number, height: number, max: number) {
@@ -108,6 +125,7 @@ export function canKeepOriginal(file: { type: string; size: number }) {
 
 type Drawable = CanvasImageSource & { width: number; height: number };
 type Surface = {
+  image: CanvasImageSource;
   draw(src: CanvasImageSource, w: number, h: number): void;
   toBlob(quality: number): Promise<Blob>;
   release(): void;
@@ -121,12 +139,20 @@ export type PrepareDeps = {
 
 function defaultSurface(w: number, h: number): Surface {
   const canvas: OffscreenCanvas | HTMLCanvasElement =
-    typeof OffscreenCanvas !== "undefined"
+    typeof OffscreenCanvas !== "undefined" &&
+    typeof OffscreenCanvas.prototype.convertToBlob === "function"
       ? new OffscreenCanvas(w, h)
       : Object.assign(document.createElement("canvas"), { width: w, height: h });
-  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
-  if (!ctx) throw new Error("Sem suporte a imagem neste aparelho");
+  const ctx = canvas.getContext("2d") as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
+  if (!ctx) {
+    canvas.width = canvas.height = 0;
+    throw new ImageMemoryError();
+  }
   return {
+    image: canvas,
     draw(src, dw, dh) {
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(src, 0, 0, dw, dh);
@@ -156,13 +182,14 @@ async function defaultLoadImage(src: Blob) {
   try {
     await img.decode();
   } catch (e) {
+    img.removeAttribute("src");
     URL.revokeObjectURL(url);
     throw e;
   }
   return {
     image: Object.assign(img, { width: img.naturalWidth, height: img.naturalHeight }) as Drawable,
     release: () => {
-      img.src = "";
+      img.removeAttribute("src");
       URL.revokeObjectURL(url);
     },
   };
@@ -177,14 +204,63 @@ export function reducedDecodeOptions(header: ImageHeader) {
 
 export type PreparedImage = { blob: Blob; width: number; height: number; thumb: Blob | null };
 
+async function encodePhoto(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  surface: NonNullable<PrepareDeps["surface"]>,
+  releaseSource: () => void,
+): Promise<PreparedImage> {
+  let main: Surface | undefined;
+  let small: Surface | undefined;
+  const out = fitWithin(width, height, MAX_SIDE);
+  try {
+    try {
+      main = surface(out.width, out.height);
+      main.draw(source, out.width, out.height);
+    } finally {
+      releaseSource();
+    }
+    const ts = fitWithin(out.width, out.height, THUMB_SIDE);
+    try {
+      small = surface(ts.width, ts.height);
+      small.draw(main.image, ts.width, ts.height);
+    } catch {
+      small?.release();
+      small = undefined;
+    }
+    const blob = await main.toBlob(0.9);
+    main.release();
+    main = undefined;
+    const thumb = (await small?.toBlob(0.75).catch(() => null)) ?? null;
+    return { ...out, blob, thumb };
+  } finally {
+    main?.release();
+    small?.release();
+  }
+}
+
+/** JPEG e miniatura saem do mesmo quadro. Nunca mantém uma foto de sensor em memória. */
+export function prepareVideoPhoto(video: HTMLVideoElement): Promise<PreparedImage> {
+  if (!video.videoWidth || !video.videoHeight || video.readyState < 2 || video.paused)
+    throw new Error("A câmera perdeu a imagem. Tente abrir a câmera novamente.");
+  return encodePhoto(video, video.videoWidth, video.videoHeight, defaultSurface, () => {});
+}
+
 /** Decodifica reduzida, desenha em no máx. 2048 px, gera miniatura e libera tudo. */
-export async function prepareImageReduced(file: Blob, deps: PrepareDeps = {}): Promise<PreparedImage> {
+export async function prepareImageReduced(
+  file: Blob,
+  deps: PrepareDeps = {},
+): Promise<PreparedImage> {
   const cib =
     deps.createImageBitmap ??
     (typeof createImageBitmap === "function" ? createImageBitmap.bind(globalThis) : undefined);
   const surface = deps.surface ?? defaultSurface;
   const head = new Uint8Array(await file.slice(0, 65536).arrayBuffer());
   const header = readImageHeader(head);
+  const exceedsFallbackBudget = header
+    ? header.width * header.height > MAX_FALLBACK_PIXELS
+    : file.size > ORIGINAL_LIMIT;
 
   let source: Drawable | null = null;
   let release = () => undefined as void;
@@ -192,6 +268,10 @@ export async function prepareImageReduced(file: Blob, deps: PrepareDeps = {}): P
     try {
       // Só a largura: mantém a proporção mesmo se o navegador girar depois de reduzir.
       const bmp = await cib(file, reducedDecodeOptions(header) as ImageBitmapOptions);
+      if (bmp.width * bmp.height > MAX_FALLBACK_PIXELS) {
+        bmp.close();
+        throw new ImageMemoryError();
+      }
       source = bmp;
       release = () => bmp.close();
     } catch {
@@ -199,36 +279,15 @@ export async function prepareImageReduced(file: Blob, deps: PrepareDeps = {}): P
     }
   }
   if (!source) {
-    // Caminho alternativo: cabeçalho ilegível ou sem suporte a redução.
+    // Não tente a mesma decodificação integral depois de uma falha de redução.
+    if (exceedsFallbackBudget) throw new ImageMemoryError();
     const loaded = await (deps.loadImage ?? defaultLoadImage)(file);
     source = loaded.image;
     release = loaded.release;
   }
-  try {
-    const out = fitWithin(source.width, source.height, MAX_SIDE);
-    const main = surface(out.width, out.height);
-    let blob: Blob;
-    try {
-      main.draw(source, out.width, out.height);
-      blob = await main.toBlob(0.85);
-    } finally {
-      main.release();
-    }
-    let thumb: Blob | null = null;
-    try {
-      const ts = fitWithin(source.width, source.height, THUMB_SIDE);
-      const small = surface(ts.width, ts.height);
-      try {
-        small.draw(source, ts.width, ts.height);
-        thumb = await small.toBlob(0.7);
-      } finally {
-        small.release();
-      }
-    } catch {
-      thumb = null;
-    }
-    return { blob, width: out.width, height: out.height, thumb };
-  } finally {
+  if (!source.width || !source.height || source.width * source.height > MAX_FALLBACK_PIXELS) {
     release();
+    throw new ImageMemoryError();
   }
+  return encodePhoto(source, source.width, source.height, surface, release);
 }

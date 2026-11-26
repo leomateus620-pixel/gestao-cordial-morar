@@ -1,4 +1,30 @@
 import type { InspectionStatus, ItemState } from "./model";
+import type { PropertySnapshot } from "./types";
+
+export function inspectionPropertyCodes(property: PropertySnapshot["cadastro"]) {
+  const commercial = (value?: string | null) => {
+    const code = value?.trim();
+    return code && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(code) ? code : "";
+  };
+  const cordial = commercial(property?.codigo_cordial);
+  const morar = commercial(property?.codigo_morar);
+  const generic = commercial(property?.codigo);
+  return (
+    [cordial && `Cordial ${cordial}`, morar && `Morar ${morar}`].filter(Boolean).join(" · ") ||
+    (generic ? `Código ${generic}` : "")
+  );
+}
+
+export function inspectionAddress(property: PropertySnapshot["cadastro"]) {
+  if (!property) return "";
+  return [
+    [property.logradouro, property.numero, property.complemento].filter(Boolean).join(", "),
+    property.bairro,
+    [property.cidade, property.uf].filter(Boolean).join("/"),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 export const STATUS_TONE: Record<InspectionStatus, string> = {
   rascunho: "bg-foreground/8 text-foreground/70",

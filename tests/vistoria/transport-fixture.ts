@@ -1,8 +1,15 @@
 // Local-only transport. No production connection or real property identifiers.
-import type { InspectionData, InspectionRow, RoomRow, NoteRow } from "../../src/lib/vistoria/types";
+import type {
+  InspectionData,
+  InspectionRow,
+  RoomRow,
+  NoteRow,
+  MediaRow,
+} from "../../src/lib/vistoria/types";
 import type { RoomKind } from "../../src/lib/vistoria/model";
 import { emptyMeters, itemsForRoom } from "../../src/lib/vistoria/model";
-const id = "10000000-0000-4000-8000-000000000001";
+export const id = "10000000-0000-4000-8000-000000000001";
+export const contractId = "60000000-0000-4000-8000-000000000001";
 export const property = {
   id: "30000000-0000-4000-8000-000000000001",
   tipo: "Apartamento",
@@ -21,13 +28,19 @@ export const property = {
   vagas: 1,
   salas: 1,
 };
+const params =
+  typeof location === "undefined" ? new URLSearchParams() : new URLSearchParams(location.search);
+const isRental = ["rental", "room", "list"].includes(params.get("state") ?? "list");
+const brand = params.get("brand") === "morar" ? "morar" : "cordial";
 const inspection: InspectionRow = {
   id,
   numero: 42,
   revision: 1,
   kind: "entrada",
   status: "em_andamento",
-  agency: "cordial",
+  agency: brand,
+  rental_contract_id: isRental ? contractId : undefined,
+  rental_kind: isRental ? "entrada" : undefined,
   responsible_id: "20000000-0000-4000-8000-000000000001",
   responsible_name: "Corretora de demonstração",
   created_by: "20000000-0000-4000-8000-000000000001",
@@ -63,30 +76,32 @@ const rooms: RoomRow[] = ["Sala", "Cozinha"].map((name, i) => ({
 let full: InspectionData = {
   inspection,
   rooms,
-  items: rooms.flatMap((r, ri) =>
-    itemsForRoom(r.kind as "sala", false).map((it, i) => ({
-      ...it,
-      id: `50000000-0000-4000-8000-${String(ri * 100 + i).padStart(12, "0")}`,
-      inspection_id: id,
-      room_id: r.id,
-      state: i === 0 ? "bom" : "pendente",
-      revision: 1,
-      position: i,
-      material: i === 0 ? "Cerâmica" : null,
-      color: i === 0 ? "Bege" : null,
-      quantity: null,
-      notes: null,
-      damage: null,
-      untested_reason: null,
-    })),
-  ),
+  items: isRental
+    ? []
+    : rooms.flatMap((r, ri) =>
+        itemsForRoom(r.kind as "sala", false).map((it, i) => ({
+          ...it,
+          id: `50000000-0000-4000-8000-${String(ri * 100 + i).padStart(12, "0")}`,
+          inspection_id: id,
+          room_id: r.id,
+          state: i === 0 ? "bom" : "pendente",
+          revision: 1,
+          position: i,
+          material: i === 0 ? "Cerâmica" : null,
+          color: i === 0 ? "Bege" : null,
+          quantity: null,
+          notes: null,
+          damage: null,
+          untested_reason: null,
+        })),
+      ),
   media: [],
   notes: [],
   documents: [],
   events: [],
   serverTime: "2026-10-20T11:45:00Z",
 };
-const persistenceKey = "fixture-server-v1";
+const persistenceKey = `fixture-vistoria-v2:${isRental ? "rental" : "standalone"}:${brand}`;
 try {
   const persisted = location.pathname.includes("baseline")
     ? null
@@ -105,18 +120,66 @@ export const getInspection = async () => {
   ensureOnline();
   return structuredClone(full);
 };
+const rentalProperty = {
+  ...property,
+  id: "30000000-0000-4000-8000-000000000003",
+  codigo_cordial: null,
+  codigo_morar: null,
+  brand,
+};
+export const getContractInspectionProperty = async () => rentalProperty;
+export const getContractEntryInspectionState = async () => ({
+  contractId,
+  rentalPropertyId: rentalProperty.id,
+  brand,
+  unlocked: true,
+  reviewedAt: "2026-11-25T12:00:00Z",
+  missing: null,
+  existingInspectionId: full.inspection.rental_contract_id ? full.inspection.id : null,
+  existingInspectionStatus: full.inspection.status,
+  entryHasDocument: full.documents.length > 0,
+  exitInspectionId: null,
+  entryRooms: full.rooms,
+});
+export const startRentalInspection = async ({ data }: { data: { kind: "entrada" | "saida" } }) => {
+  full.inspection.rental_contract_id = contractId;
+  full.inspection.rental_kind = data.kind;
+  full.inspection.kind = data.kind;
+  full.inspection.status = "em_andamento";
+  if (data.kind === "saida") {
+    full.documents = [];
+    full.media = [];
+    full.notes = [];
+  }
+  persist();
+  return { id: full.inspection.id };
+};
 export const listInspections = async () => ({
-  rows: [full.inspection],
-  total: 1,
+  rows: [
+    full.inspection,
+    {
+      ...full.inspection,
+      id: "10000000-0000-4000-8000-000000000009",
+      numero: 87,
+      agency: "morar",
+      kind: "saida",
+      status: "concluida",
+      property_snapshot: {
+        ...full.inspection.property_snapshot,
+        endereco: "Rua dos Ipês, 185 · Centro · Cidade exemplo/RS",
+      },
+    },
+  ],
+  total: 2,
   pageSize: 20,
-  byStatus: { rascunho: 0, em_andamento: 1, em_revisao: 0, concluida: 0 },
+  byStatus: { rascunho: 0, em_andamento: 1, em_revisao: 0, concluida: 1 },
   continueInspection: {
     ...full.inspection,
     last_room: "Sala",
     pending_items: 20,
     pending_media: 0,
   },
-  scopeTotal: 1,
+  scopeTotal: 2,
 });
 export const searchInspectionProperties = async () => [
   property,
@@ -191,7 +254,42 @@ export const createNote = async ({
   persist();
   return structuredClone(n);
 };
-export const createInspection = async ({ data }: { data: { id: string } }) => ({ id: data.id });
+export const createInspection = async ({
+  data,
+}: {
+  data: {
+    id: string;
+    agency: "cordial" | "morar";
+    kind: InspectionRow["kind"];
+    rooms: { name: string; kind: string }[];
+  };
+}) => {
+  full = {
+    ...full,
+    inspection: {
+      ...inspection,
+      id: data.id,
+      agency: data.agency,
+      kind: data.kind,
+      rental_contract_id: null,
+      status: "em_andamento",
+    },
+    rooms: data.rooms.map((room, position) => ({
+      ...room,
+      id: crypto.randomUUID(),
+      position,
+      inspection_id: data.id,
+      revision: 1,
+      no_photo_reason: null,
+    })),
+    items: [],
+    media: [],
+    notes: [],
+    documents: [],
+  };
+  persist();
+  return { id: data.id };
+};
 export const addRoom = async ({ data }: { data: { name: string; kind: RoomKind } }) => {
   const row = {
     id: crypto.randomUUID(),
@@ -203,6 +301,7 @@ export const addRoom = async ({ data }: { data: { name: string; kind: RoomKind }
     revision: 1,
   };
   full.rooms.push(row);
+  persist();
   return row;
 };
 export const addItem = async () => ({});
@@ -211,10 +310,65 @@ export const deleteItem = async () => ({});
 export const deleteMedia = async () => ({});
 export const reorderRooms = async () => ({});
 export const reorderMedia = async () => ({});
-export const registerMedia = async () => ({});
+export const registerMedia = async ({
+  data,
+}: {
+  data: {
+    roomId: string;
+    itemId: string | null;
+    clientKey: string;
+    storagePath: string;
+    takenAt: string;
+    timeSource: MediaRow["time_source"];
+  };
+}): Promise<MediaRow> => {
+  ensureOnline();
+  const previous = full.media.find((photo) => photo.client_key === data.clientKey);
+  if (previous) return previous;
+  const row: MediaRow = {
+    id: crypto.randomUUID(),
+    client_key: data.clientKey,
+    inspection_id: full.inspection.id,
+    room_id: data.roomId,
+    item_id: data.itemId,
+    status: "confirmada",
+    storage_path: data.storagePath,
+    taken_at: data.takenAt,
+    time_source: data.timeSource,
+    position: full.media.length,
+    caption: null,
+    revision: 1,
+    created_at: data.takenAt,
+  };
+  full.media.push(row);
+  full.inspection.revision++;
+  persist();
+  return row;
+};
 export const transcribeNote = async () => ({});
-export const signInspectionFiles = async () => ({});
+export const deleteVoiceNote = async () => ({});
+export const signInspectionFiles = async ({ data }: { data: { paths: string[] } }) =>
+  Object.fromEntries(
+    data.paths.map((path) => [path, localStorage.getItem(`fixture-object:${path}`) ?? ""]),
+  );
 export const signInspectionDocument = async () => ({});
 export const finalizeInspection = async () => ({ version: 1 });
 export const reopenInspection = async () => ({});
-export const supabase = { storage: { from: () => ({ upload: async () => ({ error: null }) }) } };
+// Só o transporte de demonstração usa data URLs. O app usa blobs no IndexedDB.
+export const supabase = {
+  storage: {
+    from: () => ({
+      upload: async (path: string, blob: Blob) => {
+        ensureOnline();
+        const reader = new FileReader();
+        const data = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        localStorage.setItem(`fixture-object:${path}`, data);
+        return { error: null };
+      },
+    }),
+  },
+};

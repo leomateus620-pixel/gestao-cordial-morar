@@ -1,161 +1,252 @@
-// Câmera dentro do app: tira várias fotos sem sair da página (evita que o
-// Android feche a aba ao abrir a câmera nativa). Toda foto passa depois pela
-// preparação reduzida antes de ir para a fila.
-import { Camera, Check, Loader2, Zap, ZapOff } from "lucide-react";
+import { Camera, ChevronLeft, Images, Loader2, RotateCcw, Zap, ZapOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const CAMERA_INTRO = "Para tirar fotos sem sair da vistoria, permita o uso da câmera.";
-export const CAMERA_FAILED =
-  "Não foi possível abrir a câmera do app. Use a câmera do celular ou a galeria.";
-const TARGET_WIDTH = 2048;
+type Range = { min: number; max: number; step?: number };
+type CameraState = { phase: "opening" | "live" | "recovery"; message: string };
+const OPENING: CameraState = { phase: "opening", message: "Abrindo a câmera…" };
+const INTERRUPTED =
+  "A câmera foi interrompida. Toque em Tentar novamente para voltar à imagem ao vivo.";
+const PLAYBACK_FAILED =
+  "A câmera foi aberta, mas a imagem ao vivo não iniciou. Tente novamente ou use a câmera do celular.";
+const OPEN_TIMEOUT_MS = 10_000;
+const optionClass =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/30 px-3 text-sm font-medium hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
-export function supportsInAppCamera(nav: Navigator | undefined = globalThis.navigator) {
-  return Boolean(nav?.mediaDevices && typeof nav.mediaDevices.getUserMedia === "function");
-}
-
-type Range = { min?: number; max?: number; step?: number };
-/** Largura pedida ao takePhoto: até ~2048 px dentro da faixa do aparelho. */
-export function pickPhotoWidth(range: Range | undefined): number | null {
-  if (!range || !range.max) return null;
-  const min = range.min ?? 1;
-  let w = Math.min(range.max, Math.max(min, TARGET_WIDTH));
-  if (range.step && range.step > 1) w = min + Math.floor((w - min) / range.step) * range.step;
-  return w;
-}
-
-type ImageCaptureLike = {
-  getPhotoCapabilities?: () => Promise<{ imageWidth?: Range }>;
-  takePhoto: (s?: { imageWidth?: number }) => Promise<Blob>;
-};
-type ImageCaptureCtor = new (t: MediaStreamTrack) => ImageCaptureLike;
-
-async function frameFromVideo(video: HTMLVideoElement): Promise<Blob> {
-  const vw = video.videoWidth || 1280;
-  const vh = video.videoHeight || 960;
-  const scale = Math.min(1, TARGET_WIDTH / Math.max(vw, vh));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(vw * scale);
-  canvas.height = Math.round(vh * scale);
-  try {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Sem suporte a imagem neste aparelho");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((res, rej) =>
-      canvas.toBlob((b) => (b ? res(b) : rej(new Error("Falha ao capturar"))), "image/jpeg", 0.92),
-    );
-  } finally {
-    canvas.width = canvas.height = 0;
+export function cameraErrorMessage(error: unknown) {
+  switch ((error as { name?: string })?.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return window.top !== window
+        ? "Esta prévia pode bloquear a câmera. Abra o Gestão em uma aba própria ou escolha da galeria."
+        : "O navegador bloqueou a câmera. Confira a permissão deste site e tente novamente.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "Nenhuma câmera disponível foi encontrada neste aparelho.";
+    case "NotReadableError":
+    case "AbortError":
+      return "A câmera pode estar em uso por outro aplicativo. Feche-o e tente novamente.";
+    default:
+      return "Não foi possível acessar a câmera. Tente novamente ou escolha da galeria.";
   }
 }
 
-export function InAppCamera(props: {
-  open: boolean;
+function hasFrame(video: HTMLVideoElement) {
+  return !video.paused && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
+}
+
+function waitForFrame(video: HTMLVideoElement, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const events = ["loadeddata", "playing", "resize", "canplay", "timeupdate"];
+    const cleanup = () => {
+      events.forEach((event) => video.removeEventListener(event, check));
+      signal.removeEventListener("abort", cancel);
+    };
+    const cancel = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const check = () => {
+      if (!hasFrame(video)) return;
+      cleanup();
+      resolve();
+    };
+    events.forEach((event) => video.addEventListener(event, check));
+    signal.addEventListener("abort", cancel, { once: true });
+    if (signal.aborted) cancel();
+    else check();
+  });
+}
+
+type CameraProps = {
   title: string;
   count: number;
   onClose: () => void;
-  onCapture: (blob: Blob) => Promise<void>;
-  onNative: (reason: "falha" | "escolha") => void;
-}) {
-  const { open, onClose, onCapture, onNative } = props;
+  onCapture: (video: HTMLVideoElement) => Promise<Blob | null>;
+  onNative: () => void;
+  onGallery: () => void;
+};
+
+export function InAppCamera({ open, ...props }: CameraProps & { open: boolean }) {
+  return open ? <CameraPanel {...props} /> : null;
+}
+
+function CameraPanel({ title, count, onClose, onCapture, onNative, onGallery }: CameraProps) {
+  const panel = useRef<HTMLDialogElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [state, setState] = useState<"starting" | "live" | "paused">("starting");
-  const [busy, setBusy] = useState(false);
+  const attempt = useRef<AbortController | null>(null);
+  const opening = useRef<Promise<MediaStream> | null>(null);
+  const [state, setState] = useState<CameraState>(OPENING);
   const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [captureError, setCaptureError] = useState("");
   const [torch, setTorch] = useState<boolean | null>(null);
-  const [zoom, setZoom] = useState<Range & { value: number } | null>(null);
-  const [last, setLast] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<(Range & { value: number }) | null>(null);
+  const [last, setLast] = useState<Blob | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
 
   const stop = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    attempt.current?.abort();
+    attempt.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  const fail = useCallback(() => {
-    stop();
-    onClose();
-    onNative("falha");
-  }, [stop, onClose, onNative]);
-
-  const start = useCallback(async () => {
-    if (!supportsInAppCamera()) return fail();
-    setState("starting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } },
-      });
-      if (!streamRef.current && document.visibilityState === "hidden") {
-        stream.getTracks().forEach((t) => t.stop());
-        setState("paused");
-        return;
-      }
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = stream;
-      const v = videoRef.current;
-      if (v) {
-        v.srcObject = stream;
-        await v.play().catch(() => undefined);
-      }
-      const track = stream.getVideoTracks()[0];
-      const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean; zoom?: Range };
-      setTorch(caps.torch ? false : null);
-      setZoom(caps.zoom?.max ? { ...caps.zoom, value: caps.zoom.min ?? 1 } : null);
-      setState("live");
-    } catch {
-      fail();
-    }
-  }, [fail]);
-
-  useEffect(() => {
-    if (!open) return;
-    void start();
-    const vis = () => {
-      if (document.visibilityState === "hidden") {
-        stop();
-        setState("paused");
-      } else if (!streamRef.current) void start();
-    };
-    document.addEventListener("visibilitychange", vis);
-    return () => {
-      document.removeEventListener("visibilitychange", vis);
+  const recover = useCallback(
+    (message: string) => {
       stop();
-    };
-  }, [open, start, stop]);
-
-  useEffect(
-    () => () => {
-      if (last) URL.revokeObjectURL(last);
+      setState({ phase: "recovery", message });
+      setTorch(null);
+      setZoom(null);
     },
-    [last],
+    [stop],
   );
 
+  const start = useCallback(async () => {
+    if (attempt.current || document.hidden) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      recover(
+        window.top !== window
+          ? "Abra o Gestão em uma aba própria para usar a câmera do app."
+          : "A câmera do app está indisponível neste navegador.",
+      );
+      return;
+    }
+    const session = new AbortController();
+    const started = performance.now();
+    attempt.current = session;
+    const { signal } = session;
+    setState(OPENING);
+    setCaptureError("");
+    let stage: "permission" | "playback" = "permission";
+    const timer = window.setTimeout(() => {
+      recover(
+        stage === "permission"
+          ? "A câmera demorou para responder. Confira o aviso do navegador ou escolha outra opção."
+          : PLAYBACK_FAILED,
+      );
+    }, OPEN_TIMEOUT_MS);
+    signal.addEventListener("abort", () => window.clearTimeout(timer), { once: true });
+    try {
+      // O navegador pode manter getUserMedia pendente enquanto aguarda a pessoa.
+      // Se houver uma tentativa abandonada, espere a liberação do stream antes de pedir outro.
+      if (opening.current) await opening.current.catch(() => undefined);
+      if (signal.aborted) return;
+      const request = navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1440 },
+        },
+      });
+      opening.current = request;
+      const stream = await request.finally(() => {
+        if (opening.current === request) opening.current = null;
+      });
+      const video = videoRef.current;
+      if (signal.aborted || !video || document.visibilityState === "hidden") {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      streamRef.current = stream;
+      const track = stream.getVideoTracks()[0];
+      if (!track || track.readyState === "ended") throw new DOMException("", "NotFoundError");
+      stage = "playback";
+      const interrupt = () => recover(INTERRUPTED);
+      track.addEventListener("ended", interrupt, { signal });
+      video.addEventListener("error", interrupt, { signal });
+      video.muted = true;
+      video.srcObject = stream;
+      await video.play();
+      if (signal.aborted) return;
+      await waitForFrame(video, signal);
+      if (signal.aborted) return;
+      track.addEventListener("mute", interrupt, { signal });
+      video.addEventListener("pause", interrupt, { signal });
+      if (track.muted || !hasFrame(video)) {
+        recover(INTERRUPTED);
+        return;
+      }
+      const caps = track.getCapabilities?.() as
+        | (MediaTrackCapabilities & { torch?: boolean; zoom?: Range })
+        | undefined;
+      const settings = track.getSettings?.() as
+        | (MediaTrackSettings & { zoom?: number })
+        | undefined;
+      setTorch(caps?.torch === true ? false : null);
+      if (caps?.zoom && caps.zoom.max > caps.zoom.min)
+        setZoom({ ...caps.zoom, value: settings?.zoom ?? caps.zoom.min });
+      if (import.meta.env.DEV)
+        console.debug("[vistoria] câmera pronta", {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          ms: Math.round(performance.now() - started),
+        });
+      setState({ phase: "live", message: "" });
+    } catch (e) {
+      if (import.meta.env.DEV && !signal.aborted)
+        console.debug("[vistoria] abertura da câmera", {
+          stage,
+          error: (e as Error).name,
+          ms: Math.round(performance.now() - started),
+        });
+      if (!signal.aborted) recover(stage === "playback" ? PLAYBACK_FAILED : cameraErrorMessage(e));
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }, [recover]);
+
+  useEffect(() => {
+    const dialog = panel.current;
+    dialog?.showModal();
+    const suspend = () => recover(INTERRUPTED);
+    const visibility = () => {
+      if (document.visibilityState === "hidden") suspend();
+    };
+    if (document.visibilityState === "hidden") suspend();
+    else void start();
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", suspend);
+    return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("pagehide", suspend);
+      stop();
+      dialog?.close();
+    };
+  }, [recover, start, stop]);
+
+  useEffect(() => {
+    if (!last) return;
+    const url = URL.createObjectURL(last);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [last]);
+
+  function leave(next: () => void) {
+    stop();
+    panel.current?.close();
+    next();
+  }
+
   async function shoot() {
-    if (busyRef.current) return;
-    const track = streamRef.current?.getVideoTracks()[0];
     const video = videoRef.current;
-    if (!track || !video) return;
+    const signal = attempt.current?.signal;
+    if (busyRef.current || !video || !signal || state.phase !== "live") return;
+    if (!hasFrame(video)) {
+      recover(INTERRUPTED);
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
+    setCaptureError("");
     try {
-      let blob: Blob | null = null;
-      const IC = (globalThis as { ImageCapture?: ImageCaptureCtor }).ImageCapture;
-      if (IC) {
-        try {
-          const ic = new IC(track);
-          const caps = await ic.getPhotoCapabilities?.().catch(() => undefined);
-          const w = pickPhotoWidth(caps?.imageWidth);
-          blob = await ic.takePhoto(w ? { imageWidth: w } : undefined);
-        } catch {
-          blob = null;
-        }
-      }
-      if (!blob) blob = await frameFromVideo(video);
-      await onCapture(blob);
-      setLast(URL.createObjectURL(blob.size > 4_000_000 ? await frameFromVideo(video) : blob));
-    } catch {
-      /* onCapture já avisa */
+      const thumb = await onCapture(video);
+      if (thumb && !signal.aborted) setLast(thumb);
+    } catch (e) {
+      if (!signal.aborted)
+        setCaptureError(e instanceof Error ? e.message : "Não foi possível guardar a foto.");
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -164,103 +255,163 @@ export function InAppCamera(props: {
 
   async function toggleTorch() {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track || torch === null) return;
+    const signal = attempt.current?.signal;
+    if (!track || !signal || torch === null) return;
+    const value = !torch;
     try {
-      await track.applyConstraints({ advanced: [{ torch: !torch } as MediaTrackConstraintSet] });
-      setTorch(!torch);
+      await track.applyConstraints({ advanced: [{ torch: value } as MediaTrackConstraintSet] });
+      const applied = (track.getSettings?.() as { torch?: boolean } | undefined)?.torch;
+      if (!signal.aborted) setTorch(applied === undefined || applied === value ? value : null);
     } catch {
-      setTorch(null);
-    }
-  }
-  async function changeZoom(value: number) {
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track || !zoom) return;
-    try {
-      await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] });
-      setZoom({ ...zoom, value });
-    } catch {
-      setZoom(null);
+      if (!signal.aborted) setTorch(null);
     }
   }
 
-  if (!open) return null;
+  async function changeZoom(value: number) {
+    const track = streamRef.current?.getVideoTracks()[0];
+    const signal = attempt.current?.signal;
+    if (!track || !signal || !zoom) return;
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] });
+      const applied = (track.getSettings?.() as { zoom?: number } | undefined)?.zoom;
+      if (!signal.aborted)
+        setZoom(
+          applied === zoom.value && value !== zoom.value
+            ? null
+            : { ...zoom, value: applied ?? value },
+        );
+    } catch {
+      if (!signal.aborted) setZoom(null);
+    }
+  }
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={panel}
       aria-label="Câmera do app"
-      className="fixed inset-0 z-[60] flex flex-col bg-foreground text-background"
+      onCancel={(e) => {
+        e.preventDefault();
+        leave(onClose);
+      }}
+      className="fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto bg-[#161e24] text-white backdrop:bg-[#161e24] open:flex open:flex-col"
     >
-      <div className="flex items-center justify-between gap-2 p-3 text-sm">
-        <span className="truncate font-semibold">{props.title}</span>
-        <span aria-live="polite">{props.count} foto(s) neste cômodo</span>
-      </div>
-      <div className="relative min-h-0 flex-1">
-        <video ref={videoRef} playsInline muted autoPlay className="size-full object-contain" />
-        {state !== "live" && (
-          <p className="absolute inset-0 grid place-items-center p-6 text-center text-sm">
-            {state === "paused" ? "Câmera pausada." : CAMERA_INTRO}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="min-w-0">
+          <p className="break-words text-base font-semibold">{title}</p>
+          <p aria-live="polite" className="text-sm text-white/80">
+            {count} {count === 1 ? "foto neste cômodo" : "fotos neste cômodo"}
           </p>
+        </div>
+        <button type="button" onClick={() => leave(onClose)} className={optionClass}>
+          <ChevronLeft className="size-4" aria-hidden /> Voltar ao cômodo
+        </button>
+      </div>
+      <div className="relative flex min-h-36 flex-1 justify-center overflow-hidden">
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          aria-hidden
+          className="absolute inset-0 size-full object-contain"
+        />
+        {state.phase !== "live" && (
+          <div
+            role="status"
+            className="z-10 m-auto flex max-w-sm flex-col items-center gap-3 px-5 py-4 text-center"
+          >
+            {state.phase === "opening" && <Loader2 className="size-5 animate-spin" aria-hidden />}
+            <p>{state.message}</p>
+          </div>
         )}
       </div>
-      {zoom && (
+      {state.phase === "live" && zoom && (
         <input
           type="range"
           aria-label="Zoom"
-          className="mx-6 my-2"
-          min={zoom.min ?? 1}
+          className="mx-auto min-h-11 w-[min(20rem,85%)] accent-white"
+          min={zoom.min}
           max={zoom.max}
-          step={zoom.step ?? 0.1}
+          step={zoom.step || 0.1}
           value={zoom.value}
           onChange={(e) => void changeZoom(Number(e.target.value))}
         />
       )}
-      <div className="grid grid-cols-3 items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-center gap-2">
-          {last && <img src={last} alt="Última foto" className="size-12 rounded-lg object-cover" />}
-          {torch !== null && (
+      <div className="mx-auto w-full max-w-xl space-y-3 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {captureError && (
+          <p role="alert" className="text-center text-sm text-red-200">
+            {captureError}
+          </p>
+        )}
+        {state.phase === "live" && (
+          <div className="grid grid-cols-3 items-center gap-2">
+            {preview ? (
+              <img
+                src={preview}
+                alt="Última foto salva"
+                className="size-12 rounded-lg object-cover"
+              />
+            ) : (
+              <span />
+            )}
             <button
               type="button"
-              aria-label={torch ? "Desligar lanterna" : "Ligar lanterna"}
-              onClick={() => void toggleTorch()}
-              className="grid size-11 place-items-center rounded-full border border-background/40"
+              aria-label={busy ? "Salvando foto" : "Tirar foto"}
+              disabled={busy}
+              onClick={() => void shoot()}
+              className="mx-auto grid size-16 place-items-center rounded-full border-4 border-white bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 disabled:opacity-60"
             >
-              {torch ? <ZapOff className="size-5" /> : <Zap className="size-5" />}
+              {busy ? (
+                <Loader2 className="size-7 animate-spin" aria-hidden />
+              ) : (
+                <Camera className="size-7" aria-hidden />
+              )}
+            </button>
+            {torch !== null && (
+              <button
+                type="button"
+                aria-label="Lanterna"
+                aria-pressed={torch}
+                onClick={() => void toggleTorch()}
+                className={`ml-auto size-11 ${optionClass}`}
+              >
+                {torch ? (
+                  <ZapOff className="size-5" aria-hidden />
+                ) : (
+                  <Zap className="size-5" aria-hidden />
+                )}
+              </button>
+            )}
+          </div>
+        )}
+        {busy && (
+          <p role="status" className="text-center text-sm">
+            Salvando foto no aparelho…
+          </p>
+        )}
+        <div className="flex flex-wrap justify-center gap-2">
+          {state.phase === "recovery" && (
+            <button type="button" onClick={() => void start()} className={optionClass}>
+              <RotateCcw className="size-4" aria-hidden /> Tentar novamente
             </button>
           )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => leave(onNative)}
+            className={optionClass}
+          >
+            <Camera className="size-4" aria-hidden /> Usar câmera do celular
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => leave(onGallery)}
+            className={optionClass}
+          >
+            <Images className="size-4" aria-hidden /> Escolher da galeria
+          </button>
         </div>
-        <button
-          type="button"
-          aria-label={busy ? "Salvando…" : "Tirar foto"}
-          disabled={busy || state !== "live"}
-          onClick={() => void shoot()}
-          className="mx-auto grid size-18 place-items-center rounded-full border-4 border-background bg-background/20 disabled:opacity-60"
-        >
-          {busy ? <Loader2 className="size-7 animate-spin" /> : <Camera className="size-7" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            stop();
-            onClose();
-          }}
-          className="ml-auto inline-flex min-h-11 items-center gap-1 rounded-xl bg-background px-4 text-sm font-semibold text-foreground"
-        >
-          <Check className="size-4" /> Concluir
-        </button>
       </div>
-      {busy && <p className="pb-2 text-center text-xs">Salvando…</p>}
-      <button
-        type="button"
-        onClick={() => {
-          stop();
-          onClose();
-          onNative("escolha");
-        }}
-        className="pb-4 text-center text-xs underline opacity-80"
-      >
-        Usar câmera do celular
-      </button>
-    </div>
+    </dialog>
   );
 }

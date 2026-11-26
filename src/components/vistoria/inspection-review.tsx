@@ -161,9 +161,11 @@ export function ReviewTab({
       {!concluded && (
         <section className="premium-card rounded-2xl p-4">
           <h2 className="text-sm font-semibold">
-            {issues.length
-              ? `${issues.length} pendência(s) antes de concluir`
-              : "Tudo pronto para concluir"}
+            {issues.length + drafts.pending.length
+              ? `${issues.length + drafts.pending.length} pendência(s) antes de concluir`
+              : queueBlocked
+                ? "Aguardando sincronização"
+                : "Tudo pronto para concluir"}
           </h2>
           {rental ? (
             <ul className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Cômodos no termo">
@@ -201,6 +203,7 @@ export function ReviewTab({
                 (group.kinds as readonly string[]).includes(iss.kind),
               );
               const local = group.id === "envios" ? drafts.pending : [];
+              if (!own.length && !local.length) return null;
               return (
                 <details key={group.id} className="py-1">
                   <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
@@ -292,9 +295,6 @@ export function ReviewTab({
                       </li>
                     ))}
                   </ul>
-                  {!own.length && !local.length && (
-                    <p className="pb-2 text-sm text-foreground/60">Sem pendências neste grupo.</p>
-                  )}
                 </details>
               );
             })}

@@ -1,7 +1,7 @@
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/lib/auth-mock";
 import { useDraftRow, useDrafts } from "@/lib/vistoria/drafts";
-import { newClientKey } from "@/lib/vistoria/local-store";
+import { newClientKey, type PendingEntry } from "@/lib/vistoria/local-store";
 import {
   observationText,
   type OrganizedObservation,
@@ -23,8 +23,8 @@ import type { useTranscriptionRunner } from "@/lib/vistoria/use-inspection";
 type Runner = ReturnType<typeof useTranscriptionRunner>;
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Keyboard, Loader2, Mic } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { fmtInspectionTime as fmt } from "@/lib/vistoria/ui";
@@ -40,6 +40,10 @@ export function NotesBlock(props: {
   voiceAdmin?: boolean;
   runner?: Runner;
   onRerecord?: (note: NoteRow) => void;
+  onRecord: () => void;
+  onRetry: (key: string) => void;
+  recording: ReactNode;
+  pending: PendingEntry[];
   inspectionId: string;
   currentCtx: React.MutableRefObject<VoiceContext | null>;
   mode: "none" | "texto";
@@ -60,9 +64,36 @@ export function NotesBlock(props: {
   const context = [props.roomName, props.items.find((it) => it.id === props.itemId)?.name]
     .filter(Boolean)
     .join(" · ");
+  const remoteKeys = new Set(props.notes.map((note) => note.client_key));
+  const waiting = props.pending.filter(
+    (entry) => entry.kind === "audio" && !remoteKeys.has(entry.clientKey),
+  );
+  const actionClass =
+    "inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-primary hover:bg-primary/5";
   return (
-    <section aria-label="Relatos do ambiente" className="space-y-3">
-      {!props.rental && <h3 className="text-sm font-semibold">Relatos · {context}</h3>}
+    <section
+      aria-labelledby="room-notes-title"
+      className="space-y-3 rounded-xl border border-border p-3 sm:p-4"
+    >
+      <h3 id="room-notes-title" className="text-base font-semibold">
+        Descrição e áudios
+      </h3>
+      {props.recording}
+      {!props.readOnly && (
+        <div className="flex flex-wrap gap-2">
+          {!props.recording && (
+            <button type="button" className={actionClass} onClick={props.onRecord}>
+              <Mic className="size-4" aria-hidden /> Gravar áudio
+            </button>
+          )}
+          {props.mode !== "texto" && (
+            <button type="button" className={actionClass} onClick={() => props.setMode("texto")}>
+              <Keyboard className="size-4" aria-hidden />{" "}
+              {draft.value.text ? "Retomar descrição" : "Escrever descrição"}
+            </button>
+          )}
+        </div>
+      )}
       {!props.readOnly && props.mode === "texto" && (
         <div className="premium-card space-y-2 rounded-xl p-3">
           <label className="block text-sm font-medium">
@@ -80,7 +111,7 @@ export function NotesBlock(props: {
                   clientKey: draft.value.clientKey || newClientKey(),
                 })
               }
-              className="mt-2"
+              className="mt-2 scroll-mt-52"
             />
           </label>
           <p className="text-xs text-foreground/60">
@@ -127,7 +158,8 @@ export function NotesBlock(props: {
                   );
                   if (row) {
                     await draft.discard();
-                    toast.success(`Relato salvo em ${context}. Revise o texto abaixo.`);
+                    props.setMode("none");
+                    toast.success("Descrição salva. Revise o texto para incluí-lo no termo.");
                   }
                 } catch (e) {
                   toast.error(
@@ -145,37 +177,70 @@ export function NotesBlock(props: {
           </div>
         </div>
       )}
-      {!props.readOnly && props.mode !== "texto" && (
+      {(waiting.length > 0 || props.notes.length > 0) && (
+        <ul className="space-y-3">
+          {waiting.map((entry) => (
+            <li key={entry.key}>
+              <PendingAudio entry={entry} onRetry={props.onRetry} />
+            </li>
+          ))}
+          {props.notes.map((note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              items={props.items}
+              readOnly={props.readOnly}
+              saver={props.saver}
+              voiceReady={props.voiceReady}
+              voiceAdmin={Boolean(props.voiceAdmin)}
+              runner={props.runner}
+              onRerecord={props.onRerecord}
+              currentCtx={props.currentCtx}
+              inspectionId={props.inspectionId}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function PendingAudio({ entry, onRetry }: { entry: PendingEntry; onRetry: (key: string) => void }) {
+  const [listening, setListening] = useState(false);
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!listening) return;
+    const source = URL.createObjectURL(entry.blob);
+    setUrl(source);
+    return () => URL.revokeObjectURL(source);
+  }, [entry.blob, listening]);
+  return (
+    <div className="rounded-xl border p-3 text-sm">
+      <p className="font-medium">Áudio · {Math.round(entry.seconds ?? 0)} s</p>
+      <p className="text-xs text-foreground/60" role="status">
+        {entry.status === "enviando" ? "Enviando" : "Salvo neste aparelho"}
+      </p>
+      {url ? (
+        <audio controls aria-label="Áudio salvo neste aparelho" className="mt-2 w-full" src={url} />
+      ) : (
         <button
           type="button"
-          className="min-h-11 w-full rounded-xl border text-sm font-semibold text-primary"
-          onClick={() => props.setMode("texto")}
+          className="min-h-11 text-primary underline"
+          onClick={() => setListening(true)}
         >
-          {draft.value.text
-            ? "Retomar descrição"
-            : props.rental
-              ? "Escrever descrição"
-              : "Digitar relato"}
+          Ouvir áudio
         </button>
       )}
-      <ul className="space-y-3">
-        {props.notes.map((note) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            items={props.items}
-            readOnly={props.readOnly}
-            saver={props.saver}
-            voiceReady={props.voiceReady}
-            voiceAdmin={Boolean(props.voiceAdmin)}
-            runner={props.runner}
-            onRerecord={props.onRerecord}
-            currentCtx={props.currentCtx}
-            inspectionId={props.inspectionId}
-          />
-        ))}
-      </ul>
-    </section>
+      {entry.status === "erro" && (
+        <button
+          type="button"
+          className="min-h-11 px-2 text-destructive underline"
+          onClick={() => onRetry(entry.key)}
+        >
+          Tentar novamente
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -225,7 +290,11 @@ export function NoteCard({
   }[note.status as string];
 
   const view = transcriptionView(note, Date.now());
-  const tLabel = transcriptionLabel(view, { voiceReady, isAdmin: voiceAdmin, error: note.transcription_error });
+  const tLabel = transcriptionLabel(view, {
+    voiceReady,
+    isAdmin: voiceAdmin,
+    error: note.transcription_error,
+  });
   const hasApproved = Boolean(note.approved_text?.trim()) || note.status === "revisado";
 
   async function runTranscribe() {
@@ -255,7 +324,9 @@ export function NoteCard({
       const res = await removeVoice({ data: { noteId: note.id, reason: "excluir" } });
       runner?.forget(note.id);
       if (useSessionId)
-        await removePending(pendingKey(useSessionId, inspectionId, res.clientKey)).catch(() => undefined);
+        await removePending(pendingKey(useSessionId, inspectionId, res.clientKey)).catch(
+          () => undefined,
+        );
       qc.setQueryData<InspectionFull>(inspectionKey(inspectionId, useSessionId), (f) =>
         f ? { ...f, notes: f.notes.filter((n) => n.id !== note.id) } : f,
       );
@@ -293,8 +364,14 @@ export function NoteCard({
             type="button"
             className="mt-2 min-h-11 text-xs font-semibold text-primary"
             onClick={async () => {
-              const u = await sign({ data: { inspectionId, paths: [note.audio_path] } });
-              setAudioUrl(u[note.audio_path!] ?? null);
+              try {
+                const u = await sign({ data: { inspectionId, paths: [note.audio_path] } });
+                const url = u[note.audio_path!];
+                if (!url) throw new Error();
+                setAudioUrl(url);
+              } catch {
+                toast.error("Não foi possível abrir o áudio. Confira a conexão e tente novamente.");
+              }
             }}
           >
             Ouvir áudio original
@@ -341,7 +418,11 @@ export function NoteCard({
         </div>
       )}
       {confirm && (
-        <div role="alertdialog" aria-label="Confirmar" className="mt-2 rounded-xl border border-input bg-background p-3">
+        <div
+          role="alertdialog"
+          aria-label="Confirmar"
+          className="mt-2 rounded-xl border border-input bg-background p-3"
+        >
           <p className="text-sm">
             {confirm === "excluir"
               ? hasApproved
