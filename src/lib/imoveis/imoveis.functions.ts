@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { parseMobiliado, serializeMobiliado } from "./mobiliado";
 import { validateAddressNumber } from "@/lib/imoveis/address-rules";
 import { codeColumnsFor, normalizePropertyCode, otherBrandFor } from "./code-search";
 import {
@@ -94,6 +95,7 @@ function toDbPayload(input: Partial<PropertyWriteInput>): Record<string, unknown
     ) {
       next = null;
     }
+    if (column === "mobiliado") next = serializeMobiliado(next);
     payload[column] = next;
   }
   return payload;
@@ -511,7 +513,7 @@ function mapDetail(row: Record<string, any>, extras: {
     zona: row.zona ?? null,
     regiao: row.regiao ?? null,
     salas: row.salas ?? null,
-    mobiliado: row.mobiliado ?? null,
+    mobiliado: parseMobiliado(row.mobiliado),
     valorIptu: num(row.valor_iptu),
     valorCondominio: num(row.valor_condominio),
     aceitaFinanciamento: row.aceita_financiamento ?? null,

@@ -973,7 +973,7 @@ export function PropertyForm({
             </div>
             <Toggle
               label="Imóvel mobiliado"
-              checked={!!values.mobiliado}
+              checked={values.mobiliado === true}
               onChange={(v) => set("mobiliado", v)}
             />
           </>

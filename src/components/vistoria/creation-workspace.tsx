@@ -1,3 +1,4 @@
+import { parseMobiliado } from "@/lib/imoveis/mobiliado";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/lib/auth-mock";
@@ -260,7 +261,8 @@ export function CreationWorkspace() {
     };
     setCounts(c);
     const fm = (p.mobiliado ?? "").toLowerCase();
-    const f = fm.includes("semi")
+    const parsed = parseMobiliado(p.mobiliado);
+    const f = parsed === true ? "mobiliado" : parsed === false ? "nao" : fm.includes("semi")
       ? "semimobiliado"
       : fm.startsWith("s") || fm.includes("mobil")
         ? "mobiliado"

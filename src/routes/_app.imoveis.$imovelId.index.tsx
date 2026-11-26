@@ -1,3 +1,4 @@
+import { mobiliadoLabel } from "@/lib/imoveis/mobiliado";
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -186,7 +187,7 @@ function DetalhePage() {
   const hasAreas =
     imovel.areaTotal || imovel.areaUtil || imovel.areaConstruida || imovel.areaTerreno;
 
-  const hasExtraCharacteristics = imovel.suites || imovel.salas || imovel.mobiliado;
+  const hasExtraCharacteristics = imovel.suites || imovel.salas || mobiliadoLabel(imovel.mobiliado) !== null;
 
   const hasValues =
     imovel.valorIptu ||
@@ -411,7 +412,7 @@ function DetalhePage() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
                 <Field label="Suítes" value={imovel.suites} />
                 <Field label="Salas" value={imovel.salas} />
-                <Field label="Mobiliado" value={imovel.mobiliado ? "Sim" : null} />
+                <Field label="Mobiliado" value={mobiliadoLabel(imovel.mobiliado)} />
                 <Field label="Área total" value={formatArea(imovel.areaTotal)} />
                 <Field label="Área útil" value={formatArea(imovel.areaUtil)} />
                 <Field label="Área construída" value={formatArea(imovel.areaConstruida)} />

@@ -1,3 +1,4 @@
+import { parseMobiliado } from "@/lib/imoveis/mobiliado";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { Loader2, ArrowLeft } from "lucide-react";
@@ -44,6 +45,7 @@ function toFormValues(detail: PropertyDetail): PropertyFormValues {
     const value = (detail as unknown as Record<string, unknown>)[key];
     if (value !== undefined) (values as Record<string, unknown>)[key] = value;
   }
+  values.mobiliado = parseMobiliado(values.mobiliado) ?? false;
   return values;
 }
 
