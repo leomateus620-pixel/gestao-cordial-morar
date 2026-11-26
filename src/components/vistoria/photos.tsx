@@ -29,13 +29,14 @@ import {
 } from "@/lib/vistoria/vistoria.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { Camera, ImageIcon, Images, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { fmtInspectionTime as fmt } from "@/lib/vistoria/ui";
 type Saver = ReturnType<typeof useSaver>;
 type Queue = ReturnType<typeof useLocalQueue>;
+const PHOTOS_PER_PAGE = 6;
 export function PhotosBlock(props: {
   inspectionId: string;
   media: MediaRow[];
@@ -44,6 +45,8 @@ export function PhotosBlock(props: {
   saver: Saver;
   onRetry: (k: string) => void;
   items: ItemRow[];
+  onCamera: () => void;
+  onGallery: () => void;
 }) {
   const sign = useServerFn(signInspectionFiles);
   const userId = useSession()?.id;
@@ -58,71 +61,140 @@ export function PhotosBlock(props: {
   const [viewId, setViewId] = useState<string | null>(null);
   const view = props.media.find((m) => m.id === viewId) ?? null;
   const photos = props.pending.filter((p) => p.kind === "photo");
-  if (!props.media.length && !photos.length)
+  const [localViewId, setLocalViewId] = useState<string | null>(null);
+  const localView = photos.find((p) => p.key === localViewId);
+  const empty = !props.media.length && !photos.length;
+  const [page, setPage] = useState(0);
+  const pages = Math.ceil((props.media.length + photos.length) / PHOTOS_PER_PAGE);
+  const activePage = Math.min(page, Math.max(0, pages - 1));
+  const first = activePage * PHOTOS_PER_PAGE;
+  const last = first + PHOTOS_PER_PAGE;
+  const shownMedia = props.media.slice(first, last);
+  const shownLocal = photos.slice(
+    Math.max(0, first - props.media.length),
+    Math.max(0, last - props.media.length),
+  );
+  const actionStyle =
+    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold text-primary hover:bg-primary/5";
+  if (empty)
     return (
-      <p className="rounded-2xl border border-dashed border-input p-4 text-center text-sm text-foreground/55">
-        Nenhuma foto neste ambiente. Use Câmera ou Galeria abaixo.
-      </p>
+      <div className="rounded-xl border border-dashed border-input p-4">
+        <p className="text-sm text-foreground/60">Nenhuma foto neste cômodo.</p>
+        {!props.readOnly && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className={actionStyle} onClick={props.onCamera}>
+              <Camera className="size-4" aria-hidden /> Tirar primeira foto
+            </button>
+            <button type="button" className={actionStyle} onClick={props.onGallery}>
+              <Images className="size-4" aria-hidden /> Escolher da galeria
+            </button>
+          </div>
+        )}
+      </div>
     );
   return (
     <>
-      <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Fotos do ambiente">
-        {props.media.map((m, i) => (
-          <li key={m.id}>
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Fotos do cômodo">
+        {shownMedia.map((m, index) => {
+          const i = first + index;
+          return (
+            <li key={m.id}>
+              <button
+                type="button"
+                onClick={() => setViewId(m.id)}
+                className="relative block aspect-square w-full overflow-hidden rounded-xl bg-foreground/8"
+                aria-label={`Abrir foto ${i + 1}${m.caption ? `: ${m.caption}` : ""}`}
+              >
+                <InspectionImage
+                  url={urls.data?.[m.storage_path]}
+                  alt={m.caption ?? `Foto ${i + 1}`}
+                  renew={() => urls.refetch()}
+                  loading={urls.isPending}
+                />
+                <span className="absolute left-1 top-1 rounded-md bg-background/85 px-1 text-[10px] font-bold">
+                  {i + 1}
+                </span>
+              </button>
+              <p className="mt-1 text-xs text-foreground/70">
+                {m.status === "confirmada" ? "Sincronizada" : "Aguardando confirmação"}
+              </p>
+            </li>
+          );
+        })}
+        {shownLocal.map((p) => (
+          <li key={p.key}>
             <button
               type="button"
-              onClick={() => setViewId(m.id)}
-              className="relative block aspect-square w-full overflow-hidden rounded-xl bg-foreground/8"
-              aria-label={`Abrir foto ${i + 1}${m.caption ? `: ${m.caption}` : ""}`}
+              onClick={() => setLocalViewId(p.key)}
+              aria-label="Ampliar foto salva neste aparelho"
+              className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-foreground/8"
             >
-              <InspectionImage
-                url={urls.data?.[m.storage_path]}
-                alt={m.caption ?? `Foto ${i + 1}`}
-                renew={() => urls.refetch()}
-                loading={urls.isPending}
-              />
-              <span className="absolute left-1 top-1 rounded-md bg-background/85 px-1 text-[10px] font-bold">
-                {i + 1}
-              </span>
-            </button>
-          </li>
-        ))}
-        {photos.map((p) => (
-          <li key={p.key}>
-            <div className="relative aspect-square overflow-hidden rounded-xl bg-foreground/8">
-              {localUrls[p.key] && (
+              {localUrls[p.key] ? (
                 <img
                   src={localUrls[p.key]}
-                  alt="Foto aguardando envio"
-                  width={p.width ?? undefined}
-                  height={p.height ?? undefined}
+                  alt=""
+                  loading="lazy"
                   decoding="async"
-                  className="size-full object-cover opacity-70"
+                  className="size-full object-cover"
                 />
+              ) : (
+                <ImageIcon className="size-5 text-foreground/60" aria-hidden />
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-background/90 p-1 text-center text-[10px] font-semibold">
-                {p.status === "erro" ? (
-                  <button
-                    type="button"
-                    onClick={() => props.onRetry(p.key)}
-                    className="inline-flex min-h-11 items-center gap-1 text-destructive"
-                  >
-                    <RotateCcw className="size-3" />
-                    Tentar de novo
-                  </button>
-                ) : p.status === "enviando" ? (
-                  <span>
-                    <Loader2 className="mr-1 inline size-3 animate-spin" />
-                    Enviando
-                  </span>
-                ) : (
-                  <span>Salvo no aparelho</span>
-                )}
-              </div>
+            </button>
+            <div className="mt-1 text-xs text-foreground/70">
+              {p.status === "erro" ? (
+                <button
+                  type="button"
+                  onClick={() => props.onRetry(p.key)}
+                  className="inline-flex min-h-11 items-center gap-1 text-destructive"
+                >
+                  <RotateCcw className="size-3" />
+                  Tentar novamente
+                </button>
+              ) : p.status === "enviando" ? (
+                <span>
+                  <Loader2 className="mr-1 inline size-3 animate-spin" />
+                  Enviando
+                </span>
+              ) : (
+                <span>Salva neste aparelho</span>
+              )}
             </div>
           </li>
         ))}
       </ul>
+      {pages > 1 && (
+        <nav
+          aria-label="Paginação de fotos do cômodo"
+          className="flex flex-wrap items-center justify-between gap-2 text-sm"
+        >
+          <button
+            type="button"
+            className={actionStyle}
+            disabled={!activePage}
+            onClick={() => setPage(activePage - 1)}
+          >
+            Anteriores
+          </button>
+          <span>
+            Página {activePage + 1} de {pages}
+          </span>
+          <button
+            type="button"
+            className={actionStyle}
+            disabled={activePage + 1 >= pages}
+            onClick={() => setPage(activePage + 1)}
+          >
+            Próximas
+          </button>
+        </nav>
+      )}
+      {!props.readOnly && (
+        <button type="button" className={actionStyle} onClick={props.onCamera}>
+          <Camera className="size-4" aria-hidden /> Tirar outra foto
+        </button>
+      )}
+      {localView && <LocalPhotoViewer blob={localView.blob} onClose={() => setLocalViewId(null)} />}
       {view && (
         <PhotoViewer
           key={view.id}
@@ -138,6 +210,30 @@ export function PhotosBlock(props: {
         />
       )}
     </>
+  );
+}
+
+function LocalPhotoViewer({ blob, onClose }: { blob: Blob; onClose: () => void }) {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob]);
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="inspection-workspace max-h-[92dvh] w-[calc(100vw-1rem)] max-w-xl overflow-y-auto p-4">
+        <DialogTitle>Foto salva neste aparelho</DialogTitle>
+        {url && (
+          <img
+            src={url}
+            alt="Foto do cômodo"
+            className="max-h-[70dvh] w-full object-contain"
+            decoding="async"
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

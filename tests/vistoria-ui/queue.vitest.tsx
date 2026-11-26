@@ -1,19 +1,31 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PendingEntry } from "@/lib/vistoria/local-store";
+import { pendingKey, type PendingEntry } from "@/lib/vistoria/local-store";
 
-const db = vi.hoisted(() => ({ rows: new Map<string, PendingEntry>(), uploads: [] as string[], fail: new Set<string>() }));
+const db = vi.hoisted(() => ({
+  rows: new Map<string, PendingEntry>(),
+  uploads: [] as string[],
+  fail: new Set<string>(),
+  storageError: false,
+}));
 vi.mock("@/lib/vistoria/local-store", async (orig) => {
   const real = await orig<typeof import("@/lib/vistoria/local-store")>();
   return {
     ...real,
-    listPending: async () => [...db.rows.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    listPending: async () =>
+      [...db.rows.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     patchPending: async (k: string, p: Partial<PendingEntry>) => {
       const c = db.rows.get(k);
       if (c) db.rows.set(k, { ...c, ...p });
     },
     removePending: async (k: string) => void db.rows.delete(k),
-    putPending: async (e: PendingEntry) => void db.rows.set(e.key, e),
+    putPending: async (e: Omit<PendingEntry, "key">) => {
+      if (db.storageError) throw new DOMException("", "QuotaExceededError");
+      const key = real.pendingKey(e.userId, e.inspectionId, e.clientKey);
+      const row = { ...e, key };
+      db.rows.set(key, row);
+      return row;
+    },
     cacheInspection: async () => undefined,
     cachedInspection: async () => undefined,
   };
@@ -23,7 +35,9 @@ vi.mock("@/integrations/supabase/client", () => ({
     storage: {
       from: () => ({
         upload: async (path: string) => {
-          const key = ([...db.rows.values()].find((r) => path.includes(r.clientKey))?.clientKey ?? path).replace("chavelocal_", "");
+          const key = (
+            [...db.rows.values()].find((r) => path.includes(r.clientKey))?.clientKey ?? path
+          ).replace("chavelocal_", "");
           if (db.fail.has(key)) return { error: { message: "StorageApiError: 503 upstream" } };
           db.uploads.push(key);
           return { error: null };
@@ -46,12 +60,23 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }));
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries: async () => undefined }),
+  useQueryClient: () => ({
+    invalidateQueries: async () => undefined,
+    cancelQueries: async () => undefined,
+    setQueryData: () => undefined,
+  }),
   useQuery: () => ({}),
 }));
 vi.mock("@/lib/auth-mock", () => ({ useSession: () => ({ id: "u" }) }));
-vi.mock("@/lib/vistoria/vistoria.functions", () => ({ registerMedia: {}, createNote: { kind: "note" }, getInspection: {} }));
-vi.mock("@/lib/vistoria/voice.functions", () => ({ transcribeNote: {}, deleteVoiceNote: { kind: "del" } }));
+vi.mock("@/lib/vistoria/vistoria.functions", () => ({
+  registerMedia: {},
+  createNote: { kind: "note" },
+  getInspection: {},
+}));
+vi.mock("@/lib/vistoria/voice.functions", () => ({
+  transcribeNote: {},
+  deleteVoiceNote: { kind: "del" },
+}));
 
 import { useLocalQueue, useObjectUrls } from "@/lib/vistoria/use-inspection";
 
@@ -89,6 +114,7 @@ beforeEach(() => {
   db.rows.clear();
   db.uploads = [];
   db.fail.clear();
+  db.storageError = false;
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
@@ -101,7 +127,7 @@ describe("useObjectUrls incremental", () => {
   it("cria só para chave nova, revoga só a removida e usa a miniatura", () => {
     const thumb = new Blob(["t"]);
     const a = entry("a", { thumb });
-    const b = entry("b");
+    const b = entry("b", { width: 1920, height: 1440 });
     const { result, rerender, unmount } = renderHook(({ list }) => useObjectUrls(list), {
       initialProps: { list: [a, b] },
     });
@@ -123,6 +149,27 @@ const settle = async () => {
   for (let i = 0; i < 30; i++) await act(async () => void (await Promise.resolve()));
 };
 
+it("distingue falta de espaço de falta de rede e retenta com a mesma chave", async () => {
+  db.storageError = true;
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  const { result } = renderHook(() => useLocalQueue("u", INSP));
+  const photo = entry("quota");
+  await act(async () => expect(await result.current.stage(photo)).toBe(false));
+  expect(result.current.hasUnpersisted()).toBe(true);
+  expect(result.current.unpersisted[0]?.error).toContain("Sem espaço no armazenamento");
+  expect(db.uploads).toEqual([]);
+  db.storageError = false;
+  await act(async () => result.current.retryLocal(pendingKey("u", INSP, photo.clientKey)));
+  expect(result.current.hasUnpersisted()).toBe(false);
+  expect(result.current.pending[0]?.clientKey).toBe(photo.clientKey);
+  expect(result.current.pending[0]?.status).toBe("local");
+  expect(db.uploads).toEqual([]);
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  act(() => window.dispatchEvent(new Event("online")));
+  await settle();
+  expect(db.uploads).toEqual(["quota"]);
+});
+
 describe("fila com espera crescente", () => {
   it("falha aguarda sem travar as outras; mantém o registro e mensagem amigável", async () => {
     db.rows.set(entry("a").key, entry("a"));
@@ -143,7 +190,10 @@ describe("fila com espera crescente", () => {
 
   it("temporizador acorda a fila e é limpo ao sair da tela", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
-    db.rows.set(entry("a").key, entry("a", { status: "erro", attempts: 1, nextAttemptAt: Date.now() + 2000 }));
+    db.rows.set(
+      entry("a").key,
+      entry("a", { status: "erro", attempts: 1, nextAttemptAt: Date.now() + 2000 }),
+    );
     const { unmount } = renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual([]);
@@ -151,14 +201,20 @@ describe("fila com espera crescente", () => {
     await act(async () => void vi.advanceTimersByTime(2100));
     await settle();
     expect(db.uploads).toEqual(["a"]);
-    db.rows.set(entry("c").key, entry("c", { status: "erro", attempts: 1, nextAttemptAt: Date.now() + 5000 }));
+    db.rows.set(
+      entry("c").key,
+      entry("c", { status: "erro", attempts: 1, nextAttemptAt: Date.now() + 5000 }),
+    );
     db.fail.add("c");
     unmount();
     expect(vi.getTimerCount()).toBe(0);
   });
 
   it("voltar a internet ignora a espera e envia na hora", async () => {
-    db.rows.set(entry("a").key, entry("a", { status: "erro", attempts: 2, nextAttemptAt: Date.now() + 60_000 }));
+    db.rows.set(
+      entry("a").key,
+      entry("a", { status: "erro", attempts: 2, nextAttemptAt: Date.now() + 60_000 }),
+    );
     renderHook(() => useLocalQueue("u", INSP));
     await settle();
     expect(db.uploads).toEqual([]);
@@ -181,10 +237,18 @@ describe("fila com espera crescente", () => {
 
 describe("regravar relato de voz", () => {
   const voice = (k: string, extra: Partial<PendingEntry> = {}) =>
-    entry(k, { kind: "voice", mime: "audio/wav", seconds: 5, replacesNoteId: "old-note", ...extra } as Partial<PendingEntry>);
+    entry(k, {
+      kind: "voice",
+      mime: "audio/wav",
+      seconds: 5,
+      replacesNoteId: "old-note",
+      ...extra,
+    } as Partial<PendingEntry>);
 
   it("o anterior só é excluído depois do áudio e do relato novos confirmados", async () => {
-    srv.deleted = []; srv.order = []; srv.delFail = false;
+    srv.deleted = [];
+    srv.order = [];
+    srv.delFail = false;
     db.rows.set(voice("v").key, voice("v"));
     renderHook(() => useLocalQueue("u", INSP));
     await settle();
@@ -194,7 +258,8 @@ describe("regravar relato de voz", () => {
   });
 
   it("falha no envio do novo mantém o anterior", async () => {
-    srv.deleted = []; srv.order = [];
+    srv.deleted = [];
+    srv.order = [];
     db.fail.add("w");
     db.rows.set(voice("w").key, voice("w"));
     renderHook(() => useLocalQueue("u", INSP));
@@ -204,7 +269,9 @@ describe("regravar relato de voz", () => {
   });
 
   it("falha ao excluir o anterior não perde o novo nem trava a fila", async () => {
-    srv.deleted = []; srv.order = []; srv.delFail = true;
+    srv.deleted = [];
+    srv.order = [];
+    srv.delFail = true;
     db.rows.set(voice("x").key, voice("x"));
     renderHook(() => useLocalQueue("u", INSP));
     await settle();

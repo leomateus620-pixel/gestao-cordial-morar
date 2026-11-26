@@ -203,7 +203,8 @@ export type InspectionListRow = {
   updated_at: string;
   responsible_name: string | null;
   current_version: number;
-  property_id: string;
+  property_id: string | null;
+  rental_contract_id?: string | null;
   property_snapshot: PropertySnapshot;
 };
 
@@ -419,15 +420,16 @@ async function createInspectionRecord(
     rental_contract_id: contractLink ? contractLink.contractId : null,
     rental_kind: contractLink ? rentalKind : null,
   };
-  const plan = contractLink
-    ? (rentalKind === "saida" && suggestRooms ? contractLink.entryRooms : []).map(
-        ({ name, kind }) => ({ name, kind, items: [] }),
-      )
-    : (data.rooms ??
-      buildRoomPlan({
-        ...data.confirmed,
-        furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado",
-      }));
+  const plan =
+    data.rooms ??
+    (contractLink
+      ? (rentalKind === "saida" && suggestRooms ? contractLink.entryRooms : []).map(
+          ({ name, kind }) => ({ name, kind, items: [] }),
+        )
+      : buildRoomPlan({
+          ...data.confirmed,
+          furnished: data.furnished === "mobiliado" || data.furnished === "semimobiliado",
+        }));
   const { data: result, error } = await sb.rpc(
     "inspection_create" as never,
     {
@@ -915,7 +917,11 @@ export const registerMedia = createServerFn({ method: "POST" })
         .eq("inspection_id", data.inspectionId)
         .eq("client_key", data.clientKey)
         .maybeSingle();
-      if (again.data) return again.data;
+      if (again.data) {
+        if (again.data.room_id !== data.roomId)
+          throw new Error("Foto já registrada em outro ambiente.");
+        return again.data;
+      }
     }
     fail(error);
     return row;

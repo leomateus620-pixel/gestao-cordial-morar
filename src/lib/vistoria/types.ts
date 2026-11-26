@@ -70,6 +70,7 @@ export type MediaRow = {
   inspection_id: string;
   room_id: string;
   item_id: string | null;
+  client_key?: string;
   storage_path: string;
   caption: string | null;
   position: number;

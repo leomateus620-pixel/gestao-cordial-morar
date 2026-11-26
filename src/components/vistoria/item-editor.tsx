@@ -7,7 +7,7 @@ import type { ItemRow, RoomRow } from "@/lib/vistoria/types";
 import { useLocalQueue, useSaver } from "@/lib/vistoria/use-inspection";
 import { deleteItem } from "@/lib/vistoria/vistoria.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ITEM_STATE_TONE as STATE_TONE } from "@/lib/vistoria/ui";
 type Saver = ReturnType<typeof useSaver>;
@@ -15,23 +15,34 @@ type Queue = ReturnType<typeof useLocalQueue>;
 export function NoPhotoReason({
   room,
   readOnly,
+  forceOpen,
 }: {
   room: RoomRow;
   readOnly: boolean;
   saver: Saver;
+  forceOpen?: boolean;
 }) {
   const draft = useDraftRow("room", room, room.id, room.id);
+  const details = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (details.current && forceOpen) details.current.open = true;
+  }, [forceOpen, room.id]);
+  if (readOnly) return room.no_photo_reason && <p className="text-sm">{room.no_photo_reason}</p>;
   return (
-    <label className="mt-3 block text-sm font-medium">
-      Sem foto possível? Registre o motivo
-      <Input
-        disabled={readOnly}
-        value={draft.value.no_photo_reason ?? ""}
-        placeholder="Ex.: cômodo trancado"
-        onChange={(e) => draft.set({ no_photo_reason: e.target.value })}
-        className="mt-1 h-11"
-      />
-    </label>
+    <details ref={details}>
+      <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-primary">
+        {draft.value.no_photo_reason ? "Ver motivo sem foto" : "Registrar motivo sem foto"}
+      </summary>
+      <label className="block text-sm font-medium">
+        Motivo
+        <Input
+          value={draft.value.no_photo_reason ?? ""}
+          placeholder="Ex.: cômodo trancado"
+          onChange={(e) => draft.set({ no_photo_reason: e.target.value })}
+          className="mt-1 h-11"
+        />
+      </label>
+    </details>
   );
 }
 

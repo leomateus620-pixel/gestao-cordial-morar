@@ -1,34 +1,61 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { InAppCamera, pickPhotoWidth } from "@/components/vistoria/in-app-camera";
+import { InAppCamera } from "@/components/vistoria/in-app-camera";
 
 function fakeStream() {
-  const track = {
-    stopped: 0,
-    stop() {
-      this.stopped++;
-    },
+  const track = Object.assign(new EventTarget(), {
+    stop: vi.fn(),
+    readyState: "live",
+    muted: false,
     getCapabilities: () => ({}),
     applyConstraints: async () => undefined,
-  };
+  });
   return { track, stream: { getTracks: () => [track], getVideoTracks: () => [track] } };
 }
 let current: ReturnType<typeof fakeStream>;
+let frames: boolean;
 const getUserMedia = vi.fn();
+const play = vi.fn();
+const createObjectURL = vi.fn(() => "blob:preview");
+const revokeObjectURL = vi.fn();
 
 beforeEach(() => {
   current = fakeStream();
+  frames = true;
   getUserMedia.mockReset().mockImplementation(async () => current.stream);
+  play.mockReset().mockResolvedValue(undefined);
+  createObjectURL.mockClear();
+  revokeObjectURL.mockClear();
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
-  Object.defineProperty(HTMLMediaElement.prototype, "play", { configurable: true, value: () => Promise.resolve() });
-  Object.defineProperty(HTMLMediaElement.prototype, "srcObject", { configurable: true, writable: true, value: null });
+  Object.defineProperty(HTMLVideoElement.prototype, "play", { configurable: true, value: play });
+  Object.defineProperty(HTMLVideoElement.prototype, "srcObject", {
+    configurable: true,
+    writable: true,
+    value: null,
+  });
+  Object.defineProperty(HTMLVideoElement.prototype, "readyState", {
+    configurable: true,
+    get: () => (frames ? 2 : 0),
+  });
+  Object.defineProperty(HTMLVideoElement.prototype, "paused", {
+    configurable: true,
+    get: () => !frames,
+  });
+  Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", {
+    configurable: true,
+    get: () => (frames ? 1920 : 0),
+  });
+  Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", {
+    configurable: true,
+    get: () => (frames ? 1440 : 0),
+  });
   Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:x", revokeObjectURL: () => undefined }));
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL }));
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
-  delete (globalThis as { ImageCapture?: unknown }).ImageCapture;
 });
 
 function setup(over: Partial<Parameters<typeof InAppCamera>[0]> = {}) {
@@ -37,104 +64,130 @@ function setup(over: Partial<Parameters<typeof InAppCamera>[0]> = {}) {
     title: "Sala",
     count: 0,
     onClose: vi.fn(),
-    onCapture: vi.fn(async () => undefined),
+    onCapture: vi.fn(async () => null as Blob | null),
     onNative: vi.fn(),
+    onGallery: vi.fn(),
     ...over,
   };
   const r = render(<InAppCamera {...props} />);
   return { props, ...r };
 }
-const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+const flush = () => act(async () => {});
 
 describe("Câmera do app", () => {
-  it("pede câmera traseira 1920x1440 como preferência, sem exigir", async () => {
-    setup();
+  it("prefere traseira em resolução flexível e mantém a sessão quando os callbacks e a contagem mudam", async () => {
+    const { props, rerender } = setup();
     await flush();
-    const c = getUserMedia.mock.calls[0]![0];
-    expect(c.video.facingMode).toEqual({ ideal: "environment" });
-    expect(c.video.width).toEqual({ ideal: 1920 });
-    expect(c.video.height).toEqual({ ideal: 1440 });
+    expect(getUserMedia.mock.calls[0]![0]).toEqual({
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },
+        height: { ideal: 1440 },
+      },
+    });
+    rerender(<InAppCamera {...props} count={1} onCapture={async () => null} onClose={() => {}} />);
+    await flush();
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(current.track.stop).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Tirar foto" })).toHaveProperty("disabled", false);
   });
 
-  it("encerra a câmera ao concluir", async () => {
+  it("aguarda play e um quadro com dimensões antes de habilitar o disparo", async () => {
+    frames = false;
+    const { container } = setup();
+    await flush();
+    expect(screen.queryByRole("button", { name: "Tirar foto" })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Abrindo a câmera");
+    frames = true;
+    fireEvent(container.querySelector("video")!, new Event("loadeddata"));
+    await flush();
+    expect(screen.getByRole("button", { name: "Tirar foto" })).toHaveProperty("disabled", false);
+  });
+
+  it("play rejeitado: fica no painel com recuperação, encerra os tracks", async () => {
+    play.mockRejectedValueOnce(new DOMException("", "NotSupportedError"));
     const { props } = setup();
     await flush();
-    fireEvent.click(screen.getByText("Concluir"));
-    expect(current.track.stopped).toBe(1);
-    expect(props.onClose).toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toContain("imagem ao vivo não iniciou");
+    expect(screen.queryByRole("button", { name: "Tirar foto" })).toBeNull();
+    expect(current.track.stop).toHaveBeenCalledOnce();
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(props.onNative).not.toHaveBeenCalled();
   });
 
-  it("encerra ao ocultar a página e ao sair da tela", async () => {
+  it.each([
+    ["NotAllowedError", "Confira a permissão"],
+    ["NotReadableError", "em uso por outro aplicativo"],
+    ["NotFoundError", "Nenhuma câmera disponível"],
+  ])("trata %s e só troca para nativa num toque", async (name, message) => {
+    getUserMedia.mockRejectedValueOnce(new DOMException("", name));
+    const { props } = setup();
+    await flush();
+    expect(screen.getByRole("status").textContent).toContain(message);
+    expect(props.onNative).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Usar câmera do celular" }));
+    expect(props.onNative).toHaveBeenCalledOnce();
+  });
+
+  it("aguarda uma abertura demorada com saídas imediatas e descarta stream tardio", async () => {
+    vi.useFakeTimers();
+    let deliver: (stream: typeof current.stream) => void = () => {};
+    getUserMedia.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          deliver = resolve;
+        }),
+    );
+    const { props, unmount } = setup();
+    expect(screen.getByRole("button", { name: "Voltar ao cômodo" })).toBeTruthy();
+    await act(async () => vi.advanceTimersByTimeAsync(10_000));
+    expect(screen.getByRole("status").textContent).toContain("demorou");
+    fireEvent.click(screen.getByRole("button", { name: "Escolher da galeria" }));
+    expect(props.onGallery).toHaveBeenCalledOnce();
+    unmount();
+    await act(async () => deliver(current.stream));
+    expect(current.track.stop).toHaveBeenCalledOnce();
+  });
+
+  it("encerra ao ocultar e só reinicia com nova tentativa", async () => {
+    const original = current;
     const { unmount } = setup();
     await flush();
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
-    document.dispatchEvent(new Event("visibilitychange"));
-    expect(current.track.stopped).toBe(1);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(original.track.stop).toHaveBeenCalledOnce();
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-    const second = fakeStream();
-    current = second;
-    document.dispatchEvent(new Event("visibilitychange"));
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    current = fakeStream();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await flush();
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
     unmount();
-    expect(second.track.stopped).toBe(1);
+    expect(current.track.stop).toHaveBeenCalledOnce();
   });
 
-  it("permissão negada: cai na câmera do celular", async () => {
-    getUserMedia.mockRejectedValueOnce(new DOMException("negado", "NotAllowedError"));
-    const { props } = setup();
+  it("permite um disparo de cada vez e mostra apenas a miniatura já salva", async () => {
+    let finish: (thumb: Blob) => void = () => {};
+    const onCapture = vi.fn(
+      () =>
+        new Promise<Blob>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { unmount } = setup({ onCapture });
     await flush();
-    expect(props.onNative).toHaveBeenCalledWith("falha");
-    expect(props.onClose).toHaveBeenCalled();
-  });
-
-  it("sem suporte: cai na câmera do celular", async () => {
-    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: undefined });
-    const { props } = setup();
-    await flush();
-    expect(props.onNative).toHaveBeenCalledWith("falha");
-  });
-
-  it("uma captura por vez e takePhoto com tamanho limitado", async () => {
-    const takes: Array<{ imageWidth?: number } | undefined> = [];
-    let finish: () => void = () => undefined;
-    (globalThis as { ImageCapture?: unknown }).ImageCapture = class {
-      async getPhotoCapabilities() {
-        return { imageWidth: { min: 640, max: 4000, step: 16 } };
-      }
-      async takePhoto(s?: { imageWidth?: number }) {
-        takes.push(s);
-        return new Blob(["p"], { type: "image/jpeg" });
-      }
-    };
-    const onCapture = vi.fn(() => new Promise<void>((r) => (finish = r)));
-    setup({ onCapture });
-    await flush();
-    const btn = screen.getByRole("button", { name: "Tirar foto" });
-    fireEvent.click(btn);
-    fireEvent.click(btn);
-    await flush();
-    expect(screen.getByRole("button", { name: "Salvando…" })).toHaveProperty("disabled", true);
-    fireEvent.click(screen.getByRole("button", { name: "Salvando…" }));
-    await flush();
-    expect(takes).toHaveLength(1);
-    expect(takes[0]?.imageWidth).toBe(pickPhotoWidth({ min: 640, max: 4000, step: 16 }));
-    expect(takes[0]!.imageWidth!).toBeLessThanOrEqual(2048);
-    await act(async () => finish());
+    const shutter = screen.getByRole("button", { name: "Tirar foto" });
+    fireEvent.click(shutter);
+    fireEvent.click(shutter);
     expect(onCapture).toHaveBeenCalledTimes(1);
-  });
-
-  it("'Usar câmera do celular' é opção secundária", async () => {
-    const { props } = setup();
-    await flush();
-    fireEvent.click(screen.getByText("Usar câmera do celular"));
-    expect(props.onNative).toHaveBeenCalledWith("escolha");
-    expect(current.track.stopped).toBe(1);
-  });
-
-  it("pickPhotoWidth respeita a faixa", () => {
-    expect(pickPhotoWidth({ min: 640, max: 4000, step: 16 })).toBe(2048);
-    expect(pickPhotoWidth({ min: 640, max: 4000, step: 100 })).toBe(2040);
-    expect(pickPhotoWidth({ min: 640, max: 1280 })).toBe(1280);
-    expect(pickPhotoWidth(undefined)).toBeNull();
+    expect(createObjectURL).not.toHaveBeenCalled();
+    const thumb = new Blob(["miniatura"]);
+    await act(async () => finish(thumb));
+    expect(createObjectURL).toHaveBeenCalledWith(thumb);
+    expect(screen.getByRole("img", { name: "Última foto salva" })).toBeTruthy();
+    unmount();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:preview");
   });
 });

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { toPdfModel } from "../../src/lib/vistoria/pdf-model";
 type ListResult = { total: number; byStatus: Record<string, number> };
 import {
   inspectionDatabase,
@@ -27,6 +28,65 @@ test("qualquer filho muda a revisão agregada e rejeita PDF obsoleto", async () 
       assert.ok(current.inspection.revision > old.inspection.revision);
       await assert.rejects(finalize(db, old), /mudou/);
     }
+  } finally {
+    await db.close();
+  }
+});
+
+test("secretaria mantém foto e relato em Sala e Cozinha no snapshot do termo", async () => {
+  const db = await inspectionDatabase();
+  const kitchen = "40000000-0000-4000-8000-000000000002";
+  const photoPath = (room: string) => `${id}/${room}/foto-${room.slice(-2)}.jpg`;
+  try {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('test.role','secretaria',false)`);
+    await db.query(
+      "INSERT INTO inspection_rooms (id,inspection_id,name,position) VALUES ($1,$2,'Cozinha',1)",
+      [kitchen, id],
+    );
+    for (const [room, text] of [
+      [kitchen, "Bancada com risco"],
+      [roomId, "Piso íntegro"],
+    ] as const) {
+      await db.query(
+        "INSERT INTO inspection_media (inspection_id,room_id,client_key,storage_path,mime,size_bytes,status) VALUES ($1,$2,$3,$4,'image/jpeg',100,'confirmada')",
+        [id, room, `client-key-${room.slice(-2)}`, photoPath(room)],
+      );
+      await db.query(
+        "INSERT INTO inspection_notes (inspection_id,room_id,client_key,source,status,approved_text) VALUES ($1,$2,$3,'texto','revisado',$4)",
+        [id, room, `note-key-${room.slice(-2)}`, text],
+      );
+    }
+    await assert.rejects(
+      db.query(
+        "INSERT INTO inspection_media (inspection_id,room_id,item_id,client_key,storage_path,mime,size_bytes,status) VALUES ($1,$2,$3,'foto-invalida',$4,'image/jpeg',100,'confirmada')",
+        [id, kitchen, itemId, `${id}/${kitchen}/foto-invalida.jpg`],
+      ),
+      /foreign key constraint/,
+    );
+    const canonical = await snapshot(db);
+    const model = toPdfModel(
+      { ...canonical, documents: [], events: [], serverTime: "" },
+      { draft: false, version: 1 },
+    );
+    assert.deepEqual(
+      model.rooms.map((room) => [
+        room.name,
+        room.photos.map((photo) => photo.path),
+        room.notes.map((note) => note.text),
+      ]),
+      [
+        ["Sala", [photoPath(roomId)], ["Piso íntegro"]],
+        ["Cozinha", [photoPath(kitchen)], ["Bancada com risco"]],
+      ],
+    );
+    await db.exec("RESET ROLE; SELECT set_config('test.role','corretor',false)");
+    await db.query("UPDATE inspections SET plan_confirmed=true WHERE id=$1", [id]);
+    await finalize(db, await snapshot(db));
+    assert.equal(
+      (await db.query("SELECT version FROM inspection_documents WHERE inspection_id=$1", [id])).rows
+        .length,
+      1,
+    );
   } finally {
     await db.close();
   }

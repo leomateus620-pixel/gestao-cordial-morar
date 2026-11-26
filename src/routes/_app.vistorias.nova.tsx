@@ -2,8 +2,11 @@ import { RequireModuleAccess } from "@/components/auth/RequireModuleAccess";
 import { CreationWorkspace } from "@/components/vistoria/creation-workspace";
 import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/_app/vistorias/nova")({
-  validateSearch: (search: Record<string, unknown>): { contrato?: string; tipo?: "entrada" | "saida" } => ({
-    contrato: typeof search.contrato === "string" && search.contrato.trim() ? search.contrato : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { contrato?: string; tipo?: "entrada" | "saida" } => ({
+    contrato:
+      typeof search.contrato === "string" && search.contrato.trim() ? search.contrato : undefined,
     tipo: search.tipo === "saida" ? "saida" : undefined,
   }),
   head: () => ({
@@ -27,5 +30,12 @@ export const Route = createFileRoute("/_app/vistorias/nova")({
   ),
 });
 function NovaVistoria() {
-  return <CreationWorkspace />;
+  const { contrato, tipo } = Route.useSearch();
+  return (
+    <CreationWorkspace
+      key={`${contrato ?? "avulsa"}:${tipo ?? "entrada"}`}
+      contractId={contrato}
+      rentalKind={tipo}
+    />
+  );
 }

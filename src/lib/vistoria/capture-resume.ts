@@ -1,17 +1,18 @@
 // Marcador "estava tirando foto": permite avisar e voltar ao mesmo cômodo/item
 // quando o celular fecha a página enquanto a câmera nativa ou a galeria está aberta.
 
-export const RESUME_TTL_MS = 15 * 60_000;
-export const RESUME_MESSAGE =
-  "O celular fechou a página enquanto a câmera estava aberta (pouca memória) e a foto não chegou. Tente a Câmera do app ou escolha da Galeria.";
+export const RESUME_TTL_MS = 24 * 60 * 60_000;
 
-export type CaptureOrigin = "camera" | "galeria";
-export type CaptureMarker = {
+export type CaptureOrigin = "app" | "camera" | "galeria";
+export type CaptureTarget = {
   userId: string;
   inspectionId: string;
   roomId: string;
   itemId: string | null;
+};
+export type CaptureMarker = CaptureTarget & {
   origin: CaptureOrigin;
+  clientKey?: string;
   at: number;
   loadId: string;
 };
@@ -39,9 +40,16 @@ export function armCaptureMarker(
   return marker;
 }
 
-export function clearCaptureMarker(store: KV, userId: string, inspectionId: string) {
+export function clearCaptureMarker(
+  store: KV,
+  userId: string,
+  inspectionId: string,
+  expected?: CaptureMarker,
+) {
   try {
-    store.removeItem(markerKey(userId, inspectionId));
+    const key = markerKey(userId, inspectionId);
+    if (expected && store.getItem(key) !== JSON.stringify(expected)) return;
+    store.removeItem(key);
   } catch {
     /* ignore */
   }
@@ -49,7 +57,8 @@ export function clearCaptureMarker(store: KV, userId: string, inspectionId: stri
 
 /**
  * Devolve o marcador só depois de uma recarga real, dentro do prazo.
- * No mesmo carregamento (a pessoa só cancelou a câmera) ou expirado, apaga em silêncio.
+ * No mesmo carregamento o seletor pode continuar aberto. Só o cancelamento
+ * ou a confirmação daquela tentativa podem encerrar o marcador.
  */
 export function readResumeMarker(
   store: KV,
@@ -70,12 +79,13 @@ export function readResumeMarker(
     m.userId === userId &&
     m.inspectionId === inspectionId &&
     typeof m.at === "number" &&
-    m.loadId !== loadId &&
+    typeof m.roomId === "string" &&
+    typeof m.loadId === "string" &&
     now - m.at >= 0 &&
     now - m.at < RESUME_TTL_MS;
   if (!valid) {
-    clearCaptureMarker(store, userId, inspectionId);
+    clearCaptureMarker(store, userId, inspectionId, m);
     return null;
   }
-  return m;
+  return m.loadId === loadId ? null : m;
 }

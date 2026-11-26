@@ -11,6 +11,7 @@ import {
   type Meters,
   type MeterStatus,
 } from "@/lib/vistoria/model";
+import { inspectionPropertyCodes } from "@/lib/vistoria/ui";
 import { useLocalQueue, useSaver } from "@/lib/vistoria/use-inspection";
 import { updateInspectionBasics, type InspectionFull } from "@/lib/vistoria/vistoria.functions";
 import { useServerFn } from "@tanstack/react-start";
@@ -60,6 +61,7 @@ export function DataTab({
   };
   const f = "h-11 w-full rounded-md border border-input bg-background px-3 text-sm";
   const cad = i.property_snapshot?.cadastro ?? {};
+  const codes = inspectionPropertyCodes(cad);
   const conf = i.property_snapshot?.confirmado ?? {};
   return (
     <form
@@ -71,14 +73,7 @@ export function DataTab({
     >
       <section className="premium-card space-y-1 rounded-2xl p-4 text-sm">
         <h2 className="font-semibold">Identificação (registrada na criação)</h2>
-        <p>
-          {[
-            cad.codigo_cordial && `Cordial ${cad.codigo_cordial}`,
-            cad.codigo_morar && `Morar ${cad.codigo_morar}`,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        {codes && <p>{codes}</p>}
         <p className="text-foreground/65">{i.property_snapshot?.endereco}</p>
         <p className="text-foreground/65">
           Tipo {conf.tipo ?? cad.tipo ?? "—"} · {conf.dormitorios ?? "—"} dorm. ({conf.suites ?? 0}{" "}

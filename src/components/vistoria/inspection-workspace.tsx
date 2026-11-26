@@ -11,23 +11,21 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/lib/auth-mock";
+import {
+  readRememberedCompetence,
+  rentalSearch,
+  type RentalSearch,
+} from "@/lib/rentals/competence-nav";
 import { cn } from "@/lib/utils";
 import { DraftStatus, useDraftRow, useDrafts } from "@/lib/vistoria/drafts";
 import { discardRoomPending, newClientKey, type PendingEntry } from "@/lib/vistoria/local-store";
-import { prepareImage, startRecorder, type Recorder } from "@/lib/vistoria/media-client";
-import { canKeepOriginal, TOO_BIG_MESSAGE } from "@/lib/vistoria/image-prepare";
-import {
-  armCaptureMarker,
-  clearCaptureMarker,
-  readResumeMarker,
-  RESUME_MESSAGE,
-  type CaptureMarker,
-  type CaptureOrigin,
-} from "@/lib/vistoria/capture-resume";
+import { startRecorder, type Recorder } from "@/lib/vistoria/media-client";
 import { checkDeviceStorage, LOW_MESSAGE } from "@/lib/vistoria/storage-persist";
-import { CAMERA_FAILED, InAppCamera, supportsInAppCamera } from "./in-app-camera";
+import { InAppCamera } from "./in-app-camera";
+import { useInspectionPhotos } from "./use-inspection-photos";
 import {
   itemResolved,
+  reviewIssues,
   KIND_LABEL,
   progress,
   STATUS_LABEL,
@@ -65,7 +63,7 @@ import {
   Camera,
   Check,
   CloudOff,
-  Folder,
+  Images,
   Keyboard,
   Loader2,
   Mic,
@@ -74,7 +72,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { fmtInspectionTime as fmt } from "@/lib/vistoria/ui";
@@ -86,15 +84,22 @@ import { useTranscriptionRunner } from "@/lib/vistoria/use-inspection";
 import type { NoteRow } from "@/lib/vistoria/types";
 type Runner = ReturnType<typeof useTranscriptionRunner>;
 import { PhotosBlock } from "./photos";
+import { RoomIcon, roomKindFromName } from "./room-icon";
 type Saver = ReturnType<typeof useSaver>;
 type Queue = ReturnType<typeof useLocalQueue>;
 type Tab = "ambientes" | "dados" | "revisao";
 export function VistoriaWorkspace({
   vistoriaId,
   returnToRentalForm = false,
+  fromCentral = false,
+  resumeRoom,
+  openReview = false,
 }: {
   vistoriaId: string;
   returnToRentalForm?: boolean;
+  fromCentral?: boolean;
+  resumeRoom?: string;
+  openReview?: boolean;
 }) {
   useFieldViewport();
   const session = useSession();
@@ -123,24 +128,42 @@ export function VistoriaWorkspace({
   const [jump, setJump] = useState<{ kind: string; itemId?: string } | null>(null);
 
   const data = full.data;
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const pending = useMemo(() => {
+    const confirmed = new Set(data?.media.map((photo) => photo.client_key));
+    return queue.pending.filter(
+      (entry) => entry.kind !== "photo" || !confirmed.has(entry.clientKey),
+    );
+  }, [data?.media, queue.pending]);
   const firstLoad = useRef(true);
   useEffect(() => {
     if (data && firstLoad.current) {
       firstLoad.current = false;
-      if (data.inspection.status === "concluida") setTab("revisao");
+      if (data.inspection.status === "concluida" || openReview) setTab("revisao");
     }
-  }, [data]);
+  }, [data, openReview]);
   useEffect(() => {
     if (!data?.rooms.length) return;
-    const saved = sessionStorage.getItem(`vistoria:${session?.id}:${vistoriaId}:room`);
+    let saved: string | null = null;
+    try {
+      saved = sessionStorage.getItem(`vistoria:${session?.id}:${vistoriaId}:room`);
+    } catch {
+      // A vistoria continua acessível sem armazenamento de preferências.
+    }
+    const named = resumeRoom ? data.rooms.filter((r) => r.name === resumeRoom) : [];
     setRoomId((cur) => {
       if (cur && data.rooms.some((r) => r.id === cur)) return cur;
+      if (named.length === 1) return named[0].id;
       if (saved && data.rooms.some((r) => r.id === saved)) return saved;
-      return data.rooms[0].id;
+      return named[0]?.id ?? data.rooms[0].id;
     });
-  }, [data?.rooms, vistoriaId, session?.id]);
+  }, [data?.rooms, vistoriaId, session?.id, resumeRoom]);
   useEffect(() => {
-    if (roomId) sessionStorage.setItem(`vistoria:${session?.id}:${vistoriaId}:room`, roomId);
+    try {
+      if (roomId) sessionStorage.setItem(`vistoria:${session?.id}:${vistoriaId}:room`, roomId);
+    } catch {
+      // A seleção atual continua disponível nesta tela.
+    }
   }, [roomId, vistoriaId, session?.id]);
 
   if (full.isLoading)
@@ -170,23 +193,19 @@ export function VistoriaWorkspace({
   const rental = Boolean(insp.rental_contract_id);
 
   return (
-    <div
-      className={cn(
-        "inspection-workspace mx-auto w-full pb-40",
-        rental ? "max-w-4xl" : "max-w-2xl",
-      )}
-    >
+    <div className={cn("inspection-workspace mx-auto w-full max-w-5xl pb-40")}>
       <header className="sticky top-0 z-20 -mx-4 mb-3 border-b border-border/50 bg-background px-4 pb-2 pt-2 backdrop-blur">
         <div className="flex items-center gap-2">
-          {insp.rental_contract_id ? (
+          {insp.rental_contract_id && !fromCentral ? (
             <Link
               to="/alugueis"
               aria-label="Voltar ao aluguel"
-              search={
+              search={rentalSearch<RentalSearch>(
+                { competencia: readRememberedCompetence() },
                 returnToRentalForm
                   ? { formulario: insp.rental_contract_id, etapa: "vistorias" }
-                  : { id: insp.rental_contract_id, etapa: "vistorias" }
-              }
+                  : { id: insp.rental_contract_id, etapa: "vistorias" },
+              )}
               className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-foreground/5"
             >
               <ArrowLeft className="size-5" />
@@ -201,10 +220,10 @@ export function VistoriaWorkspace({
             </Link>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">
+            <h1 className="text-sm font-bold sm:text-base">
               Nº {insp.numero} · {KIND_LABEL[insp.kind as InspectionKind]}
-            </p>
-            <p className="truncate text-xs text-foreground/60">{snap.endereco}</p>
+            </h1>
+            <p className="break-words text-xs text-foreground/60 sm:text-sm">{snap.endereco}</p>
           </div>
           <span
             className={cn(
@@ -257,7 +276,7 @@ export function VistoriaWorkspace({
         {drafts.pending.length ? (
           <DraftStatus />
         ) : (
-          <SaveIndicator state={saver.state} pending={queue.pending} serverTime={data.serverTime} />
+          <SaveIndicator state={saver.state} pending={pending} serverTime={data.serverTime} />
         )}
         {queue.error && (
           <p role="alert" className="text-sm text-destructive">
@@ -309,7 +328,8 @@ export function VistoriaWorkspace({
           setRoomId={setRoomId}
           readOnly={readOnly}
           saver={saver}
-          queue={queue}
+          queue={{ ...queue, pending }}
+          onPreparingChange={setPreparingPhotos}
           userId={session?.id}
           voiceReady={voiceReady}
           voiceAdmin={voiceAdmin}
@@ -322,9 +342,12 @@ export function VistoriaWorkspace({
       {tab === "revisao" && (
         <ReviewTab
           data={data}
-          pending={queue.pending}
+          pending={pending}
           queueBlocked={
-            Boolean(queue.error) || queue.unpersisted.length > 0 || Boolean(data.cacheMode)
+            preparingPhotos ||
+            Boolean(queue.error) ||
+            queue.unpersisted.length > 0 ||
+            Boolean(data.cacheMode)
           }
           saver={saver}
           onJump={(rid, itemId, kind) => {
@@ -431,6 +454,7 @@ function RoomsTab(props: {
   readOnly: boolean;
   saver: Saver;
   queue: Queue;
+  onPreparingChange: (active: boolean) => void;
   userId?: string;
   voiceReady: boolean;
   voiceAdmin: boolean;
@@ -441,7 +465,6 @@ function RoomsTab(props: {
   const { data, roomId, setRoomId, readOnly, saver, queue } = props;
   const drafts = useDrafts();
   const queryClient = useQueryClient();
-  const [area, setArea] = useState<"itens" | "fotos" | "relatos">("itens");
   const [roomsOpen, setRoomsOpen] = useState(false);
   const [evidenceItem, setEvidenceItem] = useState<string | null>(null);
   const insp = data.inspection;
@@ -458,70 +481,20 @@ function RoomsTab(props: {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [mode, setMode] = useState<"none" | "texto">("none");
-  const camRef = useRef<HTMLInputElement>(null);
-  const galRef = useRef<HTMLInputElement>(null);
-  const [camOpen, setCamOpen] = useState(false);
-  const [resume, setResume] = useState<CaptureMarker | null>(null);
   const [storageLow, setStorageLow] = useState(false);
   const itemKey = `vistoria:${props.userId}:${insp.id}:item`;
-  const safeStore = () => {
-    try {
-      return window.localStorage;
-    } catch {
-      return null;
-    }
-  };
-  // Marcador de retomada e aviso de espaço: só na primeira montagem.
   useEffect(() => {
     if (!props.userId) return;
-    const store = safeStore();
-    const m = store ? readResumeMarker(store, props.userId, insp.id) : null;
-    if (m) {
-      setResume(m);
-      if (data.rooms.some((r) => r.id === m.roomId)) setRoomId(m.roomId);
+    let store: Storage | undefined;
+    try {
+      store = window.localStorage;
+    } catch {
+      // A gravação de fotos continua a usar IndexedDB.
     }
-    void checkDeviceStorage(navigator.storage, store ?? undefined).then(setStorageLow);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void checkDeviceStorage(navigator.storage, store).then(setStorageLow);
   }, [props.userId, insp.id]);
-  function armMarker(origin: CaptureOrigin, itemId: string | null) {
-    const store = safeStore();
-    if (!store || !props.userId || !room) return;
-    armCaptureMarker(store, { userId: props.userId, inspectionId: insp.id, roomId: room.id, itemId, origin });
-  }
-  function clearMarker() {
-    const store = safeStore();
-    if (store && props.userId) clearCaptureMarker(store, props.userId, insp.id);
-  }
-  // Câmera nativa cancelada sem recarregar: o foco volta à página → apaga em silêncio.
-  useEffect(() => {
-    const back = () => window.setTimeout(clearMarker, 1500);
-    window.addEventListener("focus", back);
-    return () => window.removeEventListener("focus", back);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.userId, insp.id]);
-  function openNative(itemId: string | null) {
-    armMarker("camera", itemId);
-    camRef.current?.click();
-  }
-  function openGallery(itemId: string | null) {
-    setEvidenceItem(itemId);
-    armMarker("galeria", itemId);
-    galRef.current?.click();
-  }
-  function openCamera(itemId: string | null) {
-    setEvidenceItem(itemId);
-    if (supportsInAppCamera()) setCamOpen(true);
-    else openNative(itemId);
-  }
   useEffect(() => {
     if (!props.jump) return;
-    setArea(
-      props.jump.kind === "relato_pendente"
-        ? "relatos"
-        : ["ambiente_sem_foto", "midia_pendente"].includes(props.jump.kind)
-          ? "fotos"
-          : "itens",
-    );
     if (props.jump.kind === "sem_ambientes") setAdding({ name: "", kind: "outro" });
     if (props.jump.kind === "relato_pendente") {
       setEvidenceItem(props.jump.itemId ?? null);
@@ -549,7 +522,34 @@ function RoomsTab(props: {
     }
   }, [insp.id, insp.revision, insp.status, saver, updInsp]);
 
+  const photos = useInspectionPhotos({
+    userId: props.userId,
+    inspectionId: insp.id,
+    rooms: data.rooms,
+    media: data.media,
+    queue,
+    setRoomId,
+    markStarted,
+    onPreparingChange: props.onPreparingChange,
+  });
+  const resume = photos.resume;
+  const camera = photos.camera;
+  function targetFor(itemId: string | null) {
+    if (!props.userId || !room) return null;
+    return { userId: props.userId, inspectionId: insp.id, roomId: room.id, itemId };
+  }
+  function openCamera(itemId: string | null) {
+    const target = targetFor(itemId);
+    if (target) photos.openCamera(target);
+  }
+  function openGallery(itemId: string | null) {
+    const target = targetFor(itemId);
+    if (target) photos.openPicker(target, "galeria");
+  }
+
   /* ---------- Voz ---------- */
+  const openingRecorder = useRef(false);
+  const recorderMounted = useRef(false);
   const recRef = useRef<{
     rec: Recorder;
     ctx: VoiceContext;
@@ -560,9 +560,10 @@ function RoomsTab(props: {
   const [level, setLevel] = useState(0);
   const currentCtx = useRef<VoiceContext | null>(null);
   const sessionId = useRef(newClientKey());
-  currentCtx.current = room
-    ? { inspectionId: insp.id, roomId: room.id, sessionId: sessionId.current }
-    : null;
+  currentCtx.current =
+    room && props.active
+      ? { inspectionId: insp.id, roomId: room.id, sessionId: sessionId.current }
+      : null;
 
   const saveSegment = useCallback(
     async (rec: Recorder, ctx: VoiceContext) => {
@@ -604,82 +605,99 @@ function RoomsTab(props: {
     await saveSegment(cur.rec, cur.ctx);
   }, [saveSegment]);
 
-  const startRecording = useCallback(async (replaces?: NoteRow) => {
-    if (!room || recRef.current) return;
-    const ctx: VoiceContext = {
-      inspectionId: insp.id,
-      roomId: room.id,
-      sessionId: sessionId.current,
-      itemId: replaces ? replaces.item_id : evidenceItem,
-      replacesNoteId: replaces?.id ?? null,
-    };
-    try {
-      const rec = await startRecorder(() => {
-        toast.warning("Gravação interrompida pelo sistema. O trecho gravado foi salvo.");
-        void stopRecording();
-      });
-      if (currentCtx.current?.roomId !== ctx.roomId) {
-        rec.cancel();
-        return;
-      }
-      const startedAt = Date.now();
-      let segmenting = false;
-      const timer = window.setInterval(async () => {
-        const cur = recRef.current;
-        if (!cur) return;
-        setLevel(cur.rec.level());
-        // Segmenta a cada 60 s: cada trecho é um WAV completo salvo localmente.
-        if (Date.now() - cur.startedAt > 60_000 && !segmenting) {
-          segmenting = true;
-          const next = await startRecorder().catch(() => null);
-          if (recRef.current !== cur) {
-            next?.cancel();
-            segmenting = false;
-            return;
-          }
-          const old = cur.rec;
-          if (next) {
-            recRef.current = { ...cur, rec: next, startedAt: Date.now() };
-          } else {
-            recRef.current = null;
-            window.clearInterval(cur.timer);
-            setRecording(null);
-          }
-          await saveSegment(old, cur.ctx);
-          segmenting = false;
+  const startRecording = useCallback(
+    async (replaces?: NoteRow, itemId = evidenceItem) => {
+      if (!room || recRef.current || openingRecorder.current) return;
+      openingRecorder.current = true;
+      const ctx: VoiceContext = {
+        inspectionId: insp.id,
+        roomId: room.id,
+        sessionId: sessionId.current,
+        itemId: replaces ? replaces.item_id : itemId,
+        replacesNoteId: replaces?.id ?? null,
+      };
+      try {
+        const rec = await startRecorder(() => {
+          toast.warning("Gravação interrompida pelo sistema. O trecho gravado foi salvo.");
+          void stopRecording();
+        });
+        if (
+          !recorderMounted.current ||
+          currentCtx.current?.roomId !== ctx.roomId ||
+          document.hidden
+        ) {
+          rec.cancel();
+          return;
         }
-      }, 250);
-      recRef.current = { rec, ctx, startedAt, timer };
-      setRecording({
-        startedAt,
-        roomName: [room.name, data.items.find((i) => i.id === evidenceItem)?.name]
-          .filter(Boolean)
-          .join(" · "),
-      });
-      void markStarted();
-    } catch (e) {
-      const name = (e as { name?: string })?.name;
-      toast.error(
-        name === "NotAllowedError"
-          ? "Permissão do microfone negada. Libere o microfone nas configurações do navegador."
-          : name === "NotFoundError"
-            ? "Nenhum microfone encontrado."
-            : e instanceof Error
-              ? e.message
-              : "Não foi possível gravar.",
-      );
-    }
-  }, [room, insp.id, stopRecording, saveSegment, markStarted, evidenceItem, data.items]);
+        const startedAt = Date.now();
+        let segmenting = false;
+        const timer = window.setInterval(async () => {
+          const cur = recRef.current;
+          if (!cur) return;
+          setLevel(cur.rec.level());
+          // Segmenta a cada 60 s: cada trecho é um WAV completo salvo localmente.
+          if (Date.now() - cur.startedAt > 60_000 && !segmenting) {
+            segmenting = true;
+            const next = await startRecorder().catch(() => null);
+            if (recRef.current !== cur) {
+              next?.cancel();
+              segmenting = false;
+              return;
+            }
+            const old = cur.rec;
+            if (next) {
+              recRef.current = { ...cur, rec: next, startedAt: Date.now() };
+            } else {
+              recRef.current = null;
+              window.clearInterval(cur.timer);
+              setRecording(null);
+            }
+            await saveSegment(old, cur.ctx);
+            segmenting = false;
+          }
+        }, 250);
+        recRef.current = { rec, ctx, startedAt, timer };
+        setRecording({
+          startedAt,
+          roomName: [room.name, data.items.find((i) => i.id === ctx.itemId)?.name]
+            .filter(Boolean)
+            .join(" · "),
+        });
+        void markStarted();
+      } catch (e) {
+        const name = (e as { name?: string })?.name;
+        toast.error(
+          name === "NotAllowedError"
+            ? "Permissão do microfone negada. Libere o microfone nas configurações do navegador."
+            : name === "NotFoundError"
+              ? "Nenhum microfone encontrado."
+              : e instanceof Error
+                ? e.message
+                : "Não foi possível gravar.",
+        );
+      } finally {
+        openingRecorder.current = false;
+      }
+    },
+    [room, insp.id, stopRecording, saveSegment, markStarted, evidenceItem, data.items],
+  );
 
   const stopRef = useRef(stopRecording);
   stopRef.current = stopRecording;
   useBlocker({
     shouldBlockFn: async () => {
       if (recRef.current) await stopRef.current();
-      return queue.hasUnpersisted();
+      return photos.isPreparing() || queue.hasUnpersisted();
     },
-    enableBeforeUnload: () => Boolean(recRef.current) || queue.hasUnpersisted(),
+    enableBeforeUnload: () =>
+      Boolean(recRef.current) || photos.isPreparing() || queue.hasUnpersisted(),
   });
+  useEffect(() => {
+    recorderMounted.current = true;
+    return () => {
+      recorderMounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     if (!props.active && recRef.current) void stopRef.current();
   }, [props.active]);
@@ -697,7 +715,11 @@ function RoomsTab(props: {
   useEffect(() => {
     if (!roomId) return;
     if (resume && resume.roomId === roomId) {
-      setEvidenceItem(resume.itemId);
+      setEvidenceItem(
+        data.items.some((item) => item.id === resume.itemId && item.room_id === roomId)
+          ? resume.itemId
+          : null,
+      );
       return;
     }
     try {
@@ -721,67 +743,6 @@ function RoomsTab(props: {
     }
   }, [roomId, evidenceItem, itemKey]);
 
-  /* ---------- Fotos ---------- */
-  // Uma foto por vez: prepara reduzida (com miniatura) e só então guarda na fila.
-  async function stagePhoto(
-    file: Blob & { name?: string },
-    source: "captura" | "importacao",
-    ctxRoom: string,
-    ctxItem: string | null,
-  ) {
-    if (!props.userId) return false;
-    const base = {
-      userId: props.userId,
-      inspectionId: insp.id,
-      roomId: ctxRoom,
-      itemId: ctxItem,
-      clientKey: newClientKey(),
-      kind: "photo" as const,
-      takenAt: new Date().toISOString(),
-      timeSource: source,
-      status: "local" as const,
-      attempts: 0,
-      createdAt: new Date().toISOString(),
-    };
-    try {
-      const { blob, width, height, thumb } = await prepareImage(file);
-      return queue.stage({ ...base, blob, thumb, mime: "image/jpeg", width, height });
-    } catch {
-      // Original só se for JPEG/PNG de até 15 MB; senão, aviso amigável.
-      if (canKeepOriginal(file)) return queue.stage({ ...base, blob: file, mime: file.type });
-      toast.error(`${file.name ? `${file.name}: ` : ""}${TOO_BIG_MESSAGE}`);
-      return false;
-    }
-  }
-  async function afterStaged(ok: number) {
-    if (!ok) return;
-    clearMarker();
-    setResume(null);
-    void markStarted();
-    await queue.refresh();
-    void queue.process();
-  }
-  async function onFiles(files: FileList | null, source: "captura" | "importacao") {
-    if (!files?.length || !room || !props.userId) return;
-    const ctxRoom = room.id;
-    const ctxItem = evidenceItem;
-    let ok = 0;
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`${file.name}: não é uma imagem.`);
-        continue;
-      }
-      if (await stagePhoto(file, source, ctxRoom, ctxItem)) ok++;
-    }
-    await afterStaged(ok);
-  }
-  async function onCameraShot(blob: Blob) {
-    if (!room) return;
-    const ok = await stagePhoto(blob, "captura", room.id, evidenceItem);
-    if (!ok) throw new Error("não salvo");
-    await afterStaged(1);
-  }
-
   if (!data.rooms.length && readOnly)
     return <p className="text-sm text-foreground/60">Sem ambientes.</p>;
 
@@ -790,32 +751,93 @@ function RoomsTab(props: {
   const roomNotes = room ? data.notes.filter((n) => n.room_id === room.id) : [];
   const roomPending = room ? queue.pending.filter((p) => p.roomId === room.id) : [];
 
-  const roomPhotoCount =
-    roomMedia.length + roomPending.filter((p) => p.kind === "photo").length;
+  const photoCount = (id: string) =>
+    data.media.filter((photo) => photo.room_id === id).length +
+    queue.pending.filter((entry) => entry.roomId === id && entry.kind === "photo").length;
+  const roomPhotoCount = room ? photoCount(room.id) : 0;
+  const reviewCount = readOnly
+    ? 0
+    : reviewIssues({
+        basics: insp,
+        rooms: data.rooms,
+        items: data.items,
+        media: data.media,
+        notes: data.notes,
+        localPending: queue.pending.map((entry) => ({
+          room_id: entry.roomId,
+          kind: entry.kind,
+          status: entry.status,
+        })),
+      }).length + drafts.pending.length;
+  const reviewNotice = photos.isPreparing()
+    ? "Preparando mídia no aparelho"
+    : queue.unpersisted.length || queue.error
+      ? "Há mídia aguardando gravação no aparelho"
+      : data.cacheMode
+        ? "Reconecte para emitir"
+        : reviewCount
+          ? `${reviewCount} ${reviewCount === 1 ? "pendência" : "pendências"} antes de emitir`
+          : "";
+  function openDescription(itemId: string | null = null) {
+    setEvidenceItem(itemId);
+    setMode("texto");
+    window.requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>("#room-notes textarea")?.focus(),
+    );
+  }
 
   return (
     <div>
-      {resume && (
+      {resume && !readOnly && (
         <div
           role="alert"
-          className="mb-3 flex flex-wrap items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+          className="mb-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
         >
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <p className="min-w-0 flex-1">{RESUME_MESSAGE}</p>
-          <button
-            type="button"
-            className="min-h-11 rounded-lg border border-amber-400 px-3 font-semibold"
-            onClick={() => {
-              clearMarker();
-              setResume(null);
-            }}
-          >
-            Entendi
-          </button>
+          <p>
+            <AlertTriangle className="mr-2 inline size-4" aria-hidden />
+            {resume.origin === "galeria"
+              ? "A seleção da galeria foi interrompida antes de salvar todas as fotos."
+              : "A captura foi interrompida antes de salvar a foto."}{" "}
+            Confira as fotos de{" "}
+            <strong>{data.rooms.find((r) => r.id === resume.roomId)?.name}</strong> e refaça a que
+            faltou.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border border-amber-400 px-3 font-semibold"
+              onClick={() => {
+                setRoomId(resume.roomId);
+                photos.openCamera(resume);
+              }}
+            >
+              Tirar foto
+            </button>
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border border-amber-400 px-3 font-semibold"
+              onClick={() => {
+                setRoomId(resume.roomId);
+                photos.openPicker(resume, "galeria");
+              }}
+            >
+              Escolher da galeria
+            </button>
+            <button
+              type="button"
+              className="min-h-11 px-3 underline"
+              onClick={photos.dismissResume}
+            >
+              Dispensar aviso
+            </button>
+          </div>
         </div>
       )}
       {storageLow && (
-        <p role="alert" className="mb-3 rounded-xl border border-destructive/40 p-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="mb-3 rounded-xl border border-destructive/40 p-3 text-sm text-destructive"
+        >
           {LOW_MESSAGE}
         </p>
       )}
@@ -850,7 +872,6 @@ function RoomsTab(props: {
                         onClick={() => {
                           setRoomId(r.id);
                           setRoomsOpen(false);
-                          setArea("itens");
                         }}
                       >
                         <strong>
@@ -869,71 +890,67 @@ function RoomsTab(props: {
           </Dialog>
         </>
       )}
-      <div
-        className={
-          rental
-            ? "mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-            : "-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1"
-        }
-        aria-label={rental ? "Cômodos do imóvel" : "Atalhos de ambientes"}
-      >
-        {data.rooms.map((r) => {
-          const photoCount = data.media.filter((m) => m.room_id === r.id).length;
-          const its = data.items.filter((i) => i.room_id === r.id);
-          const done = its.length > 0 && its.every(itemResolved);
-          return (
+      <section className="mb-4" aria-labelledby="inspection-rooms-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="inspection-rooms-title" className="text-base font-semibold">
+            Cômodos
+          </h2>
+          {!readOnly && !adding && (
             <button
-              key={r.id}
-              aria-pressed={r.id === roomId}
               type="button"
-              onClick={() => {
-                setRoomId(r.id);
-                setRenaming(null);
-              }}
-              className={cn(
-                rental
-                  ? "flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left text-sm font-medium"
-                  : "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium",
-                r.id === roomId
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-input bg-background",
-                done && r.id !== roomId && "border-emerald-600/50",
-              )}
+              onClick={() => setAdding({ name: "", kind: "outro" })}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary/35 bg-card px-3 text-sm font-semibold text-primary"
             >
-              {rental ? (
-                <>
-                  <Folder className="size-5 shrink-0" aria-hidden />
-                  <span className="min-w-0">
+              <Plus className="size-4" aria-hidden /> Adicionar cômodo
+            </button>
+          )}
+        </div>
+        {data.rooms.length > 0 && (
+          <div
+            className="mt-2 grid max-h-60 gap-2 overflow-y-auto p-1 sm:grid-cols-2 lg:grid-cols-3"
+            role="group"
+            aria-label="Selecionar cômodo"
+          >
+            {data.rooms.map((r) => {
+              const count = photoCount(r.id);
+              const selected = r.id === roomId;
+              return (
+                <button
+                  key={r.id}
+                  aria-pressed={selected}
+                  type="button"
+                  onClick={() => {
+                    setRoomId(r.id);
+                    setRenaming(null);
+                  }}
+                  className={cn(
+                    "flex min-h-14 min-w-0 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm",
+                    selected
+                      ? "border-primary bg-primary/10 text-primary ring-1 ring-inset ring-primary"
+                      : "border-border bg-card text-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-lg",
+                      selected ? "bg-primary text-primary-foreground" : "bg-foreground/5",
+                    )}
+                  >
+                    <RoomIcon kind={r.kind} name={r.name} className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
                     <strong className="block break-words">{r.name}</strong>
-                    <span className="block text-xs opacity-90">
-                      {photoCount} {photoCount === 1 ? "foto" : "fotos"}
+                    <span className="block text-xs text-foreground/70">
+                      {count} {count === 1 ? "foto" : "fotos"}
                     </span>
                   </span>
-                </>
-              ) : (
-                <>
-                  {done && <Check className="mr-1 inline size-3.5" />}
-                  {r.name}
-                </>
-              )}
-            </button>
-          );
-        })}
-        {!readOnly && (!rental || !adding) && (
-          <button
-            type="button"
-            onClick={() => setAdding({ name: "", kind: "outro" })}
-            className={
-              rental && !data.rooms.length
-                ? "min-h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
-                : "min-h-11 shrink-0 rounded-xl border border-dashed border-primary/50 px-4 text-sm font-medium text-primary"
-            }
-          >
-            <Plus className="mr-1 inline size-4" />
-            {rental ? "Adicionar cômodo" : "Ambiente"}
-          </button>
+                  {selected && <Check className="size-4 shrink-0" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </section>
 
       {adding && (
         <div className="premium-card mb-3 space-y-2 rounded-2xl p-3">
@@ -1000,7 +1017,7 @@ function RoomsTab(props: {
                         data: {
                           inspectionId: insp.id,
                           name: adding.name.trim(),
-                          kind: adding.kind,
+                          kind: rental ? roomKindFromName(adding.name) : adding.kind,
                           furnished,
                         },
                       }),
@@ -1066,7 +1083,9 @@ function RoomsTab(props: {
               </>
             ) : (
               <>
-                <h2 className="min-w-0 flex-1 truncate text-lg font-bold">{room.name}</h2>
+                <h2 className="min-w-0 flex-1 break-words text-lg font-bold sm:text-xl">
+                  {room.name}
+                </h2>
                 {!readOnly && (
                   <>
                     <details className="relative">
@@ -1120,167 +1139,141 @@ function RoomsTab(props: {
             )}
           </div>
 
-          {!rental && (
-            <nav className="mb-3 grid grid-cols-3 border-b" aria-label="Registro do ambiente">
-              {(["itens", "fotos", "relatos"] as const).map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  aria-pressed={area === a}
-                  className={cn(
-                    "min-h-11 border-b-2 text-sm font-semibold",
-                    area === a
-                      ? "border-primary text-primary"
-                      : "border-transparent text-foreground/60",
-                  )}
-                  onClick={() => {
-                    setArea(a);
-                    if (a === "relatos") setMode("texto");
-                  }}
-                >
-                  {
-                    {
-                      itens: "Itens",
-                      fotos: `Fotos (${roomMedia.length + roomPending.filter((p) => p.kind === "photo").length})`,
-                      relatos: `Relatos (${roomNotes.length})`,
-                    }[a]
-                  }
-                </button>
-              ))}
-            </nav>
-          )}
-          {rental && !readOnly && (
-            <div className="mb-4 flex flex-wrap gap-2" aria-label="Registro do cômodo">
+          {!readOnly && (
+            <div
+              className="mx-auto mb-5 grid max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4"
+              role="group"
+              aria-label="Ações do cômodo"
+            >
               <BarButton
-                icon={<Camera className="size-5" />}
+                icon={<Camera className="size-5" aria-hidden />}
                 label="Tirar foto"
-                onClick={() => {
-                  openCamera(null);
-                }}
+                onClick={() => openCamera(null)}
+                primary
               />
               <BarButton
-                icon={<Plus className="size-5" />}
+                icon={<Images className="size-5" aria-hidden />}
                 label="Adicionar fotos"
-                onClick={() => {
-                  openGallery(null);
-                }}
+                onClick={() => openGallery(null)}
               />
               <BarButton
-                icon={<Mic className="size-5" />}
-                label="Gravar áudio"
-                onClick={() => {
-                  setEvidenceItem(null);
-                  void startRecording();
-                }}
+                icon={
+                  recording ? (
+                    <Square className="size-5" aria-hidden />
+                  ) : (
+                    <Mic className="size-5" aria-hidden />
+                  )
+                }
+                label={recording ? "Parar e salvar" : "Gravar áudio"}
+                onClick={() =>
+                  recording ? void stopRecording() : void startRecording(undefined, null)
+                }
               />
               <BarButton
-                icon={<Keyboard className="size-5" />}
-                label="Descrição"
-                onClick={() => {
-                  setEvidenceItem(null);
-                  setMode("texto");
-                  window.requestAnimationFrame(() =>
-                    document
-                      .getElementById("rental-room-description")
-                      ?.querySelector("textarea")
-                      ?.focus(),
-                  );
-                }}
+                icon={<Keyboard className="size-5" aria-hidden />}
+                label="Escrever descrição"
+                onClick={() => openDescription()}
               />
             </div>
           )}
-          <div className={rental ? "grid gap-4 md:grid-cols-2" : undefined}>
-            {(rental || area === "fotos") && (
-              <div className="space-y-3">
-                {!rental && (
-                  <div className="mb-3 flex gap-2">
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-xl border px-3"
-                      onClick={() => {
-                        openCamera(null);
-                      }}
-                    >
-                      Foto geral
-                    </button>
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-xl border px-3"
-                      onClick={() => {
-                        openGallery(null);
-                      }}
-                    >
-                      Importar da galeria
-                    </button>
-                  </div>
-                )}
-                {rental && <h3 className="text-sm font-semibold">Fotos do cômodo</h3>}
-                <PhotosBlock
-                  inspectionId={insp.id}
-                  media={roomMedia}
-                  pending={roomPending}
-                  readOnly={readOnly}
-                  saver={saver}
-                  onRetry={queue.retry}
-                  items={roomItems}
-                />
-                {!roomMedia.some((m) => m.status === "confirmada") && (
-                  <NoPhotoReason room={room} readOnly={readOnly} saver={saver} />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <section
+              aria-labelledby="room-photos-title"
+              className="min-w-0 space-y-3 rounded-xl border border-border p-3 sm:p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="room-photos-title" className="text-base font-semibold">
+                  Fotos do cômodo
+                </h3>
+                {roomPhotoCount > 0 && (
+                  <span className="text-sm text-foreground/60">{roomPhotoCount}</span>
                 )}
               </div>
-            )}
-            {!rental && area === "itens" && (
-              <>
-                <ul className="mt-4 space-y-2">
-                  {roomItems.map((it) => (
-                    <ItemCard
-                      key={it.id}
-                      item={it}
-                      readOnly={readOnly}
-                      saver={saver}
-                      onTouched={markStarted}
-                      forceOpen={props.jump?.itemId === it.id}
-                      photos={roomMedia.filter((m) => m.item_id === it.id).length}
-                      onPhoto={() => openCamera(it.id)}
-                      onNarrate={() => {
-                        setEvidenceItem(it.id);
-                        setArea("relatos");
-                        setMode("texto");
-                      }}
-                    />
-                  ))}
-                </ul>
-                {!readOnly && <AddItem inspectionId={insp.id} roomId={room.id} saver={saver} />}
-              </>
-            )}
-            {(rental || area === "relatos") && (
-              <div id={rental ? "rental-room-description" : undefined} className="min-w-0">
-                {rental && <h3 className="mb-2 text-sm font-semibold">Descrição e áudios</h3>}
-                <NotesBlock
-                  key={`${room.id}:${evidenceItem ?? "general"}`}
-                  roomName={room.name}
-                  itemId={evidenceItem}
-                  notes={roomNotes}
-                  items={roomItems}
+              <PhotosBlock
+                key={room.id}
+                inspectionId={insp.id}
+                media={roomMedia}
+                pending={roomPending}
+                readOnly={readOnly}
+                saver={saver}
+                onRetry={queue.retry}
+                items={roomItems}
+                onCamera={() => openCamera(null)}
+                onGallery={() => openGallery(null)}
+              />
+              {!roomMedia.some((m) => m.status === "confirmada") && (
+                <NoPhotoReason
+                  room={room}
                   readOnly={readOnly}
                   saver={saver}
-                  voiceReady={props.voiceReady}
-                  voiceAdmin={props.voiceAdmin}
-                  runner={props.runner}
-                  onRerecord={(n) => void startRecording(n)}
-                  inspectionId={insp.id}
-                  currentCtx={currentCtx}
-                  mode={mode}
-                  setMode={setMode}
-                  roomId={room.id}
-                  rental={rental}
+                  forceOpen={props.jump?.kind === "ambiente_sem_foto"}
                 />
-              </div>
-            )}
+              )}
+            </section>
+            <div id="room-notes" className="min-w-0">
+              <NotesBlock
+                key={`${room.id}:${evidenceItem ?? "general"}`}
+                roomName={room.name}
+                itemId={evidenceItem}
+                notes={roomNotes}
+                items={roomItems}
+                readOnly={readOnly}
+                saver={saver}
+                voiceReady={props.voiceReady}
+                voiceAdmin={props.voiceAdmin}
+                runner={props.runner}
+                onRerecord={(n) => void startRecording(n)}
+                onRecord={() => void startRecording()}
+                onRetry={queue.retry}
+                pending={roomPending}
+                recording={
+                  recording && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-destructive/25 bg-destructive/5 p-2">
+                      <span
+                        className="relative grid size-9 place-items-center text-destructive"
+                        aria-hidden
+                      >
+                        <span
+                          className="absolute inset-0 rounded-full bg-destructive/15"
+                          style={{ transform: `scale(${0.7 + level * 1.5})` }}
+                        />
+                        <Mic className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1 text-sm">
+                        <p role="status" className="break-words font-semibold">
+                          Gravando · {recording.roomName}
+                        </p>
+                        <RecTimer startedAt={recording.startedAt} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void stopRecording()}
+                        className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-destructive px-3 text-sm font-semibold text-destructive-foreground"
+                      >
+                        <Square className="size-4" aria-hidden /> Parar e salvar
+                      </button>
+                    </div>
+                  )
+                }
+                inspectionId={insp.id}
+                currentCtx={currentCtx}
+                mode={mode}
+                setMode={setMode}
+                roomId={room.id}
+                rental={rental}
+              />
+            </div>
           </div>
-          {rental && roomItems.length > 0 && (
-            <details className="mt-4 rounded-xl border p-3">
-              <summary className="cursor-pointer text-sm font-semibold">
+          {(!rental || roomItems.length > 0) && (
+            <details
+              open={
+                !rental ||
+                (props.jump?.itemId && roomItems.some((item) => item.id === props.jump?.itemId)) ||
+                undefined
+              }
+              className="mt-4 rounded-xl border px-3 py-1"
+            >
+              <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold">
                 Itens registrados neste cômodo
               </summary>
               <ul className="mt-3 space-y-2">
@@ -1293,13 +1286,14 @@ function RoomsTab(props: {
                     onTouched={markStarted}
                     photos={roomMedia.filter((m) => m.item_id === it.id).length}
                     onPhoto={() => openCamera(it.id)}
-                    onNarrate={() => {
-                      setEvidenceItem(it.id);
-                      setMode("texto");
-                    }}
+                    onNarrate={() => openDescription(it.id)}
+                    forceOpen={props.jump?.itemId === it.id}
                   />
                 ))}
               </ul>
+              {!readOnly && !rental && (
+                <AddItem inspectionId={insp.id} roomId={room.id} saver={saver} />
+              )}
             </details>
           )}
         </section>
@@ -1354,137 +1348,59 @@ function RoomsTab(props: {
         </AlertDialogContent>
       </AlertDialog>
 
-      <InAppCamera
-        open={camOpen}
-        title={[room?.name, data.items.find((i) => i.id === evidenceItem)?.name].filter(Boolean).join(" · ")}
-        count={roomPhotoCount}
-        onClose={() => setCamOpen(false)}
-        onCapture={onCameraShot}
-        onNative={(reason) => {
-          if (reason === "falha")
-            toast.error(CAMERA_FAILED, {
-              action: { label: "Usar câmera do celular", onClick: () => openNative(evidenceItem) },
-            });
-          openNative(evidenceItem);
-        }}
-      />
-      <input
-        ref={camRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        hidden
-        onChange={(e) => {
-          void onFiles(e.target.files, "captura");
-          e.target.value = "";
-        }}
-      />
-      <input
-        ref={galRef}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          void onFiles(e.target.files, "importacao");
-          e.target.value = "";
-        }}
-      />
+      {camera && !readOnly && (
+        <InAppCamera
+          open={props.active}
+          title={data.rooms.find((r) => r.id === camera.roomId)?.name ?? "Cômodo"}
+          count={
+            data.media.filter((m) => m.room_id === camera.roomId).length +
+            queue.pending.filter((p) => p.roomId === camera.roomId && p.kind === "photo").length
+          }
+          onClose={photos.closeCamera}
+          onCapture={(video) => photos.shoot(camera, video)}
+          onNative={() => photos.openPicker(camera, "camera")}
+          onGallery={() => photos.openPicker(camera, "galeria")}
+        />
+      )}
 
-      {!readOnly && room && (
-        <div className="inspection-footer fixed inset-x-0 bottom-0 z-40 px-3 pt-2">
-          {recording ? (
-            <div className="mx-auto flex max-w-2xl items-center gap-2">
-              <span className="relative grid size-11 place-items-center" aria-hidden>
-                <span
-                  className="absolute inset-0 motion-safe:animate-ping rounded-full bg-destructive/25"
-                  style={{ transform: `scale(${0.7 + level * 1.5})` }}
-                />
-                <Mic className="size-5 text-destructive" />
-              </span>
-              <div className="min-w-0 flex-1 text-sm" aria-live="polite">
-                <p className="font-semibold">Gravando · {recording.roomName}</p>
-                <RecTimer startedAt={recording.startedAt} />
-              </div>
-              <button
-                type="button"
-                onClick={() => void stopRecording()}
-                className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-destructive px-4 text-sm font-semibold text-destructive-foreground"
+      {!readOnly && props.active && (
+        <footer className="inspection-footer fixed inset-x-0 bottom-0 z-40 px-3 pt-2">
+          <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {reviewNotice && (
+              <p
+                className="flex-1 text-center text-sm text-foreground/70 sm:text-left"
+                aria-live="polite"
               >
-                <Square className="size-4" /> Parar e salvar
-              </button>
-            </div>
-          ) : rental ? (
-            <div className="mx-auto flex max-w-4xl justify-end">
-              <button
-                type="button"
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground sm:w-auto"
-                onClick={() => {
-                  props.onReview();
-                  window.scrollTo({ top: 0 });
-                }}
-              >
-                Gerar termo de {insp.rental_kind === "saida" ? "saída" : "entrada"}{" "}
-                <ArrowRight className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="mx-auto grid max-w-2xl grid-cols-[1fr_1fr_1.5fr] gap-2">
-              <BarButton
-                icon={<Camera className="size-5" />}
-                label="Foto"
-                onClick={() => {
-                  openCamera(null);
-                }}
-              />
-              <BarButton
-                icon={<Keyboard className="size-5" />}
-                label="Relatar"
-                onClick={() => {
-                  setEvidenceItem(null);
-                  setArea("relatos");
-                  setMode("texto");
-                  window.scrollTo({ top: 0 });
-                }}
-              />
-              <BarButton
-                icon={<ArrowRight className="size-5" />}
-                label={idx === data.rooms.length - 1 ? "Revisar vistoria" : "Próximo ambiente"}
-                onClick={() => {
-                  const remaining = roomItems.filter((it) => !itemResolved(it)).length;
-                  if (remaining)
-                    toast.info(
-                      `${remaining} itens continuam pendentes em ${room.name}. Você pode continuar a coleta.`,
-                    );
-                  if (idx === data.rooms.length - 1) props.onReview();
-                  else {
-                    setRoomId(data.rooms[idx + 1].id);
-                    setArea("itens");
-                  }
-                  window.scrollTo({ top: 0 });
-                }}
-              />
-            </div>
-          )}
-          {!rental && !recording && area === "relatos" && (
-            <div className="mx-auto mt-1 flex max-w-2xl items-center justify-between gap-2">
-              <button
-                type="button"
-                className="min-h-11 text-sm font-semibold text-primary"
-                onClick={() => void startRecording()}
-              >
-                <Mic className="mr-1 inline size-4" />
-                Gravar áudio
-              </button>
-              <p className="text-xs text-foreground/60">
-                {props.voiceReady
-                  ? "O áudio é salvo e transcrito automaticamente."
-                  : "Transcrição indisponível no momento. O áudio será salvo."}
+                {reviewNotice}
               </p>
-            </div>
-          )}
-        </div>
+            )}
+            {!rental && idx >= 0 && idx < data.rooms.length - 1 && (
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border px-4 text-sm font-semibold text-primary"
+                onClick={() => {
+                  setRoomId(data.rooms[idx + 1].id);
+                  window.scrollTo({ top: 0 });
+                }}
+              >
+                Próximo cômodo
+              </button>
+            )}
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              onClick={() => {
+                props.onReview();
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              {rental
+                ? `Gerar termo de ${insp.rental_kind === "saida" ? "saída" : "entrada"}`
+                : "Revisar vistoria"}
+              <ArrowRight className="size-4 shrink-0" aria-hidden />
+            </button>
+          </div>
+        </footer>
       )}
     </div>
   );
@@ -1499,7 +1415,7 @@ function RecTimer({ startedAt }: { startedAt: number }) {
   const s = Math.floor((now - startedAt) / 1000);
   return (
     <p className="text-xs tabular-nums text-foreground/60">
-      {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")} · trechos de 60 s salvos no aparelho
+      {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}
     </p>
   );
 }
@@ -1508,23 +1424,23 @@ function BarButton({
   icon,
   label,
   onClick,
-  disabled,
-  hint,
+  primary,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
-  disabled?: boolean;
-  hint?: string;
+  primary?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
-      title={hint}
-      aria-label={hint ? `${label} — ${hint}` : label}
-      className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-semibold text-foreground/80 active:bg-foreground/8 disabled:opacity-35"
+      className={cn(
+        "flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-center text-sm font-semibold",
+        primary
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-primary/5",
+      )}
     >
       {icon}
       {label}
