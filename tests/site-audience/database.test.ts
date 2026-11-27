@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { saoPauloKeyOf } from "../../src/lib/dates";
 import type { AudienceReport, AudienceView } from "../../src/lib/site-audience/report";
 
 const migration = new URL("../../drizzle/migrations/0116_site_audience.sql", import.meta.url);
@@ -15,6 +16,13 @@ const event = (kind: string, page: string, fields = {}) => ({ id: id(), kind, pa
 const view = (propertyId: string, navigation = "navigation") =>
   event("property_view", "property", { propertyId, navigation });
 const page = (name: string) => event("page_view", name);
+const saoPauloClock = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
 
 test("audience migration records known journeys and gives only authorized aggregate access", async () => {
   const db = new PGlite();
@@ -196,9 +204,12 @@ test("audience migration records known journeys and gives only authorized aggreg
     const month = await report("cordial", "pages", "month");
     if (week.status !== "ready" || month.status !== "ready")
       assert.fail("expected current periods");
-    assert.match(week.from, /T00:00:00-03:00$/);
-    assert.equal(new Date(week.from).getUTCDay(), 1);
-    assert.match(month.from, /-01T00:00:00-03:00$/);
+    const startOfWeek = new Date(week.from);
+    const startOfMonth = new Date(month.from);
+    assert.equal(saoPauloClock.format(startOfWeek), "00:00:00");
+    assert.equal(new Date(`${saoPauloKeyOf(startOfWeek)}T00:00:00Z`).getUTCDay(), 1);
+    assert.equal(saoPauloClock.format(startOfMonth), "00:00:00");
+    assert.match(saoPauloKeyOf(startOfMonth), /-01$/);
     await configure("cordial", "qa", false);
     assert.equal(await ingest([page("home")]), "disabled");
     assert.equal((await report("cordial", "overview")).status, "ready");
