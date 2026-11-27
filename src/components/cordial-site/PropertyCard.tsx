@@ -30,6 +30,7 @@ import { propertyUrl, propertyWhatsapp, trackSiteEvent } from "@/lib/cordial-sit
 import { QuickView } from "./QuickView";
 import { VisitorSelectionButton } from "./VisitorSelectionButton";
 import { WhatsAppIcon } from "./SocialIcons";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 export function FavoriteButton({ id }: { id: string }) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
@@ -150,10 +151,12 @@ export function PropertyCard({
   property: p,
   priority = false,
   sizes,
+  placement = "card",
 }: {
   property: PublicProperty;
   priority?: boolean;
   sizes?: string;
+  placement?: "card" | "recommendations";
 }) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
@@ -199,11 +202,13 @@ export function PropertyCard({
   const area = (["construida", "util", "terreno", "total"] as const).find(
     (k) => p.areas[k] != null,
   );
+  const audienceProperty = { id: p.id, placement };
   return (
     <article className="cs-property-card">
       <div className="cs-card-photo" ref={photoRoot} {...photos.swipeHandlers}>
         <SiteLink
           to={propertyPath(p, brand)}
+          audienceProperty={audienceProperty}
           aria-label={`Ver ${p.type ?? "imóvel"}, referência ${p.reference}`}
         >
           <PropertyImage
@@ -238,7 +243,7 @@ export function PropertyCard({
         </div>
         {brand === "cordial" && <strong className="cs-card-price">{priceLabel(p)}</strong>}
         <h3>
-          <SiteLink to={propertyPath(p, brand)}>
+          <SiteLink to={propertyPath(p, brand)} audienceProperty={audienceProperty}>
             {p.type ?? "Imóvel"}
             {p.district ? ` em ${p.district}` : ""}
           </SiteLink>
@@ -280,6 +285,7 @@ export function PropertyCard({
           <SiteLink
             className="cs-card-arrow"
             to={propertyPath(p, brand)}
+            audienceProperty={audienceProperty}
             aria-label={`Conhecer imóvel ${p.reference}`}
           >
             {brand === "cordial" && <span>Ver detalhes</span>}
@@ -291,6 +297,7 @@ export function PropertyCard({
             <button
               className="cs-card-preview"
               onClick={(e) => {
+                measureAudienceAction(brand, { kind: "quick_view", propertyId: p.id, placement });
                 quickTrigger.current = e.currentTarget;
                 openedHere.current = true;
                 quickOriginScroll.current = window.scrollY;
@@ -309,13 +316,18 @@ export function PropertyCard({
                 href={whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() =>
+                onClick={() => {
+                  measureAudienceAction(brand, {
+                    kind: "whatsapp_click",
+                    propertyId: p.id,
+                    placement,
+                  });
                   trackSiteEvent("whatsapp_click", {
                     propertyId: p.id,
                     reference: p.reference,
                     source: "card",
-                  })
-                }
+                  });
+                }}
               >
                 <WhatsAppIcon width={16} height={16} /> WhatsApp
               </a>

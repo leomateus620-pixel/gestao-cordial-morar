@@ -13,6 +13,7 @@ import { SiteLink } from "./SiteShell";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { trackSiteEvent } from "@/lib/cordial-site/experience";
+import { prepareAudienceForm } from "@/lib/site-audience/client";
 export function ContactForm({
   kind = "contato",
   property,
@@ -133,9 +134,18 @@ export function ContactForm({
         setErrors({});
         setPending(true);
         try {
+          const recordAudienceForm = prepareAudienceForm(brand);
           const response = await fetch(`${config.apiBase}/leads`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(recordAudienceForm
+                ? {
+                    "X-Site-Audience": "1",
+                    "X-Site-Audience-Policy": recordAudienceForm.policyVersion,
+                  }
+                : {}),
+            },
             body: JSON.stringify(parsed.data),
             credentials: "same-origin",
             signal: AbortSignal.timeout(20000),
@@ -145,6 +155,8 @@ export function ContactForm({
             throw new Error(result.error || "Não foi possível enviar.");
           clearContactDraft(draftKey);
           setDone(true);
+          if (response.status === 201 && typeof result.audienceProof === "string")
+            recordAudienceForm?.record(result.audienceProof, property?.id);
           if (brand === "cordial")
             trackSiteEvent("form_persisted", {
               propertyId: property?.id,

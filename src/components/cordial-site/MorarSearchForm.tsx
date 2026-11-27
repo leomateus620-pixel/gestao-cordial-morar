@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/sheet";
 import { MorarIcon } from "./MorarIcon";
 import { MorarLocationCombobox } from "./MorarLocationCombobox";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 
 function SearchGroup({
   icon,
@@ -365,6 +366,7 @@ export function MorarSearchForm({
             return;
           }
           setErrors({});
+          measureAudienceAction("morar", { kind: "search", placement: compact ? "home" : undefined });
           void navigate({
             to: "/site-morar/buscar",
             search: { ...result.data, ordem: defaultOrder(result.data.ordem, compact, settings), pagina: 1 },

@@ -27,7 +27,7 @@ import { RentalVsSaleCard } from "@/components/dashboard/RentalVsSaleCard";
 import { TeamPerformanceChart } from "@/components/dashboard/TeamPerformanceChart";
 import { TeamPerformanceCard } from "@/components/dashboard/TeamPerformanceCard";
 import { useEquipePerformance } from "@/hooks/useEquipePerformance";
-import { RealEstateSitePreviewSection } from "@/components/real-estate-site-preview-section";
+import { SiteAudienceSection } from "@/components/dashboard/SiteAudienceSection";
 import { useApp } from "@/store/app-store";
 import { brl } from "@/lib/format";
 import { dashboardPrevisaoFinanceira } from "@/lib/mock/data";
@@ -156,6 +156,8 @@ function Dashboard() {
           </div>
         </div>
       </section>
+
+      {isAdminOwner && <SiteAudienceSection />}
 
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
@@ -289,8 +291,6 @@ function Dashboard() {
           </ChartCard>
         </section>
       )}
-
-      {isAdminOwner && <RealEstateSitePreviewSection />}
 
       <NovoAtendimentoSheet open={open} onOpenChange={setOpen} />
     </>

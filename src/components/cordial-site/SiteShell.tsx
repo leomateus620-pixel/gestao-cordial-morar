@@ -34,7 +34,11 @@ import { SitePerformance } from "./SitePerformance";
 import { WhatsAppFloat } from "./WhatsAppFloat";
 import { PublicPropertyBotLauncher } from "@/components/public-property-bot/Launcher";
 import { SiteAnalytics } from "./SiteAnalytics";
+import { SiteAudience } from "./SiteAudience";
 import { loadBootstrap } from "@/lib/cordial-site/data";
+import { measureAudienceAction } from "@/lib/site-audience/client";
+import type { AudiencePlacement } from "@/lib/site-audience/contract";
+import { siteAudienceMenu } from "@/lib/site-audience/navigation";
 import cordialLogo from "@/assets/logo-cordial-imoveis.png.asset.json";
 import morarLogo from "@/assets/logo-morar-imoveis.png.asset.json";
 const destinationsFor = (name: string) => [
@@ -49,10 +53,14 @@ export function SiteLink({
   to,
   children,
   originScrollTop,
+  audienceMenu,
+  audienceProperty,
   ...rest
 }: Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   to: string;
   originScrollTop?: number;
+  audienceMenu?: boolean;
+  audienceProperty?: { id: string; placement: AudiencePlacement };
 }) {
   const brand = useSiteBrand();
   const config = getSiteBrand(brand);
@@ -72,6 +80,19 @@ export function SiteLink({
       )
     : raw;
   const searchOrigin = searchNavigationContext(path, source, brand);
+  const measureLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
+    if (audienceProperty)
+      measureAudienceAction(brand, {
+        kind: "property_click",
+        placement: audienceProperty.placement,
+        propertyId: audienceProperty.id,
+      });
+    if (audienceMenu) {
+      const menu = siteAudienceMenu(path, new URLSearchParams(query), brand);
+      if (menu) measureAudienceAction(brand, { kind: "menu_click", menu, placement: "header" });
+    }
+  };
   return (
     <Link
       to={path}
@@ -82,6 +103,7 @@ export function SiteLink({
       data-public-property={searchOrigin?.propertyId}
       onClick={(event) => {
         rest.onClick?.(event);
+        measureLink(event);
         if (
           brand === "cordial" &&
           searchOrigin &&
@@ -94,6 +116,10 @@ export function SiteLink({
           (!event.currentTarget.target || event.currentTarget.target === "_self")
         )
           rememberSearchCardOrigin(searchOrigin, originScrollTop);
+      }}
+      onAuxClick={(event) => {
+        rest.onAuxClick?.(event);
+        if (event.button === 1) measureLink(event);
       }}
     >
       {children}
@@ -239,20 +265,20 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 />
               </SiteLink>
               <nav className="cs-desktop-nav" aria-label="Navegação principal">
-                <SiteLink to={pathFor("/buscar?finalidade=venda")}>
+                <SiteLink to={pathFor("/buscar?finalidade=venda")} audienceMenu>
                   {brand === "cordial" && <Home size={16} strokeWidth={1.8} aria-hidden />}Comprar
                 </SiteLink>
-                <SiteLink to={pathFor("/buscar?finalidade=aluguel")}>
+                <SiteLink to={pathFor("/buscar?finalidade=aluguel")} audienceMenu>
                   {brand === "cordial" && <KeyRound size={16} strokeWidth={1.8} aria-hidden />}
                   Alugar
                 </SiteLink>
                 {brand === "cordial" && (
-                  <SiteLink to={pathFor("/bairros")}>
+                  <SiteLink to={pathFor("/bairros")} audienceMenu>
                     <MapPin size={16} strokeWidth={1.8} aria-hidden />
                     Bairros
                   </SiteLink>
                 )}
-                <SiteLink to={pathFor("/anuncie")}>
+                <SiteLink to={pathFor("/anuncie")} audienceMenu>
                   {brand === "cordial" && <HousePlus size={16} strokeWidth={1.8} aria-hidden />}
                   Anunciar meu imóvel
                 </SiteLink>
@@ -274,6 +300,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                       <SiteLink
                         key={to}
                         to={pathFor(to)}
+                        audienceMenu
                         onClick={(e) => {
                           const details = e.currentTarget.closest("details");
                           if (details) details.open = false;
@@ -284,7 +311,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                     ))}
                   </div>
                 </details>
-                <SiteLink to={pathFor("/contato")}>
+                <SiteLink to={pathFor("/contato")} audienceMenu>
                   {brand === "cordial" && <MessageCircle size={16} strokeWidth={1.8} aria-hidden />}
                   Contato
                 </SiteLink>
@@ -294,6 +321,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 {brand === "cordial" && (
                   <SiteLink
                     to={pathFor("/selecao")}
+                    audienceMenu
                     className="cs-icon-button cs-header-selection"
                     aria-label={`Minha seleção, ${selectedIds.length} imóveis`}
                   >
@@ -323,6 +351,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 )}
                 <SiteLink
                   to={pathFor("/favoritos")}
+                  audienceMenu
                   className="cs-icon-button"
                   aria-label="Meus favoritos"
                 >
@@ -360,7 +389,12 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                           ["Favoritos", "/favoritos"],
                           ...(brand === "cordial" ? [["Minha seleção", "/selecao"]] : []),
                         ].map(([label, to]) => (
-                          <SiteLink key={to} to={pathFor(to)} onClick={() => setOpen(false)}>
+                          <SiteLink
+                            key={to}
+                            to={pathFor(to)}
+                            audienceMenu
+                            onClick={() => setOpen(false)}
+                          >
                             {label}
                             <ArrowUpRight size={18} />
                           </SiteLink>
@@ -371,6 +405,12 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                             href={`https://wa.me/${settings.whatsapp}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() =>
+                              measureAudienceAction(brand, {
+                                kind: "whatsapp_click",
+                                placement: "header",
+                              })
+                            }
                           >
                             <WhatsAppIcon width={22} height={22} />
                             Conversar pelo WhatsApp
@@ -463,6 +503,9 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                       href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() =>
+                        measureAudienceAction(brand, { kind: "whatsapp_click", placement: "footer" })
+                      }
                     >
                       WhatsApp da equipe <ArrowUpRight size={16} />
                     </a>
@@ -480,6 +523,11 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 </span>
                 <SiteLink to={pathFor("/privacidade")}>Privacidade</SiteLink>
                 <SiteAnalytics settings={settings} brand={brand} />
+                <SiteAudience
+                  key={brand}
+                  brand={brand}
+                  hasPrivacy={Boolean(settings.privacy?.trim())}
+                />
                 {(
                   [
                     ["instagram", "Instagram"],
@@ -518,6 +566,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 rel="noopener noreferrer"
                 aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
                 onClick={() => {
+                  measureAudienceAction(brand, { kind: "whatsapp_click", placement: "floating" });
                   if (brand === "cordial")
                     trackSiteEvent("whatsapp_click", { source: "institutional" });
                 }}

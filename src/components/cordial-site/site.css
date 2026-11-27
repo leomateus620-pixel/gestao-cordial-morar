@@ -3716,6 +3716,9 @@ body:has(.cordial-site) {
 body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   visibility: hidden;
 }
+body:has(.cs-analytics-consent:not(.cs-audience-consent)) .cs-audience-consent {
+  visibility: hidden;
+}
 @media (max-width: 768px) {
   body:has(.cs-mobile-contact) .cs-analytics-consent {
     bottom: calc(88px + env(safe-area-inset-bottom));

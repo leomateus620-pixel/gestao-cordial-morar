@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { WhatsAppIcon } from "./SocialIcons";
 import { floatWhatsappLink } from "@/lib/cordial-site/whatsapp-float";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 
 const KEY = "ms-wa-bubble-closed";
 
@@ -28,6 +29,7 @@ export function WhatsAppFloat({
   };
   const open = () => {
     const url = floatWhatsappLink(number, brandName, isProperty ? window.location.href : null);
+    measureAudienceAction("morar", { kind: "whatsapp_click", placement: "floating" });
     window.open(url, "_blank", "noopener,noreferrer");
     close();
   };

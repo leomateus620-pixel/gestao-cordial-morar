@@ -6,7 +6,9 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 export default defineConfig({
   root,
   plugins: [react(), tailwindcss()],
-  optimizeDeps: { entries: ["tests/dashboard/preview.html"] },
+  optimizeDeps: {
+    entries: ["tests/dashboard/preview.html", "tests/dashboard/audience-preview.html"],
+  },
   resolve: {
     alias: [
       {

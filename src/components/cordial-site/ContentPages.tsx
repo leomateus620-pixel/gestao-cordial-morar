@@ -19,6 +19,7 @@ import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { ContactForm } from "./ContactForm";
 import { PropertyCard } from "./PropertyCard";
 import { readFavorites } from "@/lib/cordial-site/favorites";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 export function PageIntro({
   eyebrow,
   title,
@@ -83,6 +84,9 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
               href={`https://wa.me/${settings.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() =>
+                measureAudienceAction(brand, { kind: "whatsapp_click", placement: "contact" })
+              }
             >
               <WhatsAppIcon width={22} height={22} /> Conversar no WhatsApp{" "}
               <ArrowUpRight size={18} />

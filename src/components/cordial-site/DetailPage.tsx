@@ -43,6 +43,7 @@ import { PropertyVideo } from "./PropertyVideo";
 import { PropertyTour } from "./PropertyTour";
 import { PropertyShare } from "./PropertyShare";
 import { useGalleryPhotos } from "./useGalleryPhotos";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 
 const LIGHTBOX_SIZES = "(max-width: 640px) calc(100vw - 30px), calc(92vw - 180px)";
 
@@ -251,13 +252,18 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() =>
+                  onClick={() => {
+                    measureAudienceAction(brand, {
+                      kind: "whatsapp_click",
+                      propertyId: p.id,
+                      placement: "detail",
+                    });
                     trackSiteEvent("whatsapp_click", {
                       propertyId: p.id,
                       reference: p.reference,
                       source: "detail_top",
-                    })
-                  }
+                    });
+                  }}
                 >
                   <WhatsAppIcon width={18} height={18} /> Conversar
                 </a>
@@ -526,13 +532,18 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() =>
+                  onClick={() => {
+                    measureAudienceAction(brand, {
+                      kind: "whatsapp_click",
+                      propertyId: p.id,
+                      placement: "detail",
+                    });
                     trackSiteEvent("whatsapp_click", {
                       propertyId: p.id,
                       reference: p.reference,
                       source: "detail_contact",
-                    })
-                  }
+                    });
+                  }}
                 >
                   <WhatsAppIcon width={20} height={20} />
                   Conversar pelo WhatsApp
@@ -590,7 +601,7 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                 .filter((x) => x.id !== p.id)
                 .slice(0, 3)
                 .map((x) => (
-                  <PropertyCard key={x.id} property={x} />
+                  <PropertyCard key={x.id} property={x} placement="recommendations" />
                 ))}
             </div>
           </section>
@@ -604,12 +615,18 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
           target={whatsapp ? "_blank" : undefined}
           rel={whatsapp ? "noopener noreferrer" : undefined}
           onClick={() => {
-            if (whatsapp)
+            if (whatsapp) {
+              measureAudienceAction(brand, {
+                kind: "whatsapp_click",
+                propertyId: p.id,
+                placement: "detail",
+              });
               trackSiteEvent("whatsapp_click", {
                 propertyId: p.id,
                 reference: p.reference,
                 source: "detail_mobile",
               });
+            }
           }}
         >
           {whatsapp ? "WhatsApp" : "Atendimento"} <ArrowRight size={18} />

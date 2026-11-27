@@ -45,6 +45,7 @@ import { FeaturedPhoto } from "./FeaturedPhoto";
 import { RecentProperties } from "./RecentProperties";
 import { propertyUrl, propertyWhatsapp } from "@/lib/cordial-site/experience";
 import { WhatsAppIcon } from "./SocialIcons";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 
 const HOME_COPY = {
   cordial: {
@@ -204,6 +205,7 @@ function HomeCard({
       >
         <SiteLink
           to={propertyPath(p, brand)}
+          audienceProperty={{ id: p.id, placement: "home" }}
           className="cs-hx-card-media-link"
           aria-label={title}
           tabIndex={-1}
@@ -259,7 +261,9 @@ function HomeCard({
       <div className="cs-hx-card-body">
         <strong className="cs-hx-price">{priceLabel(p)}</strong>
         <h3>
-          <SiteLink to={propertyPath(p, brand)}>{p.type ?? "Imóvel"}</SiteLink>
+          <SiteLink to={propertyPath(p, brand)} audienceProperty={{ id: p.id, placement: "home" }}>
+            {p.type ?? "Imóvel"}
+          </SiteLink>
         </h3>
         <p className="cs-hx-place">
           <MapPin size={13} aria-hidden /> {place(p) || "Localização sob consulta"}
@@ -397,7 +401,11 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
       <strong className="cs-hx-price">{priceLabel(hero)}</strong>
       <Attributes p={hero} />
       <div className="cs-hx-hero-actions">
-        <SiteLink to={propertyPath(hero, brand)} className="cs-button cs-hx-primary">
+        <SiteLink
+          to={propertyPath(hero, brand)}
+          className="cs-button cs-hx-primary"
+          audienceProperty={{ id: hero.id, placement: "hero" }}
+        >
           <span className="cs-hx-long">Conhecer este imóvel</span>
           <span className="cs-hx-short">Ver detalhes</span> <ArrowUpRight size={17} />
         </SiteLink>
@@ -408,6 +416,13 @@ function HeroCard({ hero }: { hero: PublicProperty }) {
             target="_blank"
             rel="noreferrer"
             aria-label="Conversar no WhatsApp sobre este imóvel"
+            onClick={() =>
+              measureAudienceAction(brand, {
+                kind: "whatsapp_click",
+                propertyId: hero.id,
+                placement: "hero",
+              })
+            }
           >
             <WhatsAppIcon /> WhatsApp
           </a>
