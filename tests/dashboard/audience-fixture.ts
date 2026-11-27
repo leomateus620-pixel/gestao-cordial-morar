@@ -158,7 +158,15 @@ export function createAudienceFixture(
         count: Math.floor(sessions * [0.25, 0.18, 0.08, 0.07, 0.05, 0.03, 0.02][index]),
       }))
       .filter((row) => row.count > 0);
-    if (view === "pages") return { ...metadata, status: "ready", view, pages, menus };
+    if (view === "pages")
+      return {
+        ...metadata,
+        status: "ready",
+        view,
+        pages,
+        menus,
+        actions: sessions ? [{ key: "property_click", count: Math.floor(sessions * 1.4) }] : [],
+      };
     if (view === "origins") {
       const origins = [
         {

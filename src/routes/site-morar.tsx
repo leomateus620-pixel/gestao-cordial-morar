@@ -1,3 +1,4 @@
+import { documentAudienceConfig } from "@/lib/site-audience/document-config";
 import { createFileRoute } from "@tanstack/react-router";
 import { loadBootstrap } from "@/lib/cordial-site/morar-data";
 import { agentJsonLd, homeHead, siteLayoutHead } from "@/lib/cordial-site/morar-seo";
@@ -12,7 +13,13 @@ import sharedCss from "@/components/cordial-site/site.css?url";
 import morarCss from "@/components/cordial-site/morar.css?url";
 
 export const Route = createFileRoute("/site-morar")({
-  loader: ({ abortController }) => loadBootstrap(abortController.signal),
+  loader: async ({ abortController }) => {
+    const [bootstrap, audience] = await Promise.all([
+      loadBootstrap(abortController.signal),
+      documentAudienceConfig("morar"),
+    ]);
+    return { ...bootstrap, audience };
+  },
   head: ({ loaderData }) => {
     // Layout keeps a fallback title/description but no canonical/og:url/og:image (pages own them).
     const base = homeHead(loaderData);

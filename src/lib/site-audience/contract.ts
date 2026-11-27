@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-export const AUDIENCE_MAX_BATCH_BYTES = 8192;
-export const AUDIENCE_MAX_BATCH_EVENTS = 20;
+import { AUDIENCE_MAX_BATCH_EVENTS } from "./limits";
+export { AUDIENCE_MAX_BATCH_BYTES, AUDIENCE_MAX_BATCH_EVENTS } from "./limits";
 
 export const audiencePages = [
   "home",
@@ -87,6 +87,11 @@ export const audienceEventSchema = z.discriminatedUnion("kind", [
   z.strictObject({ ...action, kind: z.literal("menu_click"), menu: audienceMenuSchema }),
   z.strictObject({ ...propertyAction, kind: z.literal("property_click") }),
   z.strictObject({ ...propertyAction, kind: z.literal("quick_view") }),
+  z.strictObject({ ...propertyAction, kind: z.literal("gallery_open") }),
+  z.strictObject({ ...propertyAction, kind: z.literal("favorite_change") }),
+  z.strictObject({ ...propertyAction, kind: z.literal("selection_change") }),
+  z.strictObject({ ...action, kind: z.literal("phone_click") }),
+  z.strictObject({ ...action, kind: z.literal("email_click") }),
   z.strictObject({ ...action, kind: z.literal("search") }),
   z.strictObject({ ...contactAction, kind: z.literal("whatsapp_click") }),
   z.strictObject({
@@ -129,17 +134,9 @@ export type AudienceAttribution = z.infer<typeof attribution>;
 export type AudiencePage = z.infer<typeof page>;
 export type AudienceMenu = z.infer<typeof audienceMenuSchema>;
 export type AudiencePlacement = z.infer<typeof audiencePlacementSchema>;
-type VisitorAction = Extract<
+type VisitorAction = Exclude<
   AudienceEvent,
-  {
-    kind:
-      | "menu_click"
-      | "property_click"
-      | "quick_view"
-      | "search"
-      | "whatsapp_click"
-      | "form_received";
-  }
+  { kind: "session_start" | "page_view" | "property_view" | "active_time" }
 >;
 type WithoutView<T> = T extends VisitorAction ? Omit<T, "id" | "page"> : never;
 export type AudienceAction = WithoutView<VisitorAction>;

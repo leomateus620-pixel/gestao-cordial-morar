@@ -105,5 +105,10 @@ export type AudienceReport =
             withheldSessions: number;
             totalSessions: number;
           }
-        | { view: "pages"; pages: AudienceRankItem[]; menus: AudienceRankItem[] }
+        | {
+            view: "pages";
+            pages: AudienceRankItem[];
+            menus: AudienceRankItem[];
+            actions?: AudienceRankItem[];
+          }
       ));

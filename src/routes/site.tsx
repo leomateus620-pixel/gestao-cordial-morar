@@ -1,3 +1,4 @@
+import { documentAudienceConfig } from "@/lib/site-audience/document-config";
 import { createFileRoute } from "@tanstack/react-router";
 import { loadBootstrap } from "@/lib/cordial-site/data";
 import { cordialGtmDecision } from "@/lib/cordial-site/gtm.functions";
@@ -11,11 +12,14 @@ import {
 import siteCss from "@/components/cordial-site/site.css?url";
 export const Route = createFileRoute("/site")({
   loader: async ({ abortController }) => {
-    const bootstrap = await loadBootstrap(abortController.signal);
+    const [bootstrap, audience] = await Promise.all([
+      loadBootstrap(abortController.signal),
+      documentAudienceConfig("cordial"),
+    ]);
     const gtm = await cordialGtmDecision({
       data: { containerId: bootstrap?.settings?.gtmContainerId ?? "" },
     }).catch(() => null);
-    return { ...bootstrap, gtm };
+    return { ...bootstrap, gtm, audience };
   },
   head: ({ loaderData }) => {
     // Layout keeps a fallback title/description but no canonical/og:url/og:image (pages own them).

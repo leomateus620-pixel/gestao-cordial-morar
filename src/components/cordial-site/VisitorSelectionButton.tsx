@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Check, ListPlus } from "lucide-react";
 import { visitorSelection, useVisitorSelection } from "@/lib/selecoes/visitor-store";
 import { VISITOR_SELECTION_LIMIT } from "@/lib/selecoes/visitor-rules";
+import { useSiteBrand } from "@/lib/cordial-site/context";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 import { trackSiteEvent } from "@/lib/cordial-site/experience";
 import "./visitor-selection.css";
 
 export function VisitorSelectionButton({ id }: { id: string }) {
+  const brand = useSiteBrand();
   const { ids } = useVisitorSelection();
   const active = ids.includes(id);
   const [message, setMessage] = useState("");
@@ -18,13 +21,15 @@ export function VisitorSelectionButton({ id }: { id: string }) {
         aria-label={active ? "Remover da minha seleção" : "Adicionar à minha seleção"}
         onClick={() => {
           const changed = visitorSelection.toggle(id);
-          if (changed)
+          if (changed) {
+            measureAudienceAction(brand, { kind: "selection_change", propertyId: id });
             trackSiteEvent("selection_changed", {
               propertyId: id,
               active: !active,
               count: visitorSelection.get().length,
               source: "card",
             });
+          }
           setMessage(
             changed
               ? active

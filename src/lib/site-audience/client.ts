@@ -1,7 +1,7 @@
 import { getSiteBrand, type SiteBrand } from "../cordial-site/brand";
 import { SITE_PUBLIC_HOSTS } from "../cordial-site/domains";
+import { AUDIENCE_MAX_BATCH_EVENTS } from "./limits";
 import {
-  AUDIENCE_MAX_BATCH_EVENTS,
   type AudienceAction,
   type AudienceBatch,
   type AudienceConfig,
@@ -77,12 +77,36 @@ type QueueEntry = Pick<Identity, "visitorId" | "sessionId"> & { event: AudienceE
 type AudienceController = ReturnType<typeof createAudience>;
 const controllers = new Map<SiteBrand, AudienceController>();
 
+export function registerDocumentController(brand: SiteBrand, controller: AudienceController) {
+  controllers.set(brand, controller);
+}
+
 export function measureAudienceAction(brand: SiteBrand, action: AudienceAction) {
   try {
     controllers.get(brand)?.action(action);
   } catch {
     /* A measurement failure cannot interrupt navigation or contact. */
   }
+}
+
+export function audienceContactLink(
+  brand: SiteBrand,
+  kind: "phone_click" | "email_click" | "whatsapp_click",
+  placement: "contact" | "footer" | "header" | "floating" | "detail" | "quick_view",
+  propertyId?: string,
+  afterClick?: () => void,
+) {
+  const action = { kind, placement, propertyId };
+  return {
+    "data-site-audience-link": JSON.stringify(action),
+    onClick: () => {
+      measureAudienceAction(brand, action);
+      afterClick?.();
+    },
+    onAuxClick: (event: { button: number }) => {
+      if (event.button === 1) measureAudienceAction(brand, action);
+    },
+  };
 }
 
 export function prepareAudienceForm(brand: SiteBrand) {

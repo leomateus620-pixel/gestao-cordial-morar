@@ -1,0 +1,2 @@
+export const AUDIENCE_MAX_BATCH_BYTES = 8192;
+export const AUDIENCE_MAX_BATCH_EVENTS = 20;

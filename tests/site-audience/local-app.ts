@@ -48,7 +48,7 @@ const properties = Object.fromEntries(
         description: "Ficha fictícia de homologação de audiência.",
         features: [],
         cover: null,
-        photoCount: 0,
+        photoCount: 1,
       }),
     ),
   ]),
@@ -72,6 +72,12 @@ await db.exec(migration);
 await db.exec(
   await readFile(
     new URL("../../drizzle/migrations/0118_site_audience_interaction_totals.sql", import.meta.url),
+    "utf8",
+  ),
+);
+await db.exec(
+  await readFile(
+    new URL("../../drizzle/migrations/0119_site_audience_action_summary.sql", import.meta.url),
     "utf8",
   ),
 );
@@ -212,6 +218,16 @@ const storage = createServer(async (req, res) => {
           });
         case "documents":
           return json(single ? (documents[0] ?? null) : documents);
+        case "authorized_media":
+          return json(
+            documents.map(({ public_id }) => ({
+              id: uuid(500 + records.findIndex((item) => item.id === public_id)),
+              version: "a".repeat(32),
+              width: 800,
+              height: 600,
+              position: 0,
+            })),
+          );
         case "eligible":
           return json(records.map((item) => ({ public_id: item.id })));
         case "take_rate":

@@ -36,7 +36,8 @@ import { PublicPropertyBotLauncher } from "@/components/public-property-bot/Laun
 import { SiteAnalytics } from "./SiteAnalytics";
 import { SiteAudience } from "./SiteAudience";
 import { loadBootstrap } from "@/lib/cordial-site/data";
-import { measureAudienceAction } from "@/lib/site-audience/client";
+import type { AudienceConfig, AudienceAction } from "@/lib/site-audience/contract";
+import { audienceContactLink, measureAudienceAction } from "@/lib/site-audience/client";
 import type { AudiencePlacement } from "@/lib/site-audience/contract";
 import { siteAudienceMenu } from "@/lib/site-audience/navigation";
 import cordialLogo from "@/assets/logo-cordial-imoveis.png.asset.json";
@@ -80,18 +81,19 @@ export function SiteLink({
       )
     : raw;
   const searchOrigin = searchNavigationContext(path, source, brand);
-  const measureLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
-    if (audienceProperty)
-      measureAudienceAction(brand, {
+  const menu = audienceMenu ? siteAudienceMenu(path, new URLSearchParams(query), brand) : null;
+  const linkAction: AudienceAction | null = audienceProperty
+    ? {
         kind: "property_click",
-        placement: audienceProperty.placement,
         propertyId: audienceProperty.id,
-      });
-    if (audienceMenu) {
-      const menu = siteAudienceMenu(path, new URLSearchParams(query), brand);
-      if (menu) measureAudienceAction(brand, { kind: "menu_click", menu, placement: "header" });
-    }
+        placement: audienceProperty.placement,
+      }
+    : menu
+      ? { kind: "menu_click", menu, placement: "header" }
+      : null;
+  const measureLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (linkAction && !event.defaultPrevented && (event.button === 0 || event.button === 1))
+      measureAudienceAction(brand, linkAction);
   };
   return (
     <Link
@@ -100,6 +102,7 @@ export function SiteLink({
       hash={hash.slice(1)}
       state={(current) => ({ ...current, publicSiteSearch: searchOrigin })}
       {...rest}
+      data-site-audience-link={linkAction ? JSON.stringify(linkAction) : undefined}
       data-public-property={searchOrigin?.propertyId}
       onClick={(event) => {
         rest.onClick?.(event);
@@ -126,7 +129,13 @@ export function SiteLink({
     </Link>
   );
 }
-export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; brand?: SiteBrand }) {
+export function SiteShell({
+  data,
+  brand = "cordial",
+}: {
+  data: SiteBootstrap & { audience?: AudienceConfig | null };
+  brand?: SiteBrand;
+}) {
   const config = getSiteBrand(brand);
   const destinations = destinationsFor(config.shortName);
   const pathFor = (path = "") => sitePath(path, brand);
@@ -243,6 +252,12 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
     <SiteBrandContext.Provider value={brand}>
       <SiteContext.Provider value={currentData}>
         <div className={config.themeClass}>
+          <SiteAudience
+            key={brand}
+            brand={brand}
+            initialConfig={data.audience}
+            hasPrivacy={Boolean(settings.privacy?.trim())}
+          />
           {brand === "cordial" && <SitePerformance />}
           <a className="cs-skip" href="#conteudo">
             Ir para o conteúdo
@@ -405,12 +420,7 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                             href={`https://wa.me/${settings.whatsapp}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() =>
-                              measureAudienceAction(brand, {
-                                kind: "whatsapp_click",
-                                placement: "header",
-                              })
-                            }
+                            {...audienceContactLink(brand, "whatsapp_click", "header")}
                           >
                             <WhatsAppIcon width={22} height={22} />
                             Conversar pelo WhatsApp
@@ -492,20 +502,28 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 <div>
                   <h2>Vamos conversar</h2>
                   {settings.phone && (
-                    <a href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}>
+                    <a
+                      {...audienceContactLink(brand, "phone_click", "footer")}
+                      href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}
+                    >
                       <Phone size={16} />
                       {settings.phone}
                     </a>
                   )}
-                  {settings.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}
+                  {settings.email && (
+                    <a
+                      {...audienceContactLink(brand, "email_click", "footer")}
+                      href={`mailto:${settings.email}`}
+                    >
+                      {settings.email}
+                    </a>
+                  )}
                   {whatsappNumber(settings.whatsapp) && (
                     <a
                       href={`https://wa.me/${whatsappNumber(settings.whatsapp)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() =>
-                        measureAudienceAction(brand, { kind: "whatsapp_click", placement: "footer" })
-                      }
+                      {...audienceContactLink(brand, "whatsapp_click", "footer")}
                     >
                       WhatsApp da equipe <ArrowUpRight size={16} />
                     </a>
@@ -523,11 +541,6 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 </span>
                 <SiteLink to={pathFor("/privacidade")}>Privacidade</SiteLink>
                 <SiteAnalytics settings={settings} brand={brand} />
-                <SiteAudience
-                  key={brand}
-                  brand={brand}
-                  hasPrivacy={Boolean(settings.privacy?.trim())}
-                />
                 {(
                   [
                     ["instagram", "Instagram"],
@@ -565,11 +578,10 @@ export function SiteShell({ data, brand = "cordial" }: { data: SiteBootstrap; br
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Conversar com a ${config.shortName} no WhatsApp`}
-                onClick={() => {
-                  measureAudienceAction(brand, { kind: "whatsapp_click", placement: "floating" });
+                {...audienceContactLink(brand, "whatsapp_click", "floating", undefined, () => {
                   if (brand === "cordial")
                     trackSiteEvent("whatsapp_click", { source: "institutional" });
-                }}
+                })}
               >
                 <WhatsAppIcon width={23} height={23} />
                 <span>Vamos conversar</span>

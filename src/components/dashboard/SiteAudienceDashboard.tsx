@@ -50,6 +50,19 @@ import {
 import { formatAudienceDate, formatAudienceRange, n } from "./site-audience-format";
 import "./site-audience.css";
 
+const actionLabels: Record<string, string> = {
+  menu_click: "Cliques em menus",
+  property_click: "Cliques em imóveis",
+  search: "Buscas realizadas",
+  quick_view: "Prévias rápidas",
+  gallery_open: "Aberturas de galeria",
+  favorite_change: "Alterações nos favoritos",
+  selection_change: "Alterações na seleção",
+  whatsapp_click: "Cliques no WhatsApp",
+  phone_click: "Cliques no telefone",
+  email_click: "Cliques no e-mail",
+  form_received: "Formulários recebidos",
+};
 const brands = ["cordial", "morar"] as const;
 const periodChoices = [
   { value: "day", label: "Dia", icon: Calendar },
@@ -279,6 +292,14 @@ export function SiteAudienceDashboard({
                               {label}
                             </h3>
                             <strong>{n(overview.totals[key])}</strong>
+                            {key === "views" && overview.totals.sessions > 0 && (
+                              <span className="sa-comparison">
+                                {percentage.format(
+                                  overview.totals.views / overview.totals.sessions,
+                                )}{" "}
+                                por sessão
+                              </span>
+                            )}
                             <Comparison
                               current={overview.totals[key]}
                               previous={overview.previous?.[key]}
@@ -492,7 +513,24 @@ function PagesDialog({
         </DialogHeader>
         <ReportMessage resource={resource} compact />
         {report?.status === "ready" && report.view === "pages" && (
-          <AudienceRankings pages={report.pages} menus={report.menus} />
+          <>
+            {report.actions && report.actions.length > 0 && (
+              <div className="sa-rank-list">
+                <h4>Ações no site</h4>
+                <ol aria-label="Ações no site por frequência">
+                  {report.actions.map((row) => (
+                    <li key={row.key}>
+                      <div>
+                        <span>{actionLabels[row.key] ?? row.key}</span>
+                        <strong>{n(row.count)}</strong>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            <AudienceRankings pages={report.pages} menus={report.menus} />
+          </>
         )}
       </DialogContent>
     </Dialog>
