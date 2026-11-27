@@ -15744,6 +15744,67 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      site_audience_collection_status: {
+        Args: {
+          p_brand: string
+          p_environment: string
+          p_policy_version: string
+        }
+        Returns: boolean
+      }
+      site_audience_configure: {
+        Args: {
+          p_brand: string
+          p_enabled: boolean
+          p_environment: string
+          p_policy_version: string
+        }
+        Returns: undefined
+      }
+      site_audience_ingest: {
+        Args: {
+          p_brand: string
+          p_bucket: string
+          p_campaign: string
+          p_channel: string
+          p_environment: string
+          p_events: Json
+          p_medium: string
+          p_policy_version: string
+          p_session_id: string
+          p_source: string
+          p_visitor_id: string
+        }
+        Returns: string
+      }
+      site_audience_production_configure: {
+        Args: {
+          p_brand: string
+          p_campaigns?: string[]
+          p_enabled: boolean
+          p_ingress_verified?: boolean
+          p_notice?: string
+          p_policy_version?: string
+          p_referrers?: string[]
+          p_utm_pairs?: Json
+        }
+        Returns: undefined
+      }
+      site_audience_production_settings: {
+        Args: { p_brand: string }
+        Returns: Json
+      }
+      site_audience_report: {
+        Args: {
+          p_brand: string
+          p_environment: string
+          p_offset: number
+          p_period: string
+          p_policy_version: string
+          p_view: string
+        }
+        Returns: Json
+      }
       site_media_worker_dispatch: { Args: never; Returns: number }
       studio_daily_limit_ok: { Args: { _user_id: string }; Returns: boolean }
       studio_project_approve: { Args: { p_project_id: string }; Returns: Json }
