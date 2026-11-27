@@ -3,7 +3,8 @@ const { chromium, webkit, devices } = require(
   process.env.SITE_AUDIENCE_PLAYWRIGHT_PACKAGE || "playwright",
 );
 const built = process.argv.includes("--built");
-const fixturePort = built ? 5208 : 5198;
+const noticeOnly = process.argv.includes("--notice-only");
+const fixturePort = noticeOnly ? 5218 : built ? 5208 : 5198;
 const fixtureStorage = `http://127.0.0.1:${fixturePort + 1}`;
 const state = async () => fetch(`${fixtureStorage}/__qa/audience`).then((r) => r.json());
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -56,6 +57,76 @@ async function guardedContext(browser, settings) {
       });
   });
   return context;
+}
+async function verifyNoticeOnly(browser, settings) {
+  const brand = "morar";
+  const browserContext = await guardedContext(browser, settings);
+  const before = await state();
+  try {
+    const page = await browserContext.newPage();
+    const origin = `http://morar.localhost:${fixturePort}`;
+    const endpoint = origin + "/api/morar-site/audience";
+    const identityKey = "morar:audience:identity:v1";
+    const notice =
+      "Aviso de teste: as métricas consentidas da Morar usam identificador aleatório para medir a navegação.";
+    let returnNotice = false;
+    await page.route(endpoint, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      await route.fulfill({
+        json: {
+          enabled: true,
+          policyVersion: "qa-v1",
+          ...(returnNotice ? { notice } : {}),
+        },
+      });
+    });
+    await page.goto(origin + "/privacidade");
+    await page.getByText(/A política de privacidade está em preparação/).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Aceitar audiência" }).count(), 0);
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
+    returnNotice = true;
+    await page.reload();
+    const panel = page.getByRole("region", { name: "Preferências de audiência" });
+    await panel.getByText("Como funciona a medição").click();
+    await panel.getByText(notice, { exact: true }).waitFor();
+    const contact = panel.getByRole("link", { name: "Contato da Morar Imóveis" });
+    assert.match(await contact.getAttribute("href"), /\/contato$/);
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
+    await totals(before, brand, { session_start: 0 }, "notice readable before consent");
+
+    await panel.getByRole("button", { name: "Aceitar audiência" }).click();
+    await totals(
+      before,
+      brand,
+      { session_start: 1, page_view: 1 },
+      "dedicated notice works without general policy",
+    );
+    const expired = await page.evaluate((key) => {
+      const identity = JSON.parse(localStorage.getItem(key));
+      identity.expiresAt = Date.now() - 1;
+      localStorage.setItem(key, JSON.stringify(identity));
+      return identity.visitorId;
+    }, identityKey);
+    await page.reload();
+    await totals(
+      before,
+      brand,
+      { session_start: 2, page_view: 2 },
+      "expired local visitor is replaced",
+    );
+    const current = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)).visitorId,
+      identityKey,
+    );
+    assert.notEqual(current, expired);
+
+    await page.getByRole("button", { name: "Métricas de audiência" }).click();
+    await panel.getByRole("button", { name: "Revogar permissão" }).click();
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
+    await page.getByText(/A política de privacidade está em preparação/).waitFor();
+  } finally {
+    await browserContext.close();
+  }
 }
 async function submitFixtureLead(page, brand) {
   if (brand === "cordial")
@@ -308,14 +379,20 @@ async function walk(browser, settings, brand, extended) {
 }
 
 (async () => {
-  const requested = process.argv.slice(2).filter((value) => value !== "--built");
+  const requested = process.argv
+    .slice(2)
+    .filter((value) => !["--built", "--notice-only"].includes(value));
   for (const mode of requested.length ? requested : Object.keys(configs)) {
     assert.ok(configs[mode], "Choose desktop, android or iphone");
     const { launch, context } = configs[mode];
     const browser = await launch();
     try {
-      for (const brand of ["cordial", "morar"])
-        await walk(browser, context, brand, mode === "desktop");
+      if (noticeOnly) {
+        await verifyNoticeOnly(browser, context);
+      } else {
+        for (const brand of ["cordial", "morar"])
+          await walk(browser, context, brand, mode === "desktop");
+      }
       console.log("PASS", mode);
     } finally {
       await browser.close();

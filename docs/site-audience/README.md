@@ -1,6 +1,6 @@
 # Audiência dos sites no Painel
 
-O Painel do `admin_owner` consulta a coleta própria dos sites Cordial e Morar. As duas visões usam o mesmo dicionário e mantêm o período ao trocar de marca. Os eventos e identificadores ficam no servidor. A interface recebe totais, séries e rankings agregados. O relatório de origens é de audiência do site e o indicador de origens do CRM continua com o critério operacional anterior.
+O Painel do `admin_owner` mostra os indicadores operacionais primeiro e a audiência dos sites Cordial e Morar logo abaixo. As duas visões usam o mesmo dicionário e mantêm o período ao trocar de marca. Os eventos e identificadores ficam no servidor. A interface recebe totais, séries e rankings agregados. O relatório de origens é de audiência do site e o indicador de origens do CRM continua com o critério operacional anterior.
 
 ## Fonte e cobertura
 
@@ -11,7 +11,7 @@ O Painel do `admin_owner` consulta a coleta própria dos sites Cordial e Morar. 
 
 A consulta de configuração no Lovable leu somente a presença das chaves, sem expor identificadores de tags. O código anterior dispara `cordial:analytics` para ações consentidas. A opção de GA direto exige configuração manual, desliga o `page_view` automático e suprime referrer nessa instalação. A presença de GTM no documento não confirma o conteúdo do contêiner, o primeiro evento recebido, as sessões ou a disponibilidade de uma exportação histórica. Sem uma série verificável por domínio, data e definição, a coleta começa sem retroativos. Os carregadores e disparos publicitários existentes continuam em uso.
 
-A data exibida em **Coleta desde** indica a primeira janela ligada no banco para a marca e o ambiente. **Último evento** indica quando o servidor aceitou a última amostra. **Cobertura parcial** aparece quando a janela consultada inclui trecho anterior à ativação, uma pausa ou parte expirada pela retenção. A amostra sempre representa navegadores que autorizaram a medição e puderam enviar dados. Um zero observado exige uma janela de coleta válida. Recortes suprimidos ou indisponíveis têm mensagem própria.
+O selo **Coleta habilitada** indica que a marca está apta a medir visitas consentidas. A primeira sessão pode levar alguns minutos para aparecer. A data exibida em **Coleta desde** indica a primeira janela ligada no banco para a marca e o ambiente. **Último evento** indica quando o servidor aceitou a última amostra. **Cobertura parcial** aparece quando a janela consultada inclui trecho anterior à ativação, uma pausa ou parte expirada pela retenção. A amostra sempre representa navegadores que autorizaram a medição e puderam enviar dados. Um zero observado exige uma janela de coleta válida. Recortes suprimidos ou indisponíveis têm mensagem própria.
 
 ## Dicionário de métricas
 
@@ -36,20 +36,39 @@ A data exibida em **Coleta desde** indica a primeira janela ligada no banco para
 
 ## Privacidade e segurança
 
-- Cada marca apresenta a decisão de métricas somente com política preenchida e configuração de coleta compatível. O visitante pode recusar ou voltar às preferências no rodapé. A versão da política exige nova escolha. A escolha fica no navegador e o identificador da coleta só nasce com aceite. Revogar encerra os envios pendentes e remove a identidade local. A retenção no servidor segue o prazo de expiração abaixo.
+- Em produção, cada marca apresenta a escolha de métricas com um aviso próprio aprovado e versionado. O aviso de audiência é independente da página geral de privacidade da marca. O visitante pode recusar ou voltar às preferências no rodapé. A versão da política exige nova escolha. A escolha fica no navegador e o identificador da coleta só nasce com aceite. Revogar encerra os envios pendentes e remove a identidade local. A retenção no servidor segue o prazo de expiração abaixo.
 - Eventos guardam chaves pseudônimas, categorias de páginas e ações, datas, UUID público do imóvel e dimensões aprovadas de campanha. Excluem dados de contato, CRM, busca digitada, URL completa, IP e identificadores brutos de anúncio. Uma referência descartada ou não disponível fica sem atribuição detalhada.
 - A proteção de volume usa IP verificado na borda para derivar HMAC de curta duração, isolado da medição e rotacionado a cada 15 minutos. Os eventos e sessões expiram em 65 dias. O cron limpa as janelas de limite com mais de 30 minutos em todas as execuções. A identificação local dura até 30 dias. O banco guarda as janelas de cobertura, sem identidades ou eventos nelas.
 - Em produção, rankings e painéis com menos de cinco sessões qualificadas ocultam o recorte. Origens agrupam o volume omitido sem expor as dimensões. QA usa amostra mínima de uma sessão e tem indicação visível. Totais gerais por marca e período seguem disponíveis.
 - Os endpoints públicos validam host canônico, origem, esquema e limite. Pedidos de prévia e hosts fora da lista ficam fora. O relatório verifica o papel no servidor. Papéis externos restritivos prevalecem sobre papéis acumulados. A leitura de catálogos para enriquecer o ranking considera apenas a publicação atual da marca.
 
-Antes da ativação, a política de cada marca deve descrever finalidade, dados, retenção, escolhas, revogação e canal para direitos. Confirme com a pessoa responsável pela política a base adotada e a configuração de logs da borda e da hospedagem para o endpoint. O desenho usa aceite específico e recusa de fácil acesso. [Guia orientativo de cookies e proteção de dados pessoais da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia_orientativo_cookies_e_protecao_de_dados_pessoais)
+Antes da ativação, aprove o aviso de cada marca com finalidade, dados, retenção, escolhas, revogação e canal para direitos. Confirme também a configuração de logs da borda e da hospedagem para o endpoint. O desenho usa aceite específico e recusa de fácil acesso. [Guia orientativo de cookies e proteção de dados pessoais da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia_orientativo_cookies_e_protecao_de_dados_pessoais)
 
-## Ativação e reversão
+## Ativação em produção
+
+Aplique `0116_site_audience` e `0117_site_audience_production_config` pelo journal do Drizzle. Publique a versão correspondente no Lovable. A migração cria a estrutura com a coleta desligada. Depois de conferir a borda dos domínios oficiais e obter o aceite do responsável pelo aviso, aplique a configuração na conexão de produção do Lovable com a função de serviço. O banco cria o segredo de proteção no Vault e abre a janela de cobertura na mesma transação. A ativação é independente por marca e dispensa segredos no código, no cliente ou na sessão do operador. Guarde a versão aprovada do texto. Use uma versão nova se o texto mudar, para que o visitante escolha novamente.
+
+```sql
+-- Exemplo para adaptar com o texto aprovado antes de executar.
+SELECT public.site_audience_production_configure(
+  p_brand => 'cordial',
+  p_enabled => true,
+  p_policy_version => 'audiencia-v1',
+  p_notice => '<texto integral aprovado para a marca>',
+  p_ingress_verified => true
+);
+```
+
+Confira o `GET /api/cordial-site/audience` em `cordialimoveis.com` e o `GET /api/morar-site/audience` em `imobiliariamorarimoveis.com.br`. Na marca ativada, a resposta inclui `enabled:true` e a versão do aviso. Confirme a presença dos controles de recusa, aceite e revogação e o estado **Coleta habilitada** no Painel autenticado. Os apelidos e domínios de prévia não são aceitos para coleta de produção. O indicador de início usa a janela aberta no banco. O volume sobe quando houver visitas que aceitem a medição.
+
+Para pausar em produção, execute `SELECT public.site_audience_production_configure('cordial', false);` ou o equivalente para `morar`. A pausa encerra a janela de coleta e mantém os agregados ainda retidos. A remoção física de dados é um procedimento separado.
+
+## Homologação
 
 1. No rascunho de QA do projeto Gestão Cordial no Lovable, confirme servidor e banco isolados. Aplique `0116_site_audience` pelo aplicador Drizzle, de acordo com o journal versionado. Confirme que `site_audience` e suas RPCs existem, que as tabelas não são expostas, e que a limpeza `site-audience-retention` está programada em `pg_cron`. Sem `pg_cron`, configure um agendamento interno do banco para `site_audience.cleanup()` com o mesmo intervalo antes de habilitar a coleta.
 2. Configure `SITE_AUDIENCE_ENV=qa`, `SITE_AUDIENCE_INGRESS_VERIFIED=true` e `SITE_AUDIENCE_RATE_SECRET` com segredo aleatório de ao menos 32 caracteres. Só indique borda verificada quando o proxy substituir `cf-connecting-ip` e o origin aceitar tráfego somente dessa borda. Em QA externo, use HTTPS, `CORDIAL_SITE_ENV=preview` e `MORAR_SITE_ENV=preview`. Defina `VITE_CORDIAL_SITE_PUBLIC_HOST` e `VITE_MORAR_SITE_PUBLIC_HOST` iguais aos respectivos `CORDIAL_SITE_AUDIENCE_QA_HOST` e `MORAR_SITE_AUDIENCE_QA_HOST`, com hosts distintos. `SITE_AUDIENCE_LOCAL_QA=true` é exclusivo do exercício em loopback do repositório.
-3. Para cada marca, defina `CORDIAL_SITE_AUDIENCE_POLICY_VERSION` ou `MORAR_SITE_AUDIENCE_POLICY_VERSION` com a versão da política aprovada, em minúsculas. Em Configurações → Sites, confira a política correspondente. Defina pares permitidos em `*_SITE_AUDIENCE_UTM_PAIRS` no formato `origem:midia,outra:midia` e campanhas e domínios em listas separadas por vírgula em `*_SITE_AUDIENCE_CAMPAIGNS` e `*_SITE_AUDIENCE_REFERRERS`. Use códigos de campanha controlados sem nomes, contatos ou texto de anúncios. `SITE_AUDIENCE_INTERNAL_IPS` é uma lista de exclusão mantida no servidor. Teste as estações internas com o bloqueio de coleta do navegador disponível em Preferências de métricas.
-4. Ligue somente a marca e ambiente autorizados com a RPC de serviço. Repita para a outra marca após aprovação específica. Em produção, use `SITE_AUDIENCE_ENV=production`, `*_SITE_ENV=production`, HTTPS e os domínios oficiais. As chaves de QA e as tabelas por ambiente separam as observações. Os hosts `www` e os caminhos legados continuam redirecionando para a marca canônica.
+3. Para cada marca, defina `CORDIAL_SITE_AUDIENCE_POLICY_VERSION` ou `MORAR_SITE_AUDIENCE_POLICY_VERSION` com a versão da política aprovada, em minúsculas. No ambiente de QA, configure o aviso exibido pelo fixture ou o texto da política de teste. Defina pares permitidos em `*_SITE_AUDIENCE_UTM_PAIRS` no formato `origem:midia,outra:midia` e campanhas e domínios em listas separadas por vírgula em `*_SITE_AUDIENCE_CAMPAIGNS` e `*_SITE_AUDIENCE_REFERRERS`. Use códigos de campanha controlados sem nomes, contatos ou texto de anúncios. `SITE_AUDIENCE_INTERNAL_IPS` é uma lista de exclusão mantida no servidor. Teste as estações internas com o bloqueio de coleta do navegador disponível em Preferências de métricas.
+4. Ligue somente a marca no ambiente `qa` com a RPC de serviço. As chaves e as janelas por ambiente separam as observações. Os hosts `www` e os caminhos legados continuam redirecionando para a marca canônica.
 
 ```sql
 SELECT public.site_audience_configure('cordial', 'qa', 'qa-v1', true);

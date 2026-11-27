@@ -101,6 +101,12 @@ async function checkDashboard(page, hasTouch) {
   ]) {
     await navigate({ state });
     await text(label).waitFor(timeout);
+    const enabled = ["unavailable", "zero", "partial"].includes(state);
+    assert.equal(await text("Coleta habilitada").isVisible(), enabled);
+    assert.equal(
+      await text("Cobertura parcial no período").isVisible(),
+      ["partial", "retained"].includes(state),
+    );
     if (state === "zero") {
       assert.deepEqual(await page.locator(".sa-kpi > strong").allTextContents(), ["0", "0", "0"]);
     }

@@ -2,7 +2,12 @@ import { SITE_PUBLIC_HOSTS } from "@/lib/cordial-site/domains";
 import { mediaPath } from "@/lib/cordial-site/presentation";
 import { autoPropertySeo, propertySlug } from "@/lib/cordial-site/property-slug";
 import { siteDb, summaries } from "@/lib/cordial-site/service.server";
-import { audienceEnvironment, audienceOrigin, audienceSettings } from "./privacy.server";
+import {
+  audienceEnvironment,
+  audienceOrigin,
+  isProductionAudienceDashboard,
+  resolveAudienceSettings,
+} from "./privacy.server";
 import type { AudiencePropertyRank, AudienceReport, AudienceReportInput } from "./report";
 
 const dayInSaoPaulo = new Intl.DateTimeFormat("en-CA", {
@@ -13,7 +18,7 @@ const dayInSaoPaulo = new Intl.DateTimeFormat("en-CA", {
 });
 
 // The shared database can legitimately lack this migration in a disabled code preview.
-function disabledBeforeMigration(
+function disabledReport(
   input: AudienceReportInput,
   environment: "production" | "qa",
 ): AudienceReport {
@@ -59,9 +64,15 @@ function disabledBeforeMigration(
   };
 }
 
-export async function loadSiteAudienceReport(input: AudienceReportInput): Promise<AudienceReport> {
+export async function loadSiteAudienceReport(
+  input: AudienceReportInput,
+  request: Request,
+): Promise<AudienceReport> {
   const environment = audienceEnvironment();
-  const settings = audienceSettings(input.brand);
+  if (environment === "production" && !isProductionAudienceDashboard(request))
+    return disabledReport(input, environment);
+
+  const settings = await resolveAudienceSettings(input.brand);
   const { data, error } = await siteDb().rpc("site_audience_report", {
     p_brand: input.brand,
     p_environment: environment,
@@ -70,7 +81,7 @@ export async function loadSiteAudienceReport(input: AudienceReportInput): Promis
     p_view: input.view,
     p_policy_version: settings?.config.policyVersion ?? null,
   });
-  if (!settings && error?.code === "PGRST202") return disabledBeforeMigration(input, environment);
+  if (!settings && error?.code === "PGRST202") return disabledReport(input, environment);
 
   if (error || !data || data.brand !== input.brand || data.environment !== environment)
     throw new Error("Não foi possível consultar a audiência.");

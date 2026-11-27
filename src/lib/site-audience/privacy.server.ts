@@ -2,12 +2,13 @@ import { isIP } from "node:net";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
 import { getSiteBrand } from "@/lib/cordial-site/brand";
 import { GESTAO_HOSTS, SITE_PUBLIC_HOSTS, sitePublicHost } from "@/lib/cordial-site/domains";
+import { siteDb } from "@/lib/cordial-site/service.server";
 import type { AudienceAttribution, AudienceConfig } from "./contract";
 import { audienceConfigSchema } from "./contract";
 import type { AudienceChannel } from "./report";
 
 type Environment = "production" | "qa";
-type Settings = {
+export type AudienceSettings = {
   brand: SiteBrand;
   environment: Environment;
   host: string;
@@ -24,6 +25,7 @@ type Attribution = {
 
 const officialHosts = Object.values(SITE_PUBLIC_HOSTS).flatMap((host) => [host, `www.${host}`]);
 const restrictedHosts = new Set([...GESTAO_HOSTS, ...officialHosts]);
+const productionDashboardHosts = new Set([...GESTAO_HOSTS, "gestao-cordial-morar.lovable.app"]);
 const label = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
 const domain = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const localQaHost = /^(?:[a-z0-9][a-z0-9-]*\.)+localhost(?::[1-9][0-9]{0,4})?$/;
@@ -42,40 +44,51 @@ export function audienceEnvironment(env = process.env): Environment {
   return env.SITE_AUDIENCE_ENV === "qa" ? "qa" : "production";
 }
 
-export function audienceSettings(brand: SiteBrand, env = process.env): Settings | null {
-  const environment = env.SITE_AUDIENCE_ENV;
-  const prefix = brand === "cordial" ? "CORDIAL_SITE" : "MORAR_SITE";
-  const otherPrefix = brand === "cordial" ? "MORAR_SITE" : "CORDIAL_SITE";
+export function isProductionAudienceDashboard(request: Request) {
+  const url = new URL(request.url);
+  return url.protocol === "https:" && productionDashboardHosts.has(url.host.toLowerCase());
+}
+
+function brandPrefix(brand: SiteBrand) {
+  return brand === "cordial" ? "CORDIAL_SITE" : "MORAR_SITE";
+}
+
+function productionHost(brand: SiteBrand, env: NodeJS.ProcessEnv): string | null {
+  const prefix = brandPrefix(brand);
+  const host = sitePublicHost(brand, env[`VITE_${prefix}_PUBLIC_HOST`]);
+  return (!env.SITE_AUDIENCE_ENV || env.SITE_AUDIENCE_ENV === "production") &&
+    (env.SITE_AUDIENCE_INGRESS_VERIFIED === undefined ||
+      env.SITE_AUDIENCE_INGRESS_VERIFIED === "true") &&
+    (!env[`${prefix}_ENV`] || env[`${prefix}_ENV`] === "production") &&
+    host === SITE_PUBLIC_HOSTS[brand]
+    ? host
+    : null;
+}
+
+function qaSettings(brand: SiteBrand, env: NodeJS.ProcessEnv): AudienceSettings | null {
+  if (env.SITE_AUDIENCE_ENV !== "qa") return null;
+  const prefix = brandPrefix(brand);
+  const otherPrefix = brandPrefix(brand === "cordial" ? "morar" : "cordial");
   const siteEnvironment = env[`${prefix}_ENV`];
   const host = sitePublicHost(brand, env[`VITE_${prefix}_PUBLIC_HOST`]);
   const policyVersion = env[`${prefix}_AUDIENCE_POLICY_VERSION`];
   const secret = env.SITE_AUDIENCE_RATE_SECRET;
+  const loopback = localQaHost.test(host) && env.SITE_AUDIENCE_LOCAL_QA === "true";
   if (
     !policyVersion ||
     !approvedPolicy.test(policyVersion) ||
     !secret ||
     secret.length < 32 ||
-    env.SITE_AUDIENCE_INGRESS_VERIFIED !== "true"
+    env.SITE_AUDIENCE_INGRESS_VERIFIED !== "true" ||
+    !siteEnvironment ||
+    siteEnvironment === "production" ||
+    (!domain.test(host) && !loopback) ||
+    restrictedHosts.has(host) ||
+    host !== env[`${prefix}_AUDIENCE_QA_HOST`]?.toLowerCase() ||
+    host === env[`${otherPrefix}_AUDIENCE_QA_HOST`]?.toLowerCase() ||
+    host === env[`VITE_${otherPrefix}_PUBLIC_HOST`]?.toLowerCase()
   )
     return null;
-
-  if (environment === "production") {
-    if (siteEnvironment !== "production" || host !== SITE_PUBLIC_HOSTS[brand]) return null;
-  } else if (environment === "qa") {
-    const loopback = localQaHost.test(host) && env.SITE_AUDIENCE_LOCAL_QA === "true";
-    if (
-      !siteEnvironment ||
-      siteEnvironment === "production" ||
-      (!domain.test(host) && !loopback) ||
-      restrictedHosts.has(host) ||
-      host !== env[`${prefix}_AUDIENCE_QA_HOST`]?.toLowerCase() ||
-      host === env[`${otherPrefix}_AUDIENCE_QA_HOST`]?.toLowerCase() ||
-      host === env[`VITE_${otherPrefix}_PUBLIC_HOST`]?.toLowerCase()
-    )
-      return null;
-  } else {
-    return null;
-  }
 
   const pairs = list(env[`${prefix}_AUDIENCE_UTM_PAIRS`])
     .flatMap((pair) => {
@@ -90,46 +103,84 @@ export function audienceSettings(brand: SiteBrand, env = process.env): Settings 
     .filter((value) => value.length <= 80 && domain.test(value))
     .slice(0, 100);
   const config = audienceConfigSchema.parse({ enabled: true, policyVersion, pairs, campaigns });
-  return { brand, environment, host, config, approvedReferrers, secret };
+  return { brand, environment: "qa", host, config, approvedReferrers, secret };
 }
 
-export function audienceHostSettings(
-  request: Request,
+async function readProductionSettings(brand: SiteBrand): Promise<unknown> {
+  const { data, error } = await siteDb(AbortSignal.timeout(2000)).rpc(
+    "site_audience_production_settings",
+    { p_brand: brand },
+  );
+  if (error?.code === "PGRST202") return null;
+  if (error) throw new Error("Não foi possível consultar a configuração de audiência.");
+  return data;
+}
+
+export async function resolveAudienceSettings(
   brand: SiteBrand,
   env = process.env,
-): Settings | null {
-  const site = audienceSettings(brand, env);
-  if (!site) return null;
-  const url = new URL(request.url);
-  const localQa =
-    site.environment === "qa" &&
-    localQaHost.test(site.host) &&
-    env.SITE_AUDIENCE_LOCAL_QA === "true";
-  return url.host.toLowerCase() === site.host &&
-    (url.protocol === "https:" || localQa) &&
-    url.pathname === `${getSiteBrand(brand).apiBase}/audience` &&
-    !url.search
-    ? site
-    : null;
+  readProduction = readProductionSettings,
+): Promise<AudienceSettings | null> {
+  if (env.SITE_AUDIENCE_ENV === "qa") return qaSettings(brand, env);
+  const host = productionHost(brand, env);
+  if (!host) return null;
+  const read = await readProduction(brand);
+  if (!read || typeof read !== "object") return null;
+  const { policyVersion, notice, pairs, campaigns, referrers, secret } = read as Record<
+    string,
+    unknown
+  >;
+  const config = audienceConfigSchema.safeParse({
+    enabled: true,
+    policyVersion,
+    notice,
+    pairs,
+    campaigns,
+  });
+  if (
+    !config.success ||
+    !config.data.notice ||
+    !approvedPolicy.test(config.data.policyVersion) ||
+    typeof secret !== "string" ||
+    !/^[a-f0-9]{64}$/.test(secret) ||
+    !Array.isArray(referrers) ||
+    referrers.length > 100 ||
+    !referrers.every(
+      (value): value is string =>
+        typeof value === "string" && value.length <= 80 && domain.test(value),
+    )
+  )
+    return null;
+  return {
+    brand,
+    environment: "production",
+    host,
+    config: config.data,
+    approvedReferrers: referrers,
+    secret,
+  };
 }
 
-export function audienceOrigin(settings: Settings, env = process.env) {
+export function isAudienceHost(
+  request: Request,
+  brand: SiteBrand,
+  endpoint: "audience" | "leads",
+  env = process.env,
+): boolean {
+  const url = new URL(request.url);
+  if (url.search || url.pathname !== `${getSiteBrand(brand).apiBase}/${endpoint}`) return false;
+  const qa = env.SITE_AUDIENCE_ENV === "qa" ? qaSettings(brand, env) : null;
+  const host = qa?.host ?? productionHost(brand, env);
+  const localQa = qa && localQaHost.test(qa.host) && env.SITE_AUDIENCE_LOCAL_QA === "true";
+  return !!host && url.host.toLowerCase() === host && (url.protocol === "https:" || !!localQa);
+}
+
+export function audienceOrigin(settings: AudienceSettings, env = process.env) {
   const local =
     settings.environment === "qa" &&
     localQaHost.test(settings.host) &&
     env.SITE_AUDIENCE_LOCAL_QA === "true";
   return `${local ? "http" : "https"}://${settings.host}`;
-}
-
-export function audienceLeadSettings(
-  request: Request,
-  brand: SiteBrand,
-  env = process.env,
-): Settings | null {
-  const url = new URL(request.url);
-  if (url.pathname !== `${getSiteBrand(brand).apiBase}/leads` || url.search) return null;
-  url.pathname = `${getSiteBrand(brand).apiBase}/audience`;
-  return audienceHostSettings(new Request(url), brand, env);
 }
 
 const sourceDomains: { channel: "organic" | "social"; source: string; domains: string[] }[] = [
@@ -155,7 +206,7 @@ const direct: Attribution = { channel: "direct", source: null, medium: null, cam
 
 export function classifyAudienceAttribution(
   input: AudienceAttribution | undefined,
-  settings: Settings,
+  settings: AudienceSettings,
 ): Attribution {
   if (!input) return direct;
   const pair = settings.config.pairs?.find(
@@ -244,7 +295,7 @@ async function keyedDigest(secret: string, value: string): Promise<string> {
   ).join("");
 }
 
-export function audienceRateKey(settings: Settings, ip: string, now = Date.now()) {
+export function audienceRateKey(settings: AudienceSettings, ip: string, now = Date.now()) {
   return keyedDigest(
     settings.secret,
     `audience/rate/v1\n${settings.environment}\n${settings.brand}\n${Math.floor(now / 900000)}\n${ip}`,
@@ -252,11 +303,11 @@ export function audienceRateKey(settings: Settings, ip: string, now = Date.now()
 }
 
 const proofPattern = /^([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\.(\d{10,13})\.([a-f0-9]{64})$/;
-const receiptScope = (settings: Settings) =>
+const receiptScope = (settings: AudienceSettings) =>
   `${settings.environment}\n${settings.brand}\n${settings.config.policyVersion}`;
 
 export async function makeAudienceFormProof(
-  settings: Settings,
+  settings: AudienceSettings,
   submitNonce: string,
   propertyId?: string,
   now = Date.now(),
@@ -282,7 +333,7 @@ export async function makeAudienceFormProof(
 }
 
 export async function verifyAudienceFormProof(
-  settings: Settings,
+  settings: AudienceSettings,
   proof: string,
   propertyId?: string,
   now = Date.now(),

@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  audienceHostSettings,
   audienceRequestIp,
   audienceRateKey,
-  audienceSettings,
   classifyAudienceAttribution,
+  isAudienceHost,
+  isProductionAudienceDashboard,
+  resolveAudienceSettings,
   makeAudienceFormProof,
   verifyAudienceFormProof,
 } from "../../src/lib/site-audience/privacy.server";
@@ -34,44 +35,74 @@ const qa = {
   MORAR_SITE_AUDIENCE_QA_HOST: "morar.localhost:5198",
 };
 
+const notice =
+  "Aviso de teste que descreve a finalidade, os dados utilizados e a revogação da medição de audiência.";
+const approved = async () => ({
+  policyVersion: "v1",
+  notice,
+  secret: "a".repeat(64),
+  pairs: [
+    { source: "qa", medium: "cpc" },
+    { source: "lista", medium: "email" },
+  ],
+  campaigns: ["outono"],
+  referrers: ["parceiro.com.br"],
+});
+
 test("configured host, inbound origin category and environment are isolated", () => {
   const request = (url: string) => new Request(url);
   const expected = "https://cordialimoveis.com/api/cordial-site/audience";
-  assert.equal(audienceHostSettings(request(expected), "cordial", {})?.environment, undefined);
-  assert.equal(
-    audienceHostSettings(request(expected), "cordial", production)?.environment,
-    "production",
-  );
-  assert.equal(audienceHostSettings(request(expected), "morar", production), null);
-  assert.equal(audienceHostSettings(request(expected), "cordial", qa), null);
+  assert.ok(isAudienceHost(request(expected), "cordial", "audience", {}));
+  assert.ok(isAudienceHost(request(expected), "cordial", "audience", production));
+  assert.equal(isAudienceHost(request(expected), "morar", "audience", production), false);
+  assert.equal(isAudienceHost(request(expected), "cordial", "audience", qa), false);
+  assert.equal(isAudienceHost(request(expected), "cordial", "leads", production), false);
   for (const origin of [
     "https://www.cordialimoveis.com",
     "https://cordialgestao.com",
     "https://imobiliariamorarimoveis.com.br",
+    "https://id-preview.lovable.app",
     "http://cordialimoveis.com",
   ]) {
     assert.equal(
-      audienceHostSettings(request(`${origin}/api/cordial-site/audience`), "cordial", production),
-      null,
+      isAudienceHost(
+        request(`${origin}/api/cordial-site/audience`),
+        "cordial",
+        "audience",
+        production,
+      ),
+      false,
     );
   }
   const dedicated = request("http://cordial.localhost:5198/api/cordial-site/audience");
-  assert.equal(audienceHostSettings(dedicated, "cordial", qa)?.environment, "qa");
+  assert.ok(isAudienceHost(dedicated, "cordial", "audience", qa));
   assert.equal(
-    audienceHostSettings(dedicated, "cordial", { ...qa, SITE_AUDIENCE_LOCAL_QA: "" }),
-    null,
+    isAudienceHost(dedicated, "cordial", "audience", { ...qa, SITE_AUDIENCE_LOCAL_QA: "" }),
+    false,
   );
   assert.equal(
-    audienceHostSettings(dedicated, "cordial", {
+    isAudienceHost(dedicated, "cordial", "audience", {
       ...qa,
       MORAR_SITE_AUDIENCE_QA_HOST: "cordial.localhost:5198",
     }),
-    null,
+    false,
   );
   assert.equal(
-    audienceHostSettings(request(expected + "?tracking=discarded"), "cordial", production),
-    null,
+    isAudienceHost(request(expected + "?tracking=discarded"), "cordial", "audience", production),
+    false,
   );
+  for (const host of [
+    "cordialgestao.com",
+    "www.cordialgestao.com",
+    "gestao-cordial-morar.lovable.app",
+  ])
+    assert.ok(isProductionAudienceDashboard(request(`https://${host}/_serverFn/report`)));
+  for (const origin of [
+    "http://cordialgestao.com",
+    "https://preview--gestao-cordial-morar.lovable.app",
+    "https://cordialimoveis.com",
+  ])
+    assert.equal(isProductionAudienceDashboard(request(`${origin}/_serverFn/report`)), false);
 
   const headers = { "cf-connecting-ip": "198.51.100.3", "user-agent": "Mozilla/5.0" };
   assert.equal(
@@ -97,8 +128,59 @@ test("configured host, inbound origin category and environment are isolated", ()
   );
 });
 
-test("origin attribution persists only controlled campaign values and domains", () => {
-  const settings = audienceSettings("cordial", production);
+test("production needs a private approved notice and QA keeps its own configuration", async () => {
+  const settings = await resolveAudienceSettings("cordial", {}, approved);
+  assert.ok(settings);
+  assert.equal(settings.environment, "production");
+  assert.equal(settings.config.notice, notice);
+  assert.equal("secret" in settings.config, false);
+  assert.equal("referrers" in settings.config, false);
+  assert.equal(await resolveAudienceSettings("cordial", {}, async () => null), null);
+  assert.equal(
+    await resolveAudienceSettings("cordial", {}, async () => ({
+      ...(await approved()),
+      notice: undefined,
+    })),
+    null,
+  );
+  const mustNotRead = async () => assert.fail("production settings must not be read");
+  assert.equal(
+    await resolveAudienceSettings(
+      "cordial",
+      {
+        SITE_AUDIENCE_INGRESS_VERIFIED: "false",
+      },
+      mustNotRead,
+    ),
+    null,
+  );
+  assert.equal(
+    await resolveAudienceSettings(
+      "cordial",
+      {
+        CORDIAL_SITE_ENV: "preview",
+      },
+      mustNotRead,
+    ),
+    null,
+  );
+  assert.equal(
+    await resolveAudienceSettings(
+      "cordial",
+      {
+        SITE_AUDIENCE_ENV: "disabled",
+      },
+      mustNotRead,
+    ),
+    null,
+  );
+  const qaSettings = await resolveAudienceSettings("cordial", qa, mustNotRead);
+  assert.equal(qaSettings?.environment, "qa");
+  assert.equal(qaSettings.config.notice, undefined);
+});
+
+test("origin attribution persists only controlled campaign values and domains", async () => {
+  const settings = await resolveAudienceSettings("cordial", production, approved);
   assert.ok(settings);
   const attribution = (input?: Parameters<typeof classifyAudienceAttribution>[0]) =>
     classifyAudienceAttribution(input, settings);
@@ -137,9 +219,9 @@ test("origin attribution persists only controlled campaign values and domains", 
 });
 
 test("confirmed form proofs are short-lived, one-key per request, and bound to the brand and property", async () => {
-  const settings = audienceSettings("cordial", production);
-  const morar = audienceSettings("morar", production);
-  const qaSettings = audienceSettings("cordial", qa);
+  const settings = await resolveAudienceSettings("cordial", production, approved);
+  const morar = await resolveAudienceSettings("morar", production, approved);
+  const qaSettings = await resolveAudienceSettings("cordial", qa, approved);
   assert.ok(settings && morar && qaSettings);
   const now = Date.parse("2026-11-26T15:00:00Z");
   const form = "00000000-0000-0000-0000-00000000000a";

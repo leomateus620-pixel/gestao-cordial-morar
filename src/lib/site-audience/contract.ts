@@ -114,6 +114,7 @@ export const audienceBatchSchema = z.strictObject({
 export const audienceConfigSchema = z.strictObject({
   enabled: z.literal(true),
   policyVersion: z.string().min(1).max(80),
+  notice: z.string().trim().min(80).max(2000).optional(),
   pairs: z
     .array(z.strictObject({ source: label, medium: label }))
     .max(100)
