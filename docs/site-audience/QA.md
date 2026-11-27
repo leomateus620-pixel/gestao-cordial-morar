@@ -54,3 +54,9 @@ O ensaio atual da Morar usa uma política geral vazia. Verifica a presença da s
 bun tests/site-audience/local-app.ts --notice-only
 node tests/site-audience/public-browser.cjs --notice-only desktop iphone
 ```
+
+## Navegação durante o carregamento e ações por marca
+
+O cenário `beforeHydration` segura o carregamento da aplicação no navegador e abre uma ficha por um link do HTML. Na página inicial e na ficha, o banco de QA deve registrar uma sessão, duas páginas, um clique no imóvel e uma ficha aberta. Liberar o carregamento da aplicação deve preservar esses totais. O teste é executado nos dois hosts.
+
+O percurso de navegação também verifica aberturas de galeria e mudanças de favoritos em ambas as marcas, além da seleção na Cordial. Acionar o favorito ou a seleção dentro do card mantém o total de cliques no imóvel. O teste de banco reenvia os mesmos eventos e verifica a contagem por categoria em **Páginas e menus → Detalhar**. A média no cartão de visualizações usa páginas vistas divididas pelas sessões medidas no próprio período.

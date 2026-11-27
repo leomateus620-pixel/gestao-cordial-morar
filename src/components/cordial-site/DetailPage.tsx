@@ -43,7 +43,7 @@ import { PropertyVideo } from "./PropertyVideo";
 import { PropertyTour } from "./PropertyTour";
 import { PropertyShare } from "./PropertyShare";
 import { useGalleryPhotos } from "./useGalleryPhotos";
-import { measureAudienceAction } from "@/lib/site-audience/client";
+import { audienceContactLink, measureAudienceAction } from "@/lib/site-audience/client";
 
 const LIGHTBOX_SIZES = "(max-width: 640px) calc(100vw - 30px), calc(92vw - 180px)";
 
@@ -252,18 +252,13 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => {
-                    measureAudienceAction(brand, {
-                      kind: "whatsapp_click",
-                      propertyId: p.id,
-                      placement: "detail",
-                    });
+                  {...audienceContactLink(brand, "whatsapp_click", "detail", p.id, () =>
                     trackSiteEvent("whatsapp_click", {
                       propertyId: p.id,
                       reference: p.reference,
                       source: "detail_top",
-                    });
-                  }}
+                    }),
+                  )}
                 >
                   <WhatsAppIcon width={18} height={18} /> Conversar
                 </a>
@@ -289,6 +284,11 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                     galleryTrigger.current = e.currentTarget;
                     selectImmediately(i);
                     setOpen(true);
+                    measureAudienceAction(brand, {
+                      kind: "gallery_open",
+                      propertyId: p.id,
+                      placement: "detail",
+                    });
                     if (brand === "cordial")
                       trackSiteEvent("gallery_open", {
                         propertyId: p.id,
@@ -532,18 +532,13 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => {
-                    measureAudienceAction(brand, {
-                      kind: "whatsapp_click",
-                      propertyId: p.id,
-                      placement: "detail",
-                    });
+                  {...audienceContactLink(brand, "whatsapp_click", "detail", p.id, () =>
                     trackSiteEvent("whatsapp_click", {
                       propertyId: p.id,
                       reference: p.reference,
                       source: "detail_contact",
-                    });
-                  }}
+                    }),
+                  )}
                 >
                   <WhatsAppIcon width={20} height={20} />
                   Conversar pelo WhatsApp
@@ -614,20 +609,15 @@ export function DetailPage({ property: p }: { property: PublicDetail }) {
           href={whatsapp ?? "#fale-sobre-imovel"}
           target={whatsapp ? "_blank" : undefined}
           rel={whatsapp ? "noopener noreferrer" : undefined}
-          onClick={() => {
-            if (whatsapp) {
-              measureAudienceAction(brand, {
-                kind: "whatsapp_click",
-                propertyId: p.id,
-                placement: "detail",
-              });
-              trackSiteEvent("whatsapp_click", {
-                propertyId: p.id,
-                reference: p.reference,
-                source: "detail_mobile",
-              });
-            }
-          }}
+          {...(whatsapp
+            ? audienceContactLink(brand, "whatsapp_click", "detail", p.id, () =>
+                trackSiteEvent("whatsapp_click", {
+                  propertyId: p.id,
+                  reference: p.reference,
+                  source: "detail_mobile",
+                }),
+              )
+            : {})}
         >
           {whatsapp ? "WhatsApp" : "Atendimento"} <ArrowRight size={18} />
         </a>

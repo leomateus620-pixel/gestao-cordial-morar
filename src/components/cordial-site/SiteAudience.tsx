@@ -7,22 +7,31 @@ import {
   audienceEndpoint,
   clearAudienceIdentity,
 } from "@/lib/site-audience/client";
-import {
-  audienceConfigSchema,
-  type AudienceConfig,
-  type AudiencePage,
-} from "@/lib/site-audience/contract";
+import { audienceConfigSchema, type AudienceConfig } from "@/lib/site-audience/contract";
+import { attachDocumentAudience, audienceViewFromKey } from "@/lib/site-audience/document";
+import earlyModule from "@/lib/site-audience/document-entry.ts?worker&url";
 import { siteAudiencePage } from "@/lib/site-audience/navigation";
 
-export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPrivacy: boolean }) {
-  const [config, setConfig] = useState<AudienceConfig | null>(null);
+export function SiteAudience({
+  brand,
+  hasPrivacy,
+  initialConfig,
+}: {
+  brand: SiteBrand;
+  hasPrivacy: boolean;
+  initialConfig?: AudienceConfig | null;
+}) {
+  const [documentConfig] = useState(initialConfig);
+  const generation = useRef(0);
+  const marker = useRef<HTMLSpanElement>(null);
+  const [config, setConfig] = useState<AudienceConfig | null>(documentConfig ?? null);
   const [configCheck, setConfigCheck] = useState(0);
   const rejectedPolicy = useRef<string | null>(null);
   const controller = useRef<ReturnType<typeof activateAudience> | null>(null);
   const pageKey = useRouterState({
     select: (state) => {
-      const current = state.resolvedLocation;
-      if (!current || state.status !== "idle") return undefined;
+      const current = state.resolvedLocation ?? state.location;
+      if (state.resolvedLocation && state.status !== "idle") return undefined;
       const leaf = state.matches.at(-1);
       const base = getSiteBrand(brand).basePath;
       if (
@@ -49,6 +58,7 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
   });
 
   useEffect(() => {
+    if (configCheck === 0 && documentConfig && (documentConfig.notice || hasPrivacy)) return;
     const abort = new AbortController();
     void fetch(audienceEndpoint(brand), {
       credentials: audienceCredentials(brand),
@@ -70,30 +80,50 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
       })
       .catch(() => {});
     return () => abort.abort();
-  }, [brand, configCheck]);
+  }, [brand, configCheck, documentConfig, hasPrivacy]);
 
   const approved = config && (config.notice || hasPrivacy) ? config : null;
   useEffect(() => {
-    if (!approved) return;
-    const next = activateAudience(brand, approved, () => {
-      rejectedPolicy.current = approved.policyVersion;
-      setConfig(null);
-      setConfigCheck((previous) => previous + 1);
-    });
-    controller.current = next;
-    return () => {
+    const run = ++generation.current;
+    if (!approved) {
+      controller.current?.stop();
       controller.current = null;
-      next.stop();
+      return;
+    }
+    if (marker.current) marker.current.dataset.attached = "true";
+    if (controller.current?.policyVersion !== approved.policyVersion) {
+      controller.current = attachDocumentAudience(brand, approved, () => {
+        rejectedPolicy.current = approved.policyVersion;
+        setConfig(null);
+        setConfigCheck((previous) => previous + 1);
+      });
+    }
+    return () => {
+      // React can immediately reattach the same rendered page in Strict Mode.
+      queueMicrotask(() => {
+        if (generation.current !== run) return;
+        controller.current?.stop();
+        controller.current = null;
+      });
     };
   }, [brand, approved]);
 
   useEffect(() => {
     if (pageKey === undefined) return;
-    const [page, propertyId, renderKey] = pageKey?.split("|") ?? [];
-    controller.current?.updateView(
-      page ? { page: page as AudiencePage, propertyId: propertyId || undefined, renderKey } : null,
-    );
+    controller.current?.updateView(audienceViewFromKey(pageKey));
   }, [pageKey, brand, approved]);
 
-  return null;
+  if (!documentConfig || !(documentConfig.notice || hasPrivacy)) return null;
+  return (
+    <>
+      <span
+        hidden
+        ref={marker}
+        data-site-audience-initial={brand}
+        data-view={pageKey ?? undefined}
+        data-config={JSON.stringify(documentConfig)}
+      />
+      <script type="module" async src={earlyModule} />
+    </>
+  );
 }

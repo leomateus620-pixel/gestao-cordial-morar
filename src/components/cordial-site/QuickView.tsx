@@ -17,7 +17,7 @@ import { PropertyImage } from "./PropertyCard";
 import { SiteLink } from "./SiteShell";
 import { WhatsAppIcon } from "./SocialIcons";
 import { useGalleryPhotos } from "./useGalleryPhotos";
-import { measureAudienceAction } from "@/lib/site-audience/client";
+import { audienceContactLink, measureAudienceAction } from "@/lib/site-audience/client";
 
 const PREVIEW_SIZES = "(max-width: 768px) calc(100vw - 36px), min(496px, calc(53.5vw - 65px))";
 const GALLERY_SIZES = "(max-width: 640px) calc(100vw - 30px), calc(92vw - 56px)";
@@ -268,6 +268,11 @@ export function QuickView({
                       hashScrollIntoView: false,
                     });
                     historyDepth.current = 2;
+                    measureAudienceAction(brand, {
+                      kind: "gallery_open",
+                      propertyId: p.id,
+                      placement: "quick_view",
+                    });
                     trackSiteEvent("gallery_open", {
                       propertyId: p.id,
                       reference: p.reference,
@@ -321,18 +326,13 @@ export function QuickView({
                     href={whatsapp}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => {
-                      measureAudienceAction(brand, {
-                        kind: "whatsapp_click",
-                        propertyId: p.id,
-                        placement: "quick_view",
-                      });
+                    {...audienceContactLink(brand, "whatsapp_click", "quick_view", p.id, () =>
                       trackSiteEvent("whatsapp_click", {
                         propertyId: p.id,
                         reference: p.reference,
                         source: "quick_view",
-                      });
-                    }}
+                      }),
+                    )}
                   >
                     <WhatsAppIcon width={18} height={18} /> Conversar pelo WhatsApp
                   </a>

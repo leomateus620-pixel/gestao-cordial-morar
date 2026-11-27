@@ -48,6 +48,12 @@ test("audience migration records known journeys and gives only authorized aggreg
         "utf8",
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL("../../drizzle/migrations/0119_site_audience_action_summary.sql", import.meta.url),
+        "utf8",
+      ),
+    );
     const configure = (brand: string, env: string, enabled: boolean) =>
       db.query("SELECT public.site_audience_configure($1,$2,'qa-v1',$3)", [brand, env, enabled]);
     const report = async (
@@ -281,6 +287,31 @@ test("audience migration records known journeys and gives only authorized aggreg
       }
       await db.exec("RESET ROLE");
     }
+    const singleSessionActions = [
+      event("gallery_open", "property", { propertyId: listingB }),
+      event("favorite_change", "property", { propertyId: listingB }),
+      event("selection_change", "property", { propertyId: listingB }),
+      event("phone_click", "contact"),
+      event("email_click", "contact"),
+    ];
+    const actionSession = id(),
+      actionVisitor = id();
+    await ingest(
+      [event("session_start", "property"), page("property"), ...singleSessionActions],
+      actionSession,
+      actionVisitor,
+      "",
+      "production",
+    );
+    await ingest(singleSessionActions, actionSession, actionVisitor, "", "production");
+    const details = await report("cordial", "pages", "day", 0, "production");
+    assert.ok(details.status === "ready" && details.view === "pages");
+    assert.deepEqual(
+      details.actions?.map((row) => [row.key, row.count]),
+      ["email_click", "favorite_change", "gallery_open", "phone_click", "selection_change"].map(
+        (key) => [key, 1],
+      ),
+    );
     await db.exec(await readFile(rollback, "utf8"));
     const { rows } = await db.query<{ target: string | null }>(
       "SELECT to_regnamespace('site_audience') AS target",

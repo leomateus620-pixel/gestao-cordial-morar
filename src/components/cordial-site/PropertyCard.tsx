@@ -58,6 +58,7 @@ export function FavoriteButton({ id }: { id: string }) {
           try {
             localStorage.setItem(config.favoritesKey, JSON.stringify(next));
             setActive(next.includes(id));
+            measureAudienceAction(brand, { kind: "favorite_change", propertyId: id });
             window.dispatchEvent(new Event(config.favoritesEvent));
             if (brand === "cordial")
               trackSiteEvent("favorite_changed", { propertyId: id, active: next.includes(id) });

@@ -65,6 +65,7 @@ async function checkDashboard(page, hasTouch) {
   await heading("Apartamento no Alto do Lago").waitFor(timeout);
   await button("Detalhar").click(timeout);
   const dialog = page.getByRole("dialog");
+  await dialog.getByRole("list", { name: "Ações no site por frequência" }).waitFor(timeout);
   await dialog.getByText("Anuncie", { exact: true }).first().waitFor(timeout);
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden", ...timeout });

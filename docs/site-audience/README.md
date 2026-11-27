@@ -13,6 +13,8 @@ A consulta de configuração no Lovable leu somente a presença das chaves, sem 
 
 O Painel atualiza a audiência a cada 20 segundos enquanto o período atual está aberto e a aba está visível. Em **Como medimos**, a cobertura informa o início da medição, eventuais lacunas e o último evento da marca. Um zero representa uma contagem observada. Ações ocorridas antes da ativação ou que nunca chegaram ao servidor não podem ser recuperadas.
 
+A primeira página válida pode iniciar a coleta assim que o documento público da marca é exibido. O servidor fornece a configuração pública da medição junto com a página quando ela está disponível. O módulo inicial e a aplicação compartilham a sessão e a visualização em andamento. Uma falha nessa consulta permite que o site abra e a aplicação tente a configuração pelo endpoint.
+
 ## Dicionário de métricas
 
 | Métrica                       | Como ler                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -34,6 +36,8 @@ O Painel atualiza a audiência a cada 20 segundos enquanto o período atual est�
 | Formulário recebido           | Somente após sucesso HTTP confirmado de persistência, com comprovante curto assinado pelo servidor para a marca. Conta ações por imóvel e sessões no termômetro.                                                                                                                                                                                                                                                                                           |
 | Origens                       | A primeira origem disponível da sessão fica fixa. Par de UTMs aprovado tem precedência sobre domínio de referência. Campanha só aparece se estiver aprovada. Domínios reconhecidos permitem busca orgânica ou rede social. Referências desconhecidas ficam no canal Referência sem identificação de domínio. Na ausência de evidência, aparece Direto/sem origem identificável. Avanços indicam sessões com ficha ou ação de contato observada no período. |
 
+A média de páginas por sessão divide todas as visualizações do período pelas sessões distintas da marca nesse mesmo período. Uma janela sem sessões fica sem média. Em **Páginas e menus → Detalhar**, **Ações no site** ordena as categorias por frequência. Favoritos e seleção contam mudanças concluídas, galeria conta aberturas e telefone e e-mail contam a ativação do link. A instrumentação dessas categorias começa na publicação de 0119 e do cliente correspondente. Eventos anteriores já recebidos continuam consultáveis.
+
 ## Privacidade e segurança
 
 - A medição própria depende da configuração ativa por marca. A página de privacidade descreve a medição automática. Uma primeira visita dispensa preferência salva. Uma recusa anterior continua válida, inclusive após mudança de versão. O cliente não grava um aceite em nome do visitante.
@@ -46,7 +50,7 @@ A configuração por marca associa a versão do aviso aprovado ao domínio. Conf
 
 ## Ativação em produção
 
-Aplique `0116_site_audience`, `0117_site_audience_production_config` e `0118_site_audience_interaction_totals` pelo journal do Drizzle. Publique a versão correspondente no Lovable. A migração cria a estrutura com a coleta desligada. Depois de conferir a borda dos domínios oficiais e obter o aceite do responsável pelo aviso, aplique a configuração na conexão de produção do Lovable com a função de serviço. O banco cria o segredo de proteção no Vault e abre a janela de cobertura na mesma transação. A ativação é independente por marca e dispensa segredos no código, no cliente ou na sessão do operador. Guarde a versão aprovada do texto. Use uma versão nova se o texto mudar, para manter o histórico de configuração.
+Aplique `0116_site_audience`, `0117_site_audience_production_config`, `0118_site_audience_interaction_totals` e `0119_site_audience_action_summary` pelo journal do Drizzle. Publique a versão correspondente no Lovable. A migração cria a estrutura com a coleta desligada. Depois de conferir a borda dos domínios oficiais e obter o aceite do responsável pelo aviso, aplique a configuração na conexão de produção do Lovable com a função de serviço. O banco cria o segredo de proteção no Vault e abre a janela de cobertura na mesma transação. A ativação é independente por marca e dispensa segredos no código, no cliente ou na sessão do operador. Guarde a versão aprovada do texto. Use uma versão nova se o texto mudar, para manter o histórico de configuração.
 
 ```sql
 -- Exemplo para adaptar com o texto aprovado antes de executar.
@@ -84,3 +88,5 @@ SELECT public.site_audience_configure('morar', 'qa', NULL, false);
 ```
 
 A migração 0118 altera somente a função privada de totais. Para reverter, restaure a definição de `site_audience.totals` de 0116 usando `CREATE OR REPLACE FUNCTION` em uma nova migração. Os eventos existentes permanecem disponíveis.
+
+Para reverter 0119, restaure as definições de `rank_pages`, `engagement` e `origins` de 0116 com `CREATE OR REPLACE`. A restrição ampliada em `events.kind` pode permanecer enquanto existirem eventos dessas categorias dentro da retenção.

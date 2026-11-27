@@ -58,6 +58,63 @@ async function guardedContext(browser, settings) {
   });
   return context;
 }
+async function beforeHydration(browser, settings, brand) {
+  const context = await guardedContext(browser, settings);
+  const before = await state();
+  try {
+    // Hold the application bundle while the actual server-rendered links remain usable.
+    const page = await context.newPage();
+    const origin = `http://${brand}.localhost:${fixturePort}`;
+    const html = await (await context.request.get(origin)).text();
+    const main = [...html.matchAll(/<script[^>]*type="module"[^>]*src="([^"]+)"/g)]
+      .map(([, src]) => src)
+      .find((src) => /tanstack-start-dev-client-entry|\/assets\/index-[^/]+\.js/.test(src));
+    assert.ok(main, "expected hydration module");
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    let held = false;
+    await page.route(new URL(main, origin).href, async (route) => {
+      held = true;
+      await gate;
+      await route.continue().catch(() => {});
+    });
+    try {
+      await page.goto(origin, { waitUntil: "commit" });
+      await totals(before, brand, { session_start: 1, page_view: 1 }, "SSR before hydration");
+      assert.ok(held);
+      assert.equal(
+        await page.locator("[data-site-audience-initial]").getAttribute("data-attached"),
+        null,
+      );
+      const card = page.locator('a[data-site-audience-link*="property_click"]').first();
+      await card.click({ noWaitAfter: true });
+      await page.locator(".cs-detail-page").waitFor();
+      await totals(
+        before,
+        brand,
+        { session_start: 1, page_view: 2, property_click: 1, property_view: 1 },
+        "native card before hydration",
+      );
+    } finally {
+      release();
+    }
+    await page
+      .locator('[data-site-audience-initial][data-attached="true"]')
+      .waitFor({ state: "attached" });
+    await page.goto("about:blank", { waitUntil: "networkidle" });
+    await totals(
+      before,
+      brand,
+      { session_start: 1, page_view: 2, property_click: 1, property_view: 1 },
+      "hydration keeps counts",
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function verifyNoticeOnly(browser, settings) {
   const brand = "morar";
   const browserContext = await guardedContext(browser, settings);
@@ -224,7 +281,11 @@ async function walk(browser, settings, brand, extended) {
       .locator(".cs-property-card")
       .filter({ hasText: brand === "cordial" ? "1001" : "2001" })
       .first();
+    await listingA.getByRole("button", { name: "Salvar nos favoritos" }).click();
+    await totals(before, brand, { favorite_change: 1, property_click: 0 }, "favorite");
     if (brand === "cordial") {
+      await listingA.getByRole("button", { name: "Adicionar à minha seleção" }).click();
+      await totals(before, brand, { selection_change: 1, property_click: 0 }, "selection");
       await listingA.getByRole("button", { name: "Visualização rápida" }).click();
       await page.getByRole("dialog").waitFor();
       await totals(
@@ -239,6 +300,17 @@ async function walk(browser, settings, brand, extended) {
     await listingA.locator("a.cs-card-arrow").click();
     await page.waitForURL((url) => url.pathname.endsWith(idA));
     await totals(before, brand, { page_view: 3, property_view: 1, property_click: 1 }, "A");
+    await page
+      .getByRole("button", { name: /Ampliar foto 1 de/ })
+      .first()
+      .click();
+    await page.getByRole("button", { name: "Fechar galeria" }).click();
+    await totals(
+      before,
+      brand,
+      { gallery_open: 1, property_click: 1, property_view: 1 },
+      "gallery",
+    );
     await page.locator(".cs-property-card a.cs-card-arrow").first().click();
     await page.waitForURL((url) => url.pathname.endsWith(idB));
     await totals(before, brand, { page_view: 4, property_view: 2, property_click: 2 }, "B");
@@ -382,8 +454,10 @@ async function walk(browser, settings, brand, extended) {
       if (noticeOnly) {
         await verifyNoticeOnly(browser, context);
       } else {
-        for (const brand of ["cordial", "morar"])
+        for (const brand of ["cordial", "morar"]) {
+          if (mode === "desktop") await beforeHydration(browser, context, brand);
           await walk(browser, context, brand, mode === "desktop");
+        }
       }
       console.log("PASS", mode);
     } finally {

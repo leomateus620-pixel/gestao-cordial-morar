@@ -19,7 +19,7 @@ import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
 import { ContactForm } from "./ContactForm";
 import { PropertyCard } from "./PropertyCard";
 import { readFavorites } from "@/lib/cordial-site/favorites";
-import { measureAudienceAction } from "@/lib/site-audience/client";
+import { audienceContactLink } from "@/lib/site-audience/client";
 export function PageIntro({
   eyebrow,
   title,
@@ -60,13 +60,19 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
         <div className="cs-contact-information">
           <h2>Fale com a {config.shortName}</h2>
           {settings.phone && (
-            <a href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}>
+            <a
+              {...audienceContactLink(brand, "phone_click", "contact")}
+              href={`tel:${settings.phone.replace(/[^+\d]/g, "")}`}
+            >
               <Phone />
               {settings.phone}
             </a>
           )}
           {settings.email && (
-            <a href={`mailto:${settings.email}`}>
+            <a
+              {...audienceContactLink(brand, "email_click", "contact")}
+              href={`mailto:${settings.email}`}
+            >
               <Mail />
               {settings.email}
             </a>
@@ -84,9 +90,7 @@ export function ContactPage({ capture = false }: { capture?: boolean }) {
               href={`https://wa.me/${settings.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() =>
-                measureAudienceAction(brand, { kind: "whatsapp_click", placement: "contact" })
-              }
+              {...audienceContactLink(brand, "whatsapp_click", "contact")}
             >
               <WhatsAppIcon width={22} height={22} /> Conversar no WhatsApp{" "}
               <ArrowUpRight size={18} />
