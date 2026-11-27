@@ -26,6 +26,10 @@ async function checkDashboard(page, hasTouch) {
   await navigate({ state: "loading" });
   await loading.waitFor(timeout);
   await heading(cordialLeader).waitFor(timeout);
+  const titleBounds = await heading("Audiência dos sites").boundingBox();
+  const brandBounds = await page.getByRole("tablist", { name: "Imobiliária" }).boundingBox();
+  assert.ok(brandBounds.x >= titleBounds.x + titleBounds.width - 1);
+
   await button("Mês").click(timeout);
   await heading("Top 10 do mês").waitFor(timeout);
 

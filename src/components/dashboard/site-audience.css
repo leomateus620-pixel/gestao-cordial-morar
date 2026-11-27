@@ -828,12 +828,19 @@
   }
 }
 @media (max-width: 470px) {
-  .sa-date-controls {
-    gap: 0.2rem;
+  .sa-toolbar {
+    gap: 0.1rem 0.25rem;
   }
-  .sa-date-controls .sa-segment,
-  .sa-range {
-    justify-self: start;
+  .sa-date-controls {
+    display: contents;
+  }
+  .sa-toolbar .sa-range {
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+  .sa-tab,
+  .sa-date-controls .sa-segment button {
+    padding-inline: 0.34rem;
   }
   .sa-segment button {
     min-height: 2.45rem;
@@ -863,13 +870,26 @@
     gap: 0.05rem;
   }
   .sa-header {
-    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
   }
   .sa-heading {
-    flex-basis: 100%;
+    flex: 1 1 auto;
+  }
+  .sa-brand-list {
+    gap: 0.18rem;
+    flex: none;
+  }
+  .sa-brand-choice {
+    gap: 0.2rem;
+    padding-inline: 0.3rem;
+  }
+  .sa-brand-choice img {
+    width: 1rem;
+    height: 1rem;
   }
   .sa-open-site {
-    margin-left: auto;
+    padding-inline: 0.25rem;
   }
   .sa-sort button {
     min-height: 2rem;
