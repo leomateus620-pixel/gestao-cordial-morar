@@ -2,11 +2,14 @@ import type { SiteBrand } from "@/lib/cordial-site/brand";
 import { siteDb } from "@/lib/cordial-site/service.server";
 import { AUDIENCE_MAX_BATCH_BYTES, audienceBatchSchema, type AudienceEvent } from "./contract";
 import {
-  audienceHostSettings,
+  audienceEnvironment,
   audienceRequestIp,
   audienceRateKey,
   classifyAudienceAttribution,
+  isAudienceHost,
+  resolveAudienceSettings,
   verifyAudienceFormProof,
+  type AudienceSettings,
 } from "./privacy.server";
 
 const headers = {
@@ -39,9 +42,7 @@ async function readBody(request: Request): Promise<Uint8Array | null> {
   }
 }
 
-export function audienceCollectionArgs(
-  settings: NonNullable<ReturnType<typeof audienceHostSettings>>,
-) {
+function audienceCollectionArgs(settings: AudienceSettings) {
   return {
     p_brand: settings.brand,
     p_environment: settings.environment,
@@ -51,30 +52,38 @@ export function audienceCollectionArgs(
 
 export async function publicSiteAudience(request: Request, brand: SiteBrand) {
   const isGet = request.method === "GET";
-  const settings = audienceHostSettings(request, brand);
   const fetchSite = request.headers.get("sec-fetch-site");
-  if (!settings || (fetchSite !== null && fetchSite !== "same-origin" && fetchSite !== "none"))
+  if (
+    !isAudienceHost(request, brand, "audience") ||
+    (fetchSite !== null && fetchSite !== "same-origin" && fetchSite !== "none")
+  )
     return isGet ? disabled() : empty(404);
 
-  const ip = audienceRequestIp(request, settings.environment);
+  const ip = audienceRequestIp(request, audienceEnvironment());
   if (!ip) return isGet ? disabled() : empty(403);
-  const args = audienceCollectionArgs(settings);
+  if (!isGet) {
+    if (request.method !== "POST") return empty(405);
+    if (request.headers.get("origin") !== new URL(request.url).origin) return empty(403);
+    if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json")
+      return empty(415);
+  }
   try {
+    const settings = await resolveAudienceSettings(brand);
+    if (!settings) return isGet ? disabled() : empty(404);
+    const args = audienceCollectionArgs(settings);
     if (isGet) {
-      const { data, error } = await siteDb(request.signal).rpc(
-        "site_audience_collection_status",
-        args,
-      );
-      if (error || data !== true) return disabled();
+      if (settings.environment === "qa") {
+        const { data, error } = await siteDb(request.signal).rpc(
+          "site_audience_collection_status",
+          args,
+        );
+        if (error || data !== true) return disabled();
+      }
       return Response.json(settings.config, { headers });
     }
 
-    if (request.method !== "POST") return empty(405);
-    if (request.headers.get("origin") !== new URL(request.url).origin) return empty(403);
     if (request.headers.get("X-Site-Audience-Policy") !== settings.config.policyVersion)
       return empty(403);
-    if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json")
-      return empty(415);
 
     const body = await readBody(request);
     if (!body) return empty(413);

@@ -14,7 +14,7 @@ export const getSiteAudienceReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator(reportRequest)
   .handler(async ({ context, data }): Promise<AudienceReport> => {
-    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    const { getRequest, setResponseHeader } = await import("@tanstack/react-start/server");
     setResponseHeader("Cache-Control", "no-store, private");
     setResponseHeader("X-Robots-Tag", "noindex, nofollow");
     // has_role is deny-dominant in the DB for both external reviewer roles.
@@ -25,5 +25,5 @@ export const getSiteAudienceReport = createServerFn({ method: "GET" })
     if (role.error) throw new Error("Não foi possível verificar o acesso ao relatório.");
     if (role.data !== true) return { status: "unauthorized" };
     const { loadSiteAudienceReport } = await import("./report.server");
-    return loadSiteAudienceReport(data);
+    return loadSiteAudienceReport(data, getRequest());
   });

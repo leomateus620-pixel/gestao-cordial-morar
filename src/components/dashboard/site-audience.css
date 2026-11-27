@@ -543,6 +543,9 @@
   border: 1px solid var(--border);
   border-radius: 0.55rem;
 }
+.sa-observed-zero {
+  margin: 0 0 0.75rem;
+}
 .sa-sort {
   flex: none;
 }

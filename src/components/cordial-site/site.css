@@ -3716,7 +3716,37 @@ body:has(.cordial-site) {
 body:has([role="dialog"][data-state="open"]) .cs-analytics-consent {
   visibility: hidden;
 }
-body:has(.cs-analytics-consent:not(.cs-audience-consent)) .cs-audience-consent {
+.cs-audience-consent {
+  max-block-size: min(66dvh, 34rem);
+  overflow: auto;
+}
+.cs-audience-details {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.cs-audience-details summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cs-audience-disclosure {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--cs-soft);
+  border: 1px solid var(--cs-line);
+  border-radius: 8px;
+}
+.cs-audience-notice-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.cs-audience-disclosure p + p {
+  margin-top: 10px;
+}
+body:has(.cs-analytics-consent:not(.cs-audience-consent)) .cs-audience-consent:not([data-editing]),
+body:has(.cs-audience-consent[data-editing]) .cs-analytics-consent:not(.cs-audience-consent) {
   visibility: hidden;
 }
 @media (max-width: 768px) {

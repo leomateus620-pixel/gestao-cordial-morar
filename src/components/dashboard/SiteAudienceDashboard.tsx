@@ -275,12 +275,17 @@ export function SiteAudienceDashboard({
                 {metadata.environment === "qa" && (
                   <span className="sa-coverage-highlight">Ambiente de QA</span>
                 )}
+                {metadata.collectionEnabled && !overviewResource.failed && (
+                  <span className="sa-coverage-highlight">
+                    <Radio aria-hidden="true" /> Coleta habilitada
+                  </span>
+                )}
                 {metadata.status === "ready" && !metadata.collectionEnabled && (
                   <span className="sa-coverage-highlight">
                     <ShieldOff aria-hidden="true" /> Coleta desligada · histórico medido
                   </span>
                 )}
-                {metadata.partial && (
+                {metadata.status === "ready" && metadata.partial && (
                   <span className="sa-coverage-highlight">
                     <CircleAlert aria-hidden="true" /> Cobertura parcial no período
                   </span>
@@ -291,7 +296,9 @@ export function SiteAudienceDashboard({
                   </span>
                 )}
                 <span>
-                  <Clock3 aria-hidden="true" /> Atualizado {formatAudienceDate(metadata.asOf, true)}
+                  <Clock3 aria-hidden="true" />
+                  {metadata.status === "ready" ? "Atualizado" : "Consultado"}{" "}
+                  {formatAudienceDate(metadata.asOf, true)}
                 </span>
                 {metadata.lastEventAt && (
                   <span>Último evento {formatAudienceDate(metadata.lastEventAt, true)}</span>
@@ -302,6 +309,11 @@ export function SiteAudienceDashboard({
               <ReportMessage resource={overviewResource} overview />
               {overview && report?.status === "ready" && (
                 <>
+                  {overview.totals.sessions === 0 && overview.totals.views === 0 && (
+                    <p className="sa-empty-note sa-observed-zero" role="status">
+                      Nenhuma sessão ou visualização medida no período disponível.
+                    </p>
+                  )}
                   <div className="sa-overview-grid">
                     <div className="sa-traffic-stack">
                       <div className="sa-kpis" aria-label="Visão geral do período">
@@ -323,11 +335,6 @@ export function SiteAudienceDashboard({
                     </div>
                     <FeaturedProperty property={ranked[0]} order={order} />
                   </div>
-                  {overview.totals.sessions === 0 && overview.totals.views === 0 && (
-                    <p className="sa-empty-note" role="status">
-                      Nenhuma sessão ou visualização medida no período disponível.
-                    </p>
-                  )}
                   <div className="sa-rank-grid">
                     <PropertyRanking
                       rows={ranked}

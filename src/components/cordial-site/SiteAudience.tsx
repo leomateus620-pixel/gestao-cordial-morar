@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
 import { sitePath } from "@/lib/cordial-site/presentation";
@@ -27,6 +27,9 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
   const rejectedPolicy = useRef<string | null>(null);
   const controller = useRef<ReturnType<typeof activateAudience> | null>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const panelId = useId();
+  const siteName = getSiteBrand(brand).name;
   const pageKey = useRouterState({
     select: (state) => {
       const current = state.resolvedLocation;
@@ -68,7 +71,6 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
   }, [brand]);
 
   useEffect(() => {
-    if (!hasPrivacy) return;
     const abort = new AbortController();
     void fetch(audienceEndpoint(brand), {
       credentials: audienceCredentials(brand),
@@ -83,13 +85,16 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
         const parsed = audienceConfigSchema.safeParse(result);
         if (parsed.success && parsed.data.policyVersion !== rejectedPolicy.current)
           setConfig(parsed.data);
-        else if (result?.enabled === false) clearAudienceIdentity(brand);
+        else if (result?.enabled === false) {
+          setConfig(null);
+          clearAudienceIdentity(brand);
+        }
       })
       .catch(() => {});
     return () => abort.abort();
-  }, [brand, hasPrivacy, configCheck]);
+  }, [brand, configCheck]);
 
-  const approved = hasPrivacy ? config : null;
+  const approved = config && (config.notice || hasPrivacy) ? config : null;
   const choice = preference?.policyVersion === approved?.policyVersion ? preference?.choice : null;
   useEffect(() => {
     if (!approved || choice !== "granted") {
@@ -116,8 +121,16 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
     );
   }, [pageKey, brand, approved, choice]);
 
+  useEffect(() => {
+    if (editing) panel.current?.focus();
+  }, [editing]);
+
   if (!approved && preference?.choice !== "granted") return null;
 
+  const dismiss = () => {
+    setEditing(false);
+    if (editing) button.current?.focus();
+  };
   const choose = (next: "granted" | "denied") => {
     const version = approved?.policyVersion ?? preference?.policyVersion;
     if (!version) return;
@@ -125,24 +138,60 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
     const saved = { policyVersion: version, choice: next };
     setPreference(writeAudiencePreference(brand, saved) ? saved : { ...saved, choice: "denied" });
     if (next === "denied") clearAudienceIdentity(brand);
-    setEditing(false);
-    if (editing) button.current?.focus();
+    dismiss();
   };
+  const panelOpen = Boolean((approved && !choice) || editing);
   return (
     <>
-      <button className="cs-text-link" ref={button} type="button" onClick={() => setEditing(true)}>
+      <button
+        className="cs-text-link"
+        ref={button}
+        type="button"
+        aria-controls={panelOpen ? panelId : undefined}
+        aria-expanded={panelOpen}
+        onClick={() => setEditing(true)}
+      >
         Métricas de audiência
       </button>
-      {((approved && !choice) || editing) && (
+      {panelOpen && (
         <section
           className="cs-analytics-consent cs-audience-consent"
           aria-label="Preferências de audiência"
+          id={panelId}
+          ref={panel}
+          tabIndex={-1}
+          data-editing={editing || undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && editing) dismiss();
+          }}
         >
-          <p>
-            Com sua permissão, medimos a navegação neste site para entender quais páginas e imóveis
-            são mais visitados. Você pode mudar sua escolha aqui a qualquer momento.{" "}
-            <SiteLink to={sitePath("/privacidade", brand)}>Ler política de privacidade</SiteLink>
-          </p>
+          {approved?.notice ? (
+            <>
+              <p>
+                Com sua permissão, a {siteName} mede como as visitas chegam ao site e como as
+                pessoas usam páginas, busca e fichas. Você pode recusar ou mudar a escolha no
+                rodapé.
+              </p>
+              <details className="cs-audience-details">
+                <summary>Como funciona a medição</summary>
+                <div className="cs-audience-disclosure">
+                  <p className="cs-audience-notice-text">{approved.notice}</p>
+                  <p>
+                    Versão {approved.policyVersion} ·{" "}
+                    <SiteLink to={sitePath("/contato", brand)}>Contato da {siteName}</SiteLink>
+                  </p>
+                </div>
+              </details>
+            </>
+          ) : approved ? (
+            <p>
+              Com sua permissão, medimos a navegação neste site para entender quais páginas e
+              imóveis são mais visitados. Você pode mudar sua escolha aqui a qualquer momento.{" "}
+              <SiteLink to={sitePath("/privacidade", brand)}>Ler política de privacidade</SiteLink>
+            </p>
+          ) : (
+            <p>A coleta está indisponível. Você pode revogar a permissão salva neste navegador.</p>
+          )}
           <div>
             <button
               type="button"
@@ -158,6 +207,11 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
                 onClick={() => choose("granted")}
               >
                 Aceitar audiência
+              </button>
+            )}
+            {editing && (!approved || choice) && (
+              <button className="cs-text-link" type="button" onClick={dismiss}>
+                Fechar preferências
               </button>
             )}
           </div>

@@ -7,7 +7,8 @@ import { PGlite } from "@electric-sql/pglite";
 import type { PublicProperty } from "../../src/lib/cordial-site/contract";
 
 const built = process.argv.includes("--built");
-const proxyPort = built ? 5208 : 5198;
+const noticeOnly = process.argv.includes("--notice-only");
+const proxyPort = noticeOnly ? 5218 : built ? 5208 : 5198;
 const vitePort = proxyPort - 1;
 const storagePort = proxyPort + 1;
 const apiKey = "qa-audience-local-only";
@@ -186,7 +187,10 @@ const storage = createServer(async (req, res) => {
         case "settings":
           return json({
             content: {
-              privacy: "Política fictícia deste ensaio em banco local.",
+              privacy:
+                noticeOnly && brand === "morar"
+                  ? ""
+                  : "Política fictícia deste ensaio em banco local.",
               whatsapp: "5500000000000",
             },
           });

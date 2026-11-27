@@ -386,13 +386,21 @@ export async function handleSiteRequest(
     let audienceProof: string | undefined;
     if (request.headers.get("X-Site-Audience") === "1") {
       try {
-        const { audienceLeadSettings, audienceRequestIp, makeAudienceFormProof } =
-          await import("../site-audience/privacy.server");
-        const settings = audienceLeadSettings(request, brand);
+        const {
+          audienceEnvironment,
+          audienceRequestIp,
+          isAudienceHost,
+          makeAudienceFormProof,
+          resolveAudienceSettings,
+        } = await import("../site-audience/privacy.server");
+        const settings =
+          isAudienceHost(request, brand, "leads") &&
+          audienceRequestIp(request, audienceEnvironment())
+            ? await resolveAudienceSettings(brand)
+            : null;
         if (
           settings &&
-          request.headers.get("X-Site-Audience-Policy") === settings.config.policyVersion &&
-          audienceRequestIp(request, settings.environment)
+          request.headers.get("X-Site-Audience-Policy") === settings.config.policyVersion
         ) {
           // The existing RPC also reports success when a matching message was
           // deduplicated under a different nonce, which adds no audience event.

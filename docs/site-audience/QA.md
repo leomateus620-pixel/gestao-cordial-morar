@@ -43,3 +43,14 @@ node tests/site-audience/public-browser.cjs desktop android iphone
 ```
 
 Passe `--built` ao teste para apontar para a porta 5208 quando o aplicativo tiver sido iniciado nesse modo. `SITE_AUDIENCE_PLAYWRIGHT_PACKAGE` permite apontar para uma instalação de Playwright com Chromium e WebKit compatíveis. As métricas de conferência ficam em `http://127.0.0.1:5199/__qa/audience` na variante Vite e na porta 5209 na compilada. Ambiente descartável. Cada execução do fixture inicia uma base vazia.
+
+## Ativação e ordem do Painel
+
+A revisão de ativação coloca os indicadores operacionais na frente da audiência. No Painel autenticado de QA, conferimos a ordem Indicadores → Audiência → Bot em Chrome desktop e WebKit com perfil iPhone 13. As duas marcas exibiram o estado habilitado retornado pelo banco. O perfil corretor seguiu sem o módulo. A prévia funcional também cobre a janela ativa antes do primeiro evento, a pausa com histórico e o período sem cobertura.
+
+O ensaio de consentimento com a política geral da Morar vazia abriu o aviso dedicado antes da decisão e confirmou zero sessões até o aceite. O aceite iniciou uma sessão e uma visualização. A expiração simulada iniciou outro identificador e sessão. A revogação removeu a identidade local. A página de política geral continuou exibindo seu estado anterior. Para reproduzir em loopback:
+
+```sh
+bun tests/site-audience/local-app.ts --notice-only
+node tests/site-audience/public-browser.cjs --notice-only desktop iphone
+```

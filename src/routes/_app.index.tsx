@@ -157,10 +157,9 @@ function Dashboard() {
         </div>
       </section>
 
-      {isAdminOwner && <SiteAudienceSection />}
-
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
+      {isAdminOwner && <SiteAudienceSection />}
       {isAdminOwner && <PublicBotInsightsSection />}
       {session && session.perfil !== "financeiro_admin" && <DailyBriefing />}
 
