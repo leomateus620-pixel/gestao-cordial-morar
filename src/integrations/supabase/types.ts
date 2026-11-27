@@ -15744,6 +15744,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      site_audience_allowed_brands: { Args: never; Returns: string[] }
       site_audience_collection_status: {
         Args: {
           p_brand: string
@@ -15794,7 +15795,6 @@ export type Database = {
         Args: { p_brand: string }
         Returns: Json
       }
-      site_audience_allowed_brands: { Args: never; Returns: string[] }
       site_audience_report: {
         Args: {
           p_brand: string
