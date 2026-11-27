@@ -21,6 +21,8 @@ DROP FUNCTION IF EXISTS public.site_audience_production_settings(text);
 DROP FUNCTION IF EXISTS public.site_audience_configure(text,text,text,boolean);
 DROP FUNCTION IF EXISTS public.site_audience_collection_status(text,text,text);
 DROP FUNCTION IF EXISTS public.site_audience_ingest(text,text,text,text,uuid,uuid,jsonb,text,text,text,text);
+DROP FUNCTION IF EXISTS public.site_audience_report_for_user(uuid,text,text,text,int,text,text);
+DROP FUNCTION IF EXISTS public.site_audience_allowed_brands();
 DROP FUNCTION IF EXISTS public.site_audience_report(text,text,text,int,text,text);
 DROP SCHEMA IF EXISTS site_audience CASCADE;
 COMMIT;

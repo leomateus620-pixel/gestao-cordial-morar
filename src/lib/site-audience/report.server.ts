@@ -67,13 +67,15 @@ function disabledReport(
 export async function loadSiteAudienceReport(
   input: AudienceReportInput,
   request: Request,
+  userId: string,
 ): Promise<AudienceReport> {
   const environment = audienceEnvironment();
   if (environment === "production" && !isProductionAudienceDashboard(request))
     return disabledReport(input, environment);
 
   const settings = await resolveAudienceSettings(input.brand);
-  const { data, error } = await siteDb().rpc("site_audience_report", {
+  const { data, error } = await siteDb().rpc("site_audience_report_for_user", {
+    p_user_id: userId,
     p_brand: input.brand,
     p_environment: environment,
     p_period: input.period,
@@ -83,6 +85,7 @@ export async function loadSiteAudienceReport(
   });
   if (!settings && error?.code === "PGRST202") return disabledReport(input, environment);
 
+  if (!error && data?.status === "unauthorized") return { status: "unauthorized" };
   if (error || !data || data.brand !== input.brand || data.environment !== environment)
     throw new Error("Não foi possível consultar a audiência.");
 

@@ -1,6 +1,6 @@
 # Audiência dos sites no Painel
 
-O Painel do `admin_owner` mostra os indicadores operacionais primeiro e a audiência dos sites Cordial e Morar logo abaixo. As duas visões usam o mesmo dicionário e mantêm o período ao trocar de marca. Os eventos e identificadores ficam no servidor. A interface recebe totais, séries e rankings agregados. O relatório de origens é de audiência do site e o indicador de origens do CRM continua com o critério operacional anterior.
+No Painel, o administrador vê a audiência de Cordial e Morar. Corretores e secretárias veem a audiência das imobiliárias às quais estão vinculados. A seção abre na primeira marca permitida e só aparece quando há uma marca disponível. As duas visões usam o mesmo dicionário e mantêm o período ao trocar de marca. Os eventos e identificadores ficam no servidor. A interface recebe totais, séries e rankings agregados. O relatório de origens é de audiência do site e o indicador de origens do CRM continua com o critério operacional anterior.
 
 ## Fonte e cobertura
 

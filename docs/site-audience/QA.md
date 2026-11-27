@@ -2,7 +2,13 @@
 
 Validação local de 26 e 27 de novembro de 2026, no horário de São Paulo. O catálogo, o login e o armazenamento de formulários do fixture são isolados. O aplicativo usa suas rotas e componentes reais, o endpoint de ingestão e o agregador PostgreSQL da migração `0116_site_audience`. O reproducer inicializa um banco PGlite em memória.
 
-## Resultados observados
+## Acesso por imobiliária desde a migração 0121
+
+O teste de banco cobre os vínculos Cordial, Morar, ambas e nenhum vínculo para corretor e secretaria. Compara os três relatórios agregados com a leitura do administrador e confere as negativas para outra marca, papéis restritos e leitura direta de eventos. O teste de interface em `bun run test:dashboard` verifica a abertura direta na Morar, a troca de marca e a troca de usuário. No fixture de loopback, o corretor está vinculado somente à Morar.
+
+No banco do Gestão Cordial, a conferência da migração 0121 pelo Lovable encontrou uma entrada com o hash do SQL versionado. As marcas permitidas coincidiram com os vínculos e papéis cadastrados. Os relatórios semanais autorizados de Cordial e Morar retornaram os mesmos agregados da consulta administrativa.
+
+## Resultados observados antes da migração 0121
 
 | Caminho                                                                 | Resultado                                                                                                                                                                                                                                                                                                                  |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

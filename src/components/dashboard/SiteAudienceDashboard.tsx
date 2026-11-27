@@ -63,7 +63,6 @@ const actionLabels: Record<string, string> = {
   email_click: "Cliques no e-mail",
   form_received: "Formulários recebidos",
 };
-const brands = ["cordial", "morar"] as const;
 const periodChoices = [
   { value: "day", label: "Dia", icon: Calendar },
   { value: "week", label: "Semana", icon: CalendarRange },
@@ -120,14 +119,14 @@ type ReportResource = ReturnType<typeof useAudienceReport>;
 export function SiteAudienceDashboard({
   scope,
   loadReport,
-  initialBrand = "cordial",
+  brands,
 }: {
   scope: string;
   loadReport: ReportLoader;
-  initialBrand?: SiteBrand;
+  brands: readonly [SiteBrand, ...SiteBrand[]];
 }) {
   const titleId = useId();
-  const [brand, setBrand] = useState<SiteBrand>(initialBrand);
+  const [brand, setBrand] = useState<SiteBrand>(brands[0]);
   const [period, setPeriod] = useState<AudiencePeriod>("week");
   const [offset, setOffset] = useState(0);
   const [tab, setTab] = useState<"overview" | "origins">("overview");
