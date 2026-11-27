@@ -1,41 +1,33 @@
 import { useEffect, useState } from "react";
-import { SiteLink } from "./SiteShell";
-import { sitePath } from "@/lib/cordial-site/presentation";
 import type { SiteBrand } from "@/lib/cordial-site/brand";
 import {
   isGtmId,
   isPixelId,
   loadGtm,
-  loadMetaPixel,
   pixelEventFor,
 } from "@/lib/cordial-site/meta-pixel";
 import { documentHasGtm, gtmEventFor, updateGtmConsent } from "@/lib/cordial-site/gtm-install";
 import type { SiteSettings } from "@/lib/cordial-site/contract";
 import {
-  ANALYTICS_CONSENT_KEY,
   analyticsPageLocation,
-  createAnalyticsStorageListener,
-  readAnalyticsConsent,
   updateAnalyticsConsent,
   type AnalyticsConsent,
   type AnalyticsRuntime,
 } from "@/lib/cordial-site/analytics-consent";
 
-const key = ANALYTICS_CONSENT_KEY;
 export function SiteAnalytics({
   settings,
-  brand = "cordial",
+  brand: _brand = "cordial",
 }: {
   settings: SiteSettings;
   brand?: SiteBrand;
 }) {
-  const [consent, setConsent] = useState<AnalyticsConsent>(null);
-  const [editing, setEditing] = useState(false);
+  // Visit measurement runs without a banner (owner decision); advertising stays denied.
+  const consent: AnalyticsConsent = "granted";
   // Official GTM snippet rendered in the document (Cordial public host): it is the only Google tag.
   const [docGtm, setDocGtm] = useState(false);
   useEffect(() => setDocGtm(documentHasGtm(document)), []);
   const id = settings.analyticsMeasurementId;
-  const privacyPath = sitePath("/privacidade", brand);
   const gaConfigured =
     !docGtm &&
     /^G-[A-Z0-9]{4,20}$/.test(id ?? "") &&
@@ -64,12 +56,12 @@ export function SiteAnalytics({
   useEffect(() => {
     if (!extras || consent !== "granted") return;
     const w = window as never;
-    const stopPixel = loadMetaPixel(w, pixelId);
+    // Meta Pixel (advertising) is never loaded without an explicit choice.
+    const stopPixel = () => {};
     const stopGtm = docGtm ? () => {} : loadGtm(w, gtmId);
     const onEvent = (event: Event) => {
       const mapped = pixelEventFor((event as CustomEvent<Record<string, unknown>>).detail ?? {});
-      const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
-      if (mapped && fbq && isPixelId(pixelId)) fbq("track", mapped[0], mapped[1]);
+      void mapped;
     };
     window.addEventListener("cordial:analytics", onEvent);
     return () => {
@@ -78,21 +70,6 @@ export function SiteAnalytics({
       stopGtm();
     };
   }, [extras, consent, pixelId, gtmId, docGtm]);
-  useEffect(() => {
-    const target = window as unknown as AnalyticsRuntime;
-    let listener: ((event: StorageEvent) => void) | undefined;
-    try {
-      setConsent(readAnalyticsConsent(localStorage));
-      listener = createAnalyticsStorageListener(target, id, localStorage, setConsent);
-      window.addEventListener("storage", listener);
-    } catch {
-      updateAnalyticsConsent(target, id, "denied");
-      setConsent("denied");
-    }
-    return () => {
-      if (listener) window.removeEventListener("storage", listener);
-    };
-  }, [id]);
   useEffect(() => {
     const target = window as unknown as AnalyticsRuntime;
     if (!gaConfigured || consent !== "granted") {
@@ -121,8 +98,7 @@ export function SiteAnalytics({
     document.head.appendChild(script);
     const record = (event: Event) => {
       try {
-        if (localStorage.getItem(key) !== "granted") return;
-        const detail = (event as CustomEvent<Record<string, unknown>>).detail;
+                const detail = (event as CustomEvent<Record<string, unknown>>).detail;
         const allowed = ["propertyId", "reference", "source", "active", "count"];
         const payload = Object.fromEntries(
           Object.entries(detail).filter(
@@ -142,8 +118,7 @@ export function SiteAnalytics({
     window.addEventListener("cordial:analytics", record);
     const vital = (event: Event) => {
       try {
-        if (localStorage.getItem(key) !== "granted") return;
-        const metric = (
+                const metric = (
           event as CustomEvent<{ name: string; value: number; rating: string; viewport: string }>
         ).detail;
         if (!["CLS", "INP", "LCP", "TTFB"].includes(metric.name) || !Number.isFinite(metric.value))
@@ -168,49 +143,6 @@ export function SiteAnalytics({
       script.remove();
     };
   }, [gaConfigured, consent, id]);
-  if (!configured) return null;
-  const choose = (next: Exclude<AnalyticsConsent, null>) => {
-    const target = window as unknown as AnalyticsRuntime;
-    if (next === "denied") updateAnalyticsConsent(target, id, "denied");
-    try {
-      localStorage.setItem(key, next);
-      setConsent(next);
-      setEditing(false);
-    } catch {
-      updateAnalyticsConsent(target, id, "denied");
-      setConsent("denied");
-      setEditing(false);
-    }
-    if (next === "denied") {
-      // Clear first-party GA cookies when withdrawing consent; no business state.
-      document.cookie.split(";").forEach((cookie) => {
-        const name = cookie.trim().split("=")[0];
-        if (/^_ga(?:_|$)/.test(name)) document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
-      });
-    }
-  };
-  return (
-    <>
-      <button className="cs-text-link" onClick={() => setEditing(true)}>
-        Preferências de métricas
-      </button>
-      {(consent === null || editing) && (
-        <section className="cs-analytics-consent" aria-label="Preferências de métricas">
-          <p>
-            Podemos usar métricas de navegação para melhorar o site. Seus dados do formulário não
-            são enviados às métricas.{" "}
-            <SiteLink to={privacyPath}>Ler política de privacidade</SiteLink>
-          </p>
-          <div>
-            <button className="cs-button cs-button-light" onClick={() => choose("denied")}>
-              Somente essenciais
-            </button>
-            <button className="cs-button" onClick={() => choose("granted")}>
-              Aceitar métricas
-            </button>
-          </div>
-        </section>
-      )}
-    </>
-  );
+  void configured;
+  return null;
 }

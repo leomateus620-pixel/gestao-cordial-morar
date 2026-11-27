@@ -164,6 +164,26 @@ export function EditorialPage({ slug, content }: { slug: string; content: SitePa
               </p>
             </>
           )}
+          {slug === "privacidade" && (
+            <section>
+              <h2>Quais dados coletamos ao navegar</h2>
+              <p>
+                Para entender quais imóveis e páginas interessam mais, medimos de forma automática
+                como o site é usado: páginas visitadas, buscas, imóveis vistos e cliques em contato
+                (WhatsApp, telefone e formulário), além da origem da visita (Google, redes sociais
+                ou link direto), do tipo de aparelho e do navegador.
+              </p>
+              <p>
+                Esses dados são usados só para melhorar o site e o atendimento. Não usamos essa
+                medição para anúncios e não vendemos dados. Os dados que você digita no formulário
+                de contato não entram nessa medição.
+              </p>
+              <p>
+                Para pedir acesso ou exclusão dos seus dados, use o e-mail de contato informado
+                nesta política.
+              </p>
+            </section>
+          )}
           {slug === "financiamento" && settings.links.length > 0 && (
             <div className="cs-service-links">
               {settings.links.map((l) => (

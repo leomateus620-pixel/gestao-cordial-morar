@@ -20,7 +20,7 @@ export function privacyTemplate(brand: SiteBrand, s: Pick<SiteSettings, "brand" 
 Esta política explica como [RAZÃO SOCIAL], inscrita no CNPJ [CNPJ], com endereço em ${s.address || "[ENDEREÇO]"}, trata os dados pessoais de quem usa este site, em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018).
 
 1. Dados coletados
-Coletamos os dados que você informa no formulário de contato (nome, telefone, e-mail e mensagem) e o imóvel de interesse. Com o seu consentimento, coletamos também métricas de navegação.
+Coletamos os dados que você informa no formulário de contato (nome, telefone, e-mail e mensagem) e o imóvel de interesse. Também medimos automaticamente como o site é usado (páginas, buscas, imóveis vistos, cliques em contato, origem da visita, aparelho e navegador), sem uso para anúncios.
 
 2. Finalidade
 Os dados são usados para responder ao seu contato, apresentar imóveis e agendar atendimentos. Não vendemos dados pessoais.
@@ -32,7 +32,7 @@ Os dados são acessados apenas pela equipe ${name} e por fornecedores necessári
 Ferramentas de medição só são ativadas depois que você aceita. Você pode rever essa escolha a qualquer momento no rodapé do site.
 
 5. Direitos do titular
-Você pode pedir acesso, correção, exclusão ou portabilidade dos seus dados, ou revogar o consentimento, pelo e-mail do encarregado: ${s.email || "[E-MAIL DO ENCARREGADO]"}.
+Você pode pedir acesso, correção, exclusão ou portabilidade dos seus dados pelo e-mail do encarregado: ${s.email || "[E-MAIL DO ENCARREGADO]"}.
 
 6. Guarda e segurança
 Os dados são guardados pelo tempo necessário ao atendimento e às obrigações legais, com medidas de segurança adequadas.
