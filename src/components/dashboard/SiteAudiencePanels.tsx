@@ -231,11 +231,13 @@ export function FeaturedProperty({
 
 export function PropertyRanking({
   rows,
+  total,
   period,
   order,
   onOrderChange,
 }: {
   rows: AudiencePropertyRank[];
+  total?: number;
   period: AudiencePeriod;
   order: AudiencePropertyOrder;
   onOrderChange: (order: AudiencePropertyOrder) => void;
@@ -324,9 +326,11 @@ export function PropertyRanking({
         </ol>
       ) : (
         <p className="sa-card-empty">
-          {order === "views"
-            ? "Nenhuma ficha disponível no ranking."
-            : "Nenhum imóvel no ranking de cliques."}
+          {total
+            ? "O ranking aparece a partir de cinco sessões por imóvel."
+            : order === "views"
+              ? "Nenhuma ficha aberta no período."
+              : "Nenhum clique em imóvel no período."}
         </p>
       )}
     </article>

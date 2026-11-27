@@ -69,7 +69,7 @@ test("uses only explicitly approved UTM values and avoids internal/full referrer
   );
 });
 
-test("consented journey has ordered, brand-scoped events, reload and expiry semantics", async (t) => {
+test("first visit has ordered, brand-scoped events, reload and expiry semantics", async (t) => {
   const browser = new Window({
     url: "https://cordialimoveis.com/?utm_source=newsletter&utm_medium=email&utm_campaign=campanha-qa",
   });
@@ -103,6 +103,7 @@ test("consented journey has ordered, brand-scoped events, reload and expiry sema
   for (const [key, value] of Object.entries(globals))
     Object.defineProperty(globalThis, key, { configurable: true, value });
   t.mock.method(Date, "now", () => clock);
+  writeAudiencePreference("cordial", { policyVersion: "older-version", choice: "denied" });
   let controller = activateAudience("cordial", config, () => {});
   t.after(async () => {
     controller.stop();
@@ -123,7 +124,7 @@ test("consented journey has ordered, brand-scoped events, reload and expiry sema
   assert.equal(sent.length, 0);
   controller.stop();
 
-  writeAudiencePreference("cordial", { policyVersion: config.policyVersion, choice: "granted" });
+  browser.localStorage.removeItem(audienceStorageKeys("cordial").preference);
   controller = activateAudience("cordial", config, () => {});
   controller.updateView({ page: "home" });
   controller.updateView({ page: "home" });

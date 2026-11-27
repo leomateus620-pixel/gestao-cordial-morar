@@ -48,7 +48,7 @@ Passe `--built` ao teste para apontar para a porta 5208 quando o aplicativo tive
 
 A revisão de ativação coloca os indicadores operacionais na frente da audiência. No Painel autenticado de QA, conferimos a ordem Indicadores → Audiência → Bot em Chrome desktop e WebKit com perfil iPhone 13. As duas marcas exibiram o estado habilitado retornado pelo banco. O perfil corretor seguiu sem o módulo. A prévia funcional também cobre a janela ativa antes do primeiro evento, a pausa com histórico e o período sem cobertura.
 
-O ensaio de consentimento com a política geral da Morar vazia abriu o aviso dedicado antes da decisão e confirmou zero sessões até o aceite. O aceite iniciou uma sessão e uma visualização. A expiração simulada iniciou outro identificador e sessão. A revogação removeu a identidade local. A página de política geral continuou exibindo seu estado anterior. Para reproduzir em loopback:
+O ensaio atual da Morar usa uma política geral vazia. Verifica a presença da seção de medição na página de privacidade, a ausência de pop-up, a configuração desativada sem aviso no fixture e a medição de um navegador novo após disponibilizar o aviso configurado. A expiração simulada inicia outro identificador e sessão. Para reproduzir em loopback:
 
 ```sh
 bun tests/site-audience/local-app.ts --notice-only

@@ -39,6 +39,15 @@ test("audience migration records known journeys and gives only authorized aggreg
       INSERT INTO public.morar_site_eligible VALUES ('${otherBrand}');
     `);
     await db.exec(await readFile(migration, "utf8"));
+    await db.exec(
+      await readFile(
+        new URL(
+          "../../drizzle/migrations/0118_site_audience_interaction_totals.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const configure = (brand: string, env: string, enabled: boolean) =>
       db.query("SELECT public.site_audience_configure($1,$2,'qa-v1',$3)", [brand, env, enabled]);
     const report = async (
@@ -87,7 +96,14 @@ test("audience migration records known journeys and gives only authorized aggreg
     const zero = await report("cordial", "overview");
     if (zero.status !== "ready" || zero.view !== "overview")
       assert.fail("coverage must report an observed zero");
-    assert.deepEqual(zero.overview.totals, { visitors: 0, sessions: 0, views: 0 });
+    assert.deepEqual(zero.overview.totals, {
+      visitors: 0,
+      sessions: 0,
+      views: 0,
+      propertyViews: 0,
+      propertyClicks: 0,
+      menuClicks: 0,
+    });
     assert.equal((await report("cordial", "overview", "month", 3)).status, "unavailable");
     assert.equal(await ingest([page("home")]), "missing_session");
 
@@ -120,7 +136,14 @@ test("audience migration records known journeys and gives only authorized aggreg
     let snapshot = await report("cordial", "overview");
     if (snapshot.status !== "ready" || snapshot.view !== "overview")
       assert.fail("expected overview");
-    assert.deepEqual(snapshot.overview.totals, { visitors: 1, sessions: 1, views: 7 });
+    assert.deepEqual(snapshot.overview.totals, {
+      visitors: 1,
+      sessions: 1,
+      views: 7,
+      propertyViews: 4,
+      propertyClicks: 3,
+      menuClicks: 1,
+    });
     assert.equal(snapshot.overview.previous, null);
     assert.equal(snapshot.overview.behavior.activeTime, null);
     assert.deepEqual(snapshot.overview.behavior.searchToSecondProperty, { count: 1, sample: 1 });
@@ -195,7 +218,14 @@ test("audience migration records known journeys and gives only authorized aggreg
     snapshot = await report("cordial", "overview");
     if (snapshot.status !== "ready" || snapshot.view !== "overview")
       assert.fail("expected later return");
-    assert.deepEqual(snapshot.overview.totals, { visitors: 2, sessions: 3, views: 9 });
+    assert.deepEqual(snapshot.overview.totals, {
+      visitors: 2,
+      sessions: 3,
+      views: 9,
+      propertyViews: 5,
+      propertyClicks: 3,
+      menuClicks: 1,
+    });
     assert.equal(snapshot.overview.properties.views[0].views, 4);
     assert.equal(snapshot.overview.properties.views[0].returnSessions, 1);
     assert.equal(snapshot.overview.properties.views[0].listing, null);
@@ -230,6 +260,8 @@ test("audience migration records known journeys and gives only authorized aggreg
     if (smallOverview.status !== "ready" || smallOverview.view !== "overview")
       assert.fail("expected production overview");
     assert.equal(smallOverview.overview.totals.views, 1);
+    assert.equal(smallOverview.overview.totals.propertyViews, 1);
+    assert.equal(smallOverview.overview.totals.propertyClicks, 0);
     assert.deepEqual(smallOverview.overview.properties.views, []);
     assert.deepEqual(smallOverview.overview.pages, []);
     assert.equal(smallOverview.overview.behavior.multipleProperties, null);

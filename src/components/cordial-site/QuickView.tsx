@@ -342,6 +342,7 @@ export function QuickView({
                 <SiteLink
                   className="cs-button cs-button-light"
                   to={`${propertyPath(p, brand)}#foto-${currentIndex + 1}`}
+                  audienceProperty={{ id: p.id, placement: "quick_view" }}
                   originScrollTop={originScrollTop}
                   onClick={(event) => {
                     if (

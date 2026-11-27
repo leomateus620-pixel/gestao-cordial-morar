@@ -16,6 +16,9 @@ export type AudienceTotals = {
   visitors: number;
   sessions: number;
   views: number;
+  propertyViews?: number;
+  propertyClicks?: number;
+  menuClicks?: number;
 };
 
 export type AudienceRankItem = {

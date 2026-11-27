@@ -93,21 +93,23 @@ async function checkDashboard(page, hasTouch) {
   for (const [state, label] of [
     ["disabled", "Coleta desligada"],
     ["unavailable", "Período sem cobertura"],
-    ["zero", "Nenhuma sessão ou visualização medida no período disponível."],
-    ["retained", "Coleta desligada · histórico medido"],
+    ["zero", "Interesse nos imóveis"],
+    ["retained", "Interesse nos imóveis"],
     ["error", "Relatório indisponível"],
     ["unauthorized", "Acesso restrito"],
-    ["partial", "Cobertura parcial no período"],
+    ["partial", "Interesse nos imóveis"],
   ]) {
     await navigate({ state });
     await text(label).waitFor(timeout);
-    const enabled = ["unavailable", "zero", "partial"].includes(state);
-    assert.equal(await text("Coleta habilitada").isVisible(), enabled);
-    assert.equal(
-      await text("Cobertura parcial no período").isVisible(),
-      ["partial", "retained"].includes(state),
-    );
+    assert.equal(await text("Coleta habilitada").isVisible(), false);
+    assert.equal(await text("Cobertura parcial no período").isVisible(), false);
+    if (["partial", "retained"].includes(state)) {
+      await button("Como medimos").click();
+      await dialog.getByText(/Cobertura parcial no período/).waitFor();
+      await page.keyboard.press("Escape");
+    }
     if (state === "zero") {
+      assert.deepEqual(await page.locator(".sa-interest dd").allTextContents(), ["0", "0"]);
       assert.deepEqual(await page.locator(".sa-kpi > strong").allTextContents(), ["0", "0", "0"]);
     }
   }

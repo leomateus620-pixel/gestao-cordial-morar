@@ -8,9 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleAlert,
-  Clock3,
   ExternalLink,
-  Globe2,
   Layers3,
   ListFilter,
   MousePointer2,
@@ -77,8 +75,8 @@ function useAudienceReport(
     queryKey: ["site-audience", scope, input.brand, input.period, input.offset, input.view],
     queryFn: () => loadReport(input),
     enabled,
-    staleTime: 45_000,
-    refetchInterval: input.offset === 0 && input.view === "overview" ? 60_000 : false,
+    staleTime: 15_000,
+    refetchInterval: enabled && input.offset === 0 ? 20_000 : false,
     retry: false,
   });
   const data = query.data;
@@ -153,34 +151,33 @@ export function SiteAudienceDashboard({
 
   return (
     <section className="site-audience" data-brand={brand} aria-labelledby={titleId}>
-      <div className="sa-heading">
-        <div>
-          <div className="sa-heading-label">
-            <Globe2 aria-hidden="true" /> Sites oficiais
-          </div>
-          <h2 id={titleId}>Audiência dos sites</h2>
-        </div>
-        <a
-          href={`https://${host}/`}
-          className="sa-action"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Abrir site ${getSiteBrand(brand).name} em nova aba`}
-        >
-          Abrir site <ExternalLink aria-hidden="true" />
-        </a>
-      </div>
       <Tabs
         value={brand}
         onValueChange={(value) => setBrand(value as SiteBrand)}
         activationMode="manual"
       >
         <div className="sa-header">
+          <div className="sa-heading">
+            <h2 id={titleId}>Audiência dos sites</h2>
+            <p className="sa-snapshots" aria-label="Resumo de sessões da marca">
+              <strong>{n(snapshots?.today?.sessions)}</strong>{" "}
+              {snapshots?.today?.sessions === 1 ? "sessão" : "sessões"} hoje
+              <span aria-hidden="true"> · </span>
+              <strong>{n(snapshots?.week?.sessions)}</strong> nesta semana
+            </p>
+          </div>
           <TabsList className="sa-brand-list" aria-label="Imobiliária">
             {brands.map((id) => {
               const info = getSiteBrand(id);
               return (
-                <TabsTrigger key={id} value={id} className="sa-brand-choice" data-choice={id}>
+                <TabsTrigger
+                  key={id}
+                  value={id}
+                  className="sa-brand-choice"
+                  data-choice={id}
+                  title={SITE_PUBLIC_HOSTS[id]}
+                  aria-label={info.name}
+                >
                   <img
                     alt=""
                     width={34}
@@ -190,25 +187,23 @@ export function SiteAudienceDashboard({
                     }
                   />
                   <span>
-                    <span className="sa-brand-name">{info.name}</span>
-                    <span className="sa-domain">{SITE_PUBLIC_HOSTS[id]}</span>
+                    <span className="sa-brand-name">{info.shortName}</span>
                   </span>
                 </TabsTrigger>
               );
             })}
           </TabsList>
-          <dl className="sa-snapshots" aria-label="Resumo de sessões da marca">
-            <div>
-              <dt>Hoje</dt>
-              <dd>{n(snapshots?.today?.sessions)}</dd>
-              <span>sessões</span>
-            </div>
-            <div>
-              <dt>Nesta semana</dt>
-              <dd>{n(snapshots?.week?.sessions)}</dd>
-              <span>sessões</span>
-            </div>
-          </dl>
+          <a
+            href={`https://${host}/`}
+            className="sa-action sa-open-site"
+            title={host}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Abrir site ${getSiteBrand(brand).name} em nova aba`}
+          >
+            <ExternalLink aria-hidden="true" />
+            <span>Abrir site</span>
+          </a>
         </div>
         <TabsContent value={brand} className="sa-brand-content">
           <Tabs
@@ -270,50 +265,10 @@ export function SiteAudienceDashboard({
                 </div>
               </div>
             </div>
-            {metadata && (
-              <div className="sa-coverage">
-                {metadata.environment === "qa" && (
-                  <span className="sa-coverage-highlight">Ambiente de QA</span>
-                )}
-                {metadata.collectionEnabled && !overviewResource.failed && (
-                  <span className="sa-coverage-highlight">
-                    <Radio aria-hidden="true" /> Coleta habilitada
-                  </span>
-                )}
-                {metadata.status === "ready" && !metadata.collectionEnabled && (
-                  <span className="sa-coverage-highlight">
-                    <ShieldOff aria-hidden="true" /> Coleta desligada · histórico medido
-                  </span>
-                )}
-                {metadata.status === "ready" && metadata.partial && (
-                  <span className="sa-coverage-highlight">
-                    <CircleAlert aria-hidden="true" /> Cobertura parcial no período
-                  </span>
-                )}
-                {metadata.collectionSince && (
-                  <span>
-                    Coleta disponível desde {formatAudienceDate(metadata.collectionSince)}
-                  </span>
-                )}
-                <span>
-                  <Clock3 aria-hidden="true" />
-                  {metadata.status === "ready" ? "Atualizado" : "Consultado"}{" "}
-                  {formatAudienceDate(metadata.asOf, true)}
-                </span>
-                {metadata.lastEventAt && (
-                  <span>Último evento {formatAudienceDate(metadata.lastEventAt, true)}</span>
-                )}
-              </div>
-            )}
             <TabsContent value="overview" className="sa-tab-content">
               <ReportMessage resource={overviewResource} overview />
               {overview && report?.status === "ready" && (
                 <>
-                  {overview.totals.sessions === 0 && overview.totals.views === 0 && (
-                    <p className="sa-empty-note sa-observed-zero" role="status">
-                      Nenhuma sessão ou visualização medida no período disponível.
-                    </p>
-                  )}
                   <div className="sa-overview-grid">
                     <div className="sa-traffic-stack">
                       <div className="sa-kpis" aria-label="Visão geral do período">
@@ -333,18 +288,45 @@ export function SiteAudienceDashboard({
                       </div>
                       <AudienceTraffic trend={overview.trend} period={period} />
                     </div>
-                    <FeaturedProperty property={ranked[0]} order={order} />
+                    <div className="sa-traffic-stack">
+                      <article className="sa-card sa-card-padded">
+                        <div className="sa-card-heading">
+                          <h3>Interesse nos imóveis</h3>
+                        </div>
+                        <dl className="sa-interest">
+                          <div>
+                            <dt>Cliques em imóveis</dt>
+                            <dd>{n(overview.totals.propertyClicks)}</dd>
+                          </div>
+                          <div>
+                            <dt>Fichas abertas</dt>
+                            <dd>{n(overview.totals.propertyViews)}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                      {ranked[0] && <FeaturedProperty property={ranked[0]} order={order} />}
+                    </div>
                   </div>
                   <div className="sa-rank-grid">
                     <PropertyRanking
                       rows={ranked}
+                      total={
+                        order === "views"
+                          ? overview.totals.propertyViews
+                          : overview.totals.propertyClicks
+                      }
                       period={period}
                       order={order}
                       onOrderChange={setOrder}
                     />
                     <div className="sa-card sa-card-padded">
                       <div className="sa-card-heading">
-                        <h3>Páginas e menus</h3>
+                        <div>
+                          <h3>Páginas e menus</h3>
+                          <p>
+                            Cliques em menus <strong>{n(overview.totals.menuClicks)}</strong>
+                          </p>
+                        </div>
                         <PagesDialog
                           key={`${brand}-${period}-${offset}`}
                           scope={scope}
@@ -368,8 +350,12 @@ export function SiteAudienceDashboard({
             </TabsContent>
           </Tabs>
           <div className="sa-footer">
-            <span>Coleta própria com consentimento · horário de São Paulo</span>
-            <MetricDefinitions />
+            <span>
+              {metadata?.environment === "qa" && "Ambiente de QA · "}
+              {metadata?.status === "ready" && !metadata.collectionEnabled && "Coleta pausada · "}
+              {metadata && `Atualizado ${formatAudienceDate(metadata.asOf, true)}`}
+            </span>
+            <MetricDefinitions metadata={metadata} />
           </div>
         </TabsContent>
       </Tabs>
@@ -379,8 +365,7 @@ export function SiteAudienceDashboard({
 
 const percentage = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 function Comparison({ current, previous }: { current: number; previous?: number }) {
-  if (previous == null || previous === 0)
-    return <span className="sa-comparison">Sem base comparável</span>;
+  if (previous == null || previous === 0) return null;
   const change = ((current - previous) / previous) * 100;
   if (Math.abs(change) < 0.05)
     return <span className="sa-comparison">Estável ante o período anterior</span>;
@@ -514,7 +499,11 @@ function PagesDialog({
   );
 }
 
-function MetricDefinitions() {
+function MetricDefinitions({
+  metadata,
+}: {
+  metadata?: Exclude<AudienceReport, { status: "unauthorized" }>;
+}) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -530,18 +519,32 @@ function MetricDefinitions() {
           </DialogDescription>
         </DialogHeader>
         <dl className="sa-metric-definitions">
+          {metadata && (
+            <div>
+              <dt>Cobertura da coleta</dt>
+              <dd>
+                {metadata.collectionEnabled ? "Coleta habilitada." : "Coleta desligada."}{" "}
+                {metadata.partial && "Cobertura parcial no período. "}
+                {metadata.collectionSince &&
+                  `Disponível desde ${formatAudienceDate(metadata.collectionSince)}. `}
+                {metadata.lastEventAt &&
+                  `Último evento em ${formatAudienceDate(metadata.lastEventAt, true)}. `}
+                Horário de São Paulo.
+              </dd>
+            </div>
+          )}
           <div>
             <dt>Visitantes medidos</dt>
             <dd>
-              Navegadores consentidos deduplicados no período por identificador próprio da marca. É
-              uma aproximação, pois uma pessoa pode usar mais de um navegador.
+              Navegadores medidos deduplicados no período por identificador próprio da marca. É uma
+              aproximação, pois uma pessoa pode usar mais de um navegador.
             </dd>
           </div>
           <div>
             <dt>Sessões</dt>
             <dd>
-              Visitas com janela de 30 minutos de inatividade. A origem é registrada na entrada e
-              mantida durante a sessão.
+              Voltar pelo mesmo navegador em menos de 30 minutos mantém a sessão. Cada página
+              exibida soma uma visualização. Após 30 minutos sem atividade, começa outra sessão.
             </dd>
           </div>
           <div>

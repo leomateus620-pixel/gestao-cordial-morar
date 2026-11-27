@@ -1,15 +1,11 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
-import { sitePath } from "@/lib/cordial-site/presentation";
 import {
   activateAudience,
   audienceCredentials,
   audienceEndpoint,
-  audienceStorageKeys,
   clearAudienceIdentity,
-  readAudiencePreference,
-  writeAudiencePreference,
 } from "@/lib/site-audience/client";
 import {
   audienceConfigSchema,
@@ -17,19 +13,12 @@ import {
   type AudiencePage,
 } from "@/lib/site-audience/contract";
 import { siteAudiencePage } from "@/lib/site-audience/navigation";
-import { SiteLink } from "./SiteShell";
 
 export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPrivacy: boolean }) {
   const [config, setConfig] = useState<AudienceConfig | null>(null);
-  const [preference, setPreference] = useState<ReturnType<typeof readAudiencePreference>>(null);
-  const [editing, setEditing] = useState(false);
   const [configCheck, setConfigCheck] = useState(0);
   const rejectedPolicy = useRef<string | null>(null);
   const controller = useRef<ReturnType<typeof activateAudience> | null>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLElement>(null);
-  const panelId = useId();
-  const siteName = getSiteBrand(brand).name;
   const pageKey = useRouterState({
     select: (state) => {
       const current = state.resolvedLocation;
@@ -60,17 +49,6 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
   });
 
   useEffect(() => {
-    const key = audienceStorageKeys(brand).preference;
-    const sync = () => setPreference(readAudiencePreference(brand));
-    sync();
-    const update = (event: StorageEvent) => {
-      if (event.key === key || event.key === null) sync();
-    };
-    window.addEventListener("storage", update);
-    return () => window.removeEventListener("storage", update);
-  }, [brand]);
-
-  useEffect(() => {
     const abort = new AbortController();
     void fetch(audienceEndpoint(brand), {
       credentials: audienceCredentials(brand),
@@ -95,14 +73,8 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
   }, [brand, configCheck]);
 
   const approved = config && (config.notice || hasPrivacy) ? config : null;
-  // Audience runs for every visitor without a banner (owner decision); explained on the privacy page.
-  const choice = "granted" as const;
-  void preference;
   useEffect(() => {
-    if (!approved || choice !== "granted") {
-      if (approved) clearAudienceIdentity(brand);
-      return;
-    }
+    if (!approved) return;
     const next = activateAudience(brand, approved, () => {
       rejectedPolicy.current = approved.policyVersion;
       setConfig(null);
@@ -113,7 +85,7 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
       controller.current = null;
       next.stop();
     };
-  }, [brand, approved, choice]);
+  }, [brand, approved]);
 
   useEffect(() => {
     if (pageKey === undefined) return;
@@ -121,11 +93,7 @@ export function SiteAudience({ brand, hasPrivacy }: { brand: SiteBrand; hasPriva
     controller.current?.updateView(
       page ? { page: page as AudiencePage, propertyId: propertyId || undefined, renderKey } : null,
     );
-  }, [pageKey, brand, approved, choice]);
-
-  useEffect(() => {
-    if (editing) panel.current?.focus();
-  }, [editing]);
+  }, [pageKey, brand, approved]);
 
   return null;
 }
