@@ -60,3 +60,7 @@ node tests/site-audience/public-browser.cjs --notice-only desktop iphone
 O cenário `beforeHydration` segura o carregamento da aplicação no navegador e abre uma ficha por um link do HTML. Na página inicial e na ficha, o banco de QA deve registrar uma sessão, duas páginas, um clique no imóvel e uma ficha aberta. Liberar o carregamento da aplicação deve preservar esses totais. O teste é executado nos dois hosts.
 
 O percurso de navegação também verifica aberturas de galeria e mudanças de favoritos em ambas as marcas, além da seleção na Cordial. Acionar o favorito ou a seleção dentro do card mantém o total de cliques no imóvel. O teste de banco reenvia os mesmos eventos e verifica a contagem por categoria em **Páginas e menus → Detalhar**. A média no cartão de visualizações usa páginas vistas divididas pelas sessões medidas no próprio período.
+
+## Primeiro clique e ranking de imóveis
+
+O teste de banco usa o limiar real de produção. Uma ficha acessada diretamente entra no ranking de visualizações. Dois cliques em outro imóvel o colocam na liderança por cliques, mesmo quando a ficha ainda soma zero visualizações. O reenvio dos mesmos eventos preserva os totais. O teste verifica Dia, Semana e Mês e a supressão dos detalhes de comportamento em amostras pequenas. O teste de interface confere o destaque inicial por cliques e a troca para fichas.

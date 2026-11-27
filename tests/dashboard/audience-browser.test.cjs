@@ -25,6 +25,10 @@ async function checkDashboard(page, hasTouch) {
 
   await navigate({ state: "loading" });
   await loading.waitFor(timeout);
+  await heading("Apartamento na Vila Madalena").waitFor(timeout);
+  assert.equal(await button("Cliques").getAttribute("aria-pressed"), "true");
+  await text("Nº 1 em cliques").waitFor(timeout);
+  await button("Fichas").click(timeout);
   await heading(cordialLeader).waitFor(timeout);
   const titleBounds = await heading("Audiência dos sites").boundingBox();
   const brandBounds = await page.getByRole("tablist", { name: "Imobiliária" }).boundingBox();
@@ -82,7 +86,7 @@ async function checkDashboard(page, hasTouch) {
   await button("Período anterior").click(timeout);
   await text("outubro de 2026").waitFor(timeout);
   await navigate({ brand: "morar", theme: "dark" });
-  await heading(morarLeader).waitFor(timeout);
+  await heading("Apartamento no Alto do Lago").waitFor(timeout);
   await button("Dia").click(timeout);
   await text("Por hora").waitFor(timeout);
   const chart = page.locator(".sa-chart");

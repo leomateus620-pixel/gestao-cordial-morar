@@ -201,17 +201,19 @@ export function FeaturedProperty({
             {listing?.code && <p>Código {listing.code}</p>}
             <dl className="sa-featured-stats">
               <div>
-                <dt>Visualizações</dt>
-                <dd>{n(property.views)}</dd>
+                <dt>{orderName[order]}</dt>
+                <dd>{n(property[order])}</dd>
               </div>
               <div>
-                <dt>Sessões</dt>
-                <dd>{n(property.sessions)}</dd>
+                <dt>{order === "clicks" ? orderName.views : orderName.clicks}</dt>
+                <dd>{n(order === "clicks" ? property.views : property.clicks)}</dd>
               </div>
-              <div>
-                <dt>Cliques no card</dt>
-                <dd>{n(property.clicks)}</dd>
-              </div>
+              {property.sessions !== null && (
+                <div>
+                  <dt>Sessões</dt>
+                  <dd>{n(property.sessions)}</dd>
+                </div>
+              )}
             </dl>
           </>
         ) : (
@@ -231,13 +233,11 @@ export function FeaturedProperty({
 
 export function PropertyRanking({
   rows,
-  total,
   period,
   order,
   onOrderChange,
 }: {
   rows: AudiencePropertyRank[];
-  total?: number;
   period: AudiencePeriod;
   order: AudiencePropertyOrder;
   onOrderChange: (order: AudiencePropertyOrder) => void;
@@ -295,30 +295,34 @@ export function PropertyRanking({
                     <dt>Cliques no card</dt>
                     <dd>{n(row.clicks)}</dd>
                   </div>
-                  <div>
-                    <dt>Sessões que viram a ficha</dt>
-                    <dd>{n(row.sessions)}</dd>
-                  </div>
-                  <div>
-                    <dt>Reaberturas na sessão</dt>
-                    <dd>{n(row.reopens)}</dd>
-                  </div>
-                  <div>
-                    <dt>Sessões de retorno</dt>
-                    <dd>{n(row.returnSessions)}</dd>
-                  </div>
-                  <div>
-                    <dt>Prévias rápidas</dt>
-                    <dd>{n(row.previews)}</dd>
-                  </div>
-                  <div>
-                    <dt>Cliques no WhatsApp</dt>
-                    <dd>{n(row.whatsapp)}</dd>
-                  </div>
-                  <div>
-                    <dt>Formulários recebidos</dt>
-                    <dd>{n(row.forms)}</dd>
-                  </div>
+                  {row.sessions !== null && (
+                    <>
+                      <div>
+                        <dt>Sessões que viram a ficha</dt>
+                        <dd>{n(row.sessions)}</dd>
+                      </div>
+                      <div>
+                        <dt>Reaberturas na sessão</dt>
+                        <dd>{n(row.reopens)}</dd>
+                      </div>
+                      <div>
+                        <dt>Sessões de retorno</dt>
+                        <dd>{n(row.returnSessions)}</dd>
+                      </div>
+                      <div>
+                        <dt>Prévias rápidas</dt>
+                        <dd>{n(row.previews)}</dd>
+                      </div>
+                      <div>
+                        <dt>Cliques no WhatsApp</dt>
+                        <dd>{n(row.whatsapp)}</dd>
+                      </div>
+                      <div>
+                        <dt>Formulários recebidos</dt>
+                        <dd>{n(row.forms)}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
               </details>
             </li>
@@ -326,11 +330,9 @@ export function PropertyRanking({
         </ol>
       ) : (
         <p className="sa-card-empty">
-          {total
-            ? "O ranking aparece a partir de cinco sessões por imóvel."
-            : order === "views"
-              ? "Nenhuma ficha aberta no período."
-              : "Nenhum clique em imóvel no período."}
+          {order === "views"
+            ? "Nenhuma ficha aberta no período."
+            : "Nenhum clique em imóvel no período."}
         </p>
       )}
     </article>

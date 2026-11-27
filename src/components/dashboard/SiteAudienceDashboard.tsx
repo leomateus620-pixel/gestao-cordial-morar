@@ -131,7 +131,7 @@ export function SiteAudienceDashboard({
   const [period, setPeriod] = useState<AudiencePeriod>("week");
   const [offset, setOffset] = useState(0);
   const [tab, setTab] = useState<"overview" | "origins">("overview");
-  const [order, setOrder] = useState<AudiencePropertyOrder>("views");
+  const [chosenOrder, setOrder] = useState<AudiencePropertyOrder | null>(null);
   const input = { brand, period, offset };
   const overviewResource = useAudienceReport(scope, { ...input, view: "overview" }, loadReport);
   const originsResource = useAudienceReport(
@@ -160,6 +160,7 @@ export function SiteAudienceDashboard({
       : undefined);
   const host = SITE_PUBLIC_HOSTS[brand];
   const selectedPeriod = periodChoices.find((choice) => choice.value === period)!;
+  const order = chosenOrder ?? (overview?.properties.clicks.length ? "clicks" : "views");
   const ranked = overview?.properties[order] ?? [];
 
   return (
@@ -331,11 +332,6 @@ export function SiteAudienceDashboard({
                   <div className="sa-rank-grid">
                     <PropertyRanking
                       rows={ranked}
-                      total={
-                        order === "views"
-                          ? overview.totals.propertyViews
-                          : overview.totals.propertyClicks
-                      }
                       period={period}
                       order={order}
                       onOrderChange={setOrder}
@@ -616,8 +612,8 @@ function MetricDefinitions({
           <div>
             <dt>Amostra mínima</dt>
             <dd>
-              Rankings, origens e métricas de comportamento exigem pelo menos cinco sessões na base
-              de cada resultado em produção. O ambiente de QA usa o mínimo de uma sessão.
+              Cada imóvel entra no ranking no primeiro clique ou na primeira visualização da ficha.
+              Detalhes de comportamento, páginas, menus e origens exigem cinco sessões em produção.
             </dd>
           </div>
           <div>

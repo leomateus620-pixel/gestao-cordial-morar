@@ -43,14 +43,14 @@ A média de páginas por sessão divide todas as visualizações do período pel
 - A medição própria depende da configuração ativa por marca. A página de privacidade descreve a medição automática. Uma primeira visita dispensa preferência salva. Uma recusa anterior continua válida, inclusive após mudança de versão. O cliente não grava um aceite em nome do visitante.
 - Eventos guardam chaves pseudônimas, categorias de páginas e ações, datas, UUID público do imóvel e dimensões aprovadas de campanha. Excluem dados de contato, CRM, busca digitada, URL completa, IP e identificadores brutos de anúncio. Uma referência descartada ou não disponível fica sem atribuição detalhada.
 - A proteção de volume usa IP verificado na borda para derivar HMAC de curta duração, isolado da medição e rotacionado a cada 15 minutos. Os eventos e sessões expiram em 65 dias. O cron limpa as janelas de limite com mais de 30 minutos em todas as execuções. A identificação local dura até 30 dias. O banco guarda as janelas de cobertura, sem identidades ou eventos nelas.
-- Em produção, rankings e painéis com menos de cinco sessões qualificadas ocultam o recorte. Origens agrupam o volume omitido sem expor as dimensões. QA usa amostra mínima de uma sessão e tem indicação visível. Totais gerais por marca e período seguem disponíveis.
+- Em produção, o ranking de imóveis conta cliques em cards e aberturas de ficha desde o primeiro evento por imóvel e marca. O destaque prioriza cliques quando disponíveis. Com menos de cinco sessões qualificadas, os detalhes de comportamento por imóvel ficam ocultos. O mesmo mínimo continua valendo nos recortes de páginas, menus e origens. Origens agrupam o volume omitido sem expor as dimensões. QA usa amostra mínima de uma sessão e tem indicação visível. Totais gerais por marca e período seguem disponíveis.
 - Os endpoints públicos validam host canônico, origem, esquema e limite. Pedidos de prévia e hosts fora da lista ficam fora. O relatório verifica o papel no servidor. Papéis externos restritivos prevalecem sobre papéis acumulados. A leitura de catálogos para enriquecer o ranking considera apenas a publicação atual da marca.
 
 A configuração por marca associa a versão do aviso aprovado ao domínio. Confira a política publicada e os logs da borda e da hospedagem antes da ativação. [Guia orientativo de cookies e proteção de dados pessoais da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia_orientativo_cookies_e_protecao_de_dados_pessoais)
 
 ## Ativação em produção
 
-Aplique `0116_site_audience`, `0117_site_audience_production_config`, `0118_site_audience_interaction_totals` e `0119_site_audience_action_summary` pelo journal do Drizzle. Publique a versão correspondente no Lovable. A migração cria a estrutura com a coleta desligada. Depois de conferir a borda dos domínios oficiais e obter o aceite do responsável pelo aviso, aplique a configuração na conexão de produção do Lovable com a função de serviço. O banco cria o segredo de proteção no Vault e abre a janela de cobertura na mesma transação. A ativação é independente por marca e dispensa segredos no código, no cliente ou na sessão do operador. Guarde a versão aprovada do texto. Use uma versão nova se o texto mudar, para manter o histórico de configuração.
+Aplique `0116_site_audience`, `0117_site_audience_production_config`, `0118_site_audience_interaction_totals`, `0119_site_audience_action_summary` e `0120_site_audience_property_ranking` pelo journal do Drizzle. Publique a versão correspondente no Lovable. A migração cria a estrutura com a coleta desligada. Depois de conferir a borda dos domínios oficiais e obter o aceite do responsável pelo aviso, aplique a configuração na conexão de produção do Lovable com a função de serviço. O banco cria o segredo de proteção no Vault e abre a janela de cobertura na mesma transação. A ativação é independente por marca e dispensa segredos no código, no cliente ou na sessão do operador. Guarde a versão aprovada do texto. Use uma versão nova se o texto mudar, para manter o histórico de configuração.
 
 ```sql
 -- Exemplo para adaptar com o texto aprovado antes de executar.
@@ -63,7 +63,7 @@ SELECT public.site_audience_production_configure(
 );
 ```
 
-Confira o `GET /api/cordial-site/audience` em `cordialimoveis.com` e o `GET /api/morar-site/audience` em `imobiliariamorarimoveis.com.br`. Na marca ativada, a resposta inclui `enabled:true` e a versão do aviso. Abra o site em navegador novo, navegue por Comprar e abra duas fichas. Confira os totais de cliques e fichas no Painel autenticado. **Como medimos** apresenta a cobertura. O relatório soma eventos históricos ainda retidos desde a recepção. Os rankings individuais exigem cinco sessões no item.
+Confira o `GET /api/cordial-site/audience` em `cordialimoveis.com` e o `GET /api/morar-site/audience` em `imobiliariamorarimoveis.com.br`. Na marca ativada, a resposta inclui `enabled:true` e a versão do aviso. Abra o site em navegador novo, navegue por Comprar e abra duas fichas. Confira os totais de cliques e fichas no Painel autenticado. **Como medimos** apresenta a cobertura. O relatório soma eventos históricos ainda retidos desde a recepção. O primeiro clique já identifica o imóvel no destaque e no ranking do período.
 
 
 Para pausar em produção, execute `SELECT public.site_audience_production_configure('cordial', false);` ou o equivalente para `morar`. A pausa encerra a janela de coleta e mantém os agregados ainda retidos. A remoção física de dados é um procedimento separado.
@@ -90,3 +90,5 @@ SELECT public.site_audience_configure('morar', 'qa', NULL, false);
 A migração 0118 altera somente a função privada de totais. Para reverter, restaure a definição de `site_audience.totals` de 0116 usando `CREATE OR REPLACE FUNCTION` em uma nova migração. Os eventos existentes permanecem disponíveis.
 
 Para reverter 0119, restaure as definições de `rank_pages`, `engagement` e `origins` de 0116 com `CREATE OR REPLACE`. A restrição ampliada em `events.kind` pode permanecer enquanto existirem eventos dessas categorias dentro da retenção.
+
+Para reverter somente 0120, restaure a definição de `site_audience.engagement` de 0119. A migração 0120 altera apenas a consulta e preserva os eventos recebidos.

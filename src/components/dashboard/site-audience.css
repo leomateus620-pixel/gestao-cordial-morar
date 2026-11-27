@@ -463,7 +463,8 @@
 }
 .sa-featured-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 0.3rem;
   margin-top: 0.65rem;
   padding-top: 0.58rem;
