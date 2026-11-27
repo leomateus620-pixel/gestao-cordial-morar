@@ -54,6 +54,15 @@ test("audience migration records known journeys and gives only authorized aggreg
         "utf8",
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL(
+          "../../drizzle/migrations/0120_site_audience_property_ranking.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     const configure = (brand: string, env: string, enabled: boolean) =>
       db.query("SELECT public.site_audience_configure($1,$2,'qa-v1',$3)", [brand, env, enabled]);
     const report = async (
@@ -268,7 +277,21 @@ test("audience migration records known journeys and gives only authorized aggreg
     assert.equal(smallOverview.overview.totals.views, 1);
     assert.equal(smallOverview.overview.totals.propertyViews, 1);
     assert.equal(smallOverview.overview.totals.propertyClicks, 0);
-    assert.deepEqual(smallOverview.overview.properties.views, []);
+    assert.deepEqual(smallOverview.overview.properties.clicks, []);
+    assert.deepEqual(smallOverview.overview.properties.views, [
+      {
+        publicId: listingB,
+        listing: null,
+        views: 1,
+        clicks: 0,
+        sessions: null,
+        reopens: null,
+        returnSessions: null,
+        previews: null,
+        whatsapp: null,
+        forms: null,
+      },
+    ]);
     assert.deepEqual(smallOverview.overview.pages, []);
     assert.equal(smallOverview.overview.behavior.multipleProperties, null);
     const smallOrigin = await report("cordial", "origins", "day", 0, "production");
@@ -312,6 +335,28 @@ test("audience migration records known journeys and gives only authorized aggreg
         (key) => [key, 1],
       ),
     );
+    const listingC = id();
+    await db.query("INSERT INTO public.cordial_site_eligible VALUES ($1)", [listingC]);
+    const clicks = [listingC, listingB, listingC].map((propertyId) =>
+      event("property_click", "search", { propertyId }),
+    );
+    await ingest(clicks, actionSession, actionVisitor, "", "production");
+    await ingest(clicks, actionSession, actionVisitor, "", "production");
+    for (const period of ["day", "week", "month"]) {
+      const ranked = await report("cordial", "overview", period, 0, "production");
+      assert.ok(ranked.status === "ready" && ranked.view === "overview");
+      assert.deepEqual(
+        ranked.overview.properties.clicks.map((p) => [p.publicId, p.clicks, p.views, p.sessions]),
+        [
+          [listingC, 2, 0, null],
+          [listingB, 1, 1, null],
+        ],
+      );
+      assert.deepEqual(
+        ranked.overview.properties.views.map((p) => p.publicId),
+        [listingB],
+      );
+    }
     await db.exec(await readFile(rollback, "utf8"));
     const { rows } = await db.query<{ target: string | null }>(
       "SELECT to_regnamespace('site_audience') AS target",
