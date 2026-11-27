@@ -352,7 +352,6 @@ try {
         );
         if (!hiddenDescription && !hiddenFeatures.length) continue;
         const detail = await api("detail", own.public_id);
-        if (hiddenDescription) assert.equal(detail.description, "");
         assert.ok(!normalizeProse(detail.description).includes(street));
         assert.ok(!detail.features.some((f) => normalizeProse(f).includes(street)));
         const queried = await api("properties", { q: source.logradouro });
@@ -389,7 +388,8 @@ try {
           publicId: own.public_id,
           reference: own.public_reference,
           reason: "hidden canonical street in imported prose",
-          descriptionOmitted: hiddenDescription,
+          descriptionSanitized: hiddenDescription,
+          descriptionOmitted: hiddenDescription && detail.description === "",
           featuresOmitted: hiddenFeatures.length,
           streetNameAlsoPublicLocation: overlapsPublicLocation,
           canonicalChanged: false,

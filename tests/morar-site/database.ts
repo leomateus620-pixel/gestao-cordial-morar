@@ -45,5 +45,11 @@ export async function morarDatabase() {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      process.env["SITE_DESCRIPTION_MIGRATION"] ?? new URL("../../drizzle/migrations/0122_site_description_hide_street.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   return db;
 }

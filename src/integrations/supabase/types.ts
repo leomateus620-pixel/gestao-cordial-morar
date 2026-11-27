@@ -13752,6 +13752,13 @@ export type Database = {
         Args: { _lease: string; _seconds: number }
         Returns: boolean
       }
+      cordial_site_strip_hidden_address: {
+        Args: {
+          _text: string
+          p: Database["public"]["Tables"]["properties"]["Row"]
+        }
+        Returns: string
+      }
       cordial_site_submit_lead: {
         Args: { _fingerprint: string; _lead: Json }
         Returns: string
@@ -14828,6 +14835,13 @@ export type Database = {
         Args: { p: Database["public"]["Tables"]["properties"]["Row"] }
         Returns: string
       }
+      morar_site_strip_hidden_address: {
+        Args: {
+          _text: string
+          p: Database["public"]["Tables"]["properties"]["Row"]
+        }
+        Returns: string
+      }
       morar_site_submit_lead: {
         Args: { _fingerprint: string; _lead: Json }
         Returns: string
@@ -15819,6 +15833,10 @@ export type Database = {
         Returns: Json
       }
       site_media_worker_dispatch: { Args: never; Returns: number }
+      site_strip_street_from_text: {
+        Args: { _street: string; _text: string }
+        Returns: string
+      }
       studio_daily_limit_ok: { Args: { _user_id: string }; Returns: boolean }
       studio_project_approve: { Args: { p_project_id: string }; Returns: Json }
       submit_satisfaction_response: {

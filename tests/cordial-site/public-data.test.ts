@@ -2,10 +2,17 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
+import { readFile } from "node:fs/promises";
 import { testDatabase } from "./database";
 let db: PGlite;
 before(async () => {
   db = await testDatabase();
+  await db.exec(
+    await readFile(
+      process.env["SITE_DESCRIPTION_MIGRATION"] ?? new URL("../../drizzle/migrations/0122_site_description_hide_street.sql", import.meta.url),
+      "utf8",
+    ),
+  );
 });
 after(async () => {
   await db?.close();
@@ -54,6 +61,58 @@ test("Cordial withholds exact address and known street in prose even when cadast
   assert.equal(document.description, "");
   assert.deepEqual(document.features, ["Jardim"]);
   assert.ok(!JSON.stringify(document).includes("Privada"));
+});
+async function documentOf(id: string) {
+  return (
+    await db.query<{ document: Record<string, unknown> }>(
+      "SELECT document FROM cordial_site_documents WHERE public_id=$1",
+      [id],
+    )
+  ).rows[0].document;
+}
+test("Cordial keeps a long description that only mentions the hidden street, without street or number", async () => {
+  const intro = "Linda casa com três dormitórios, piscina aquecida e área gourmet.";
+  const tail = "Próxima a escolas e mercados. Venha agendar sua visita!";
+  const id = await published({
+    exibir_endereco_site: "nao",
+    logradouro: "Rua Doutor Bozano",
+    numero: "1723",
+    descricao_imovel: `${intro}\n\nLocalizada na Rua Doutor Bozano, nº 1723, no centro.\n${tail}`,
+    pontos_fortes: "Frente para a Rua Doutor Bozano",
+  });
+  const document = await documentOf(id);
+  const description = String(document.description);
+  assert.ok(description.includes(intro));
+  assert.ok(description.includes(tail));
+  assert.ok(description.includes("no centro"));
+  assert.ok(!/bozano/i.test(description));
+  assert.ok(!description.includes("1723"));
+  assert.equal(document.address, null);
+  assert.ok(!/bozano/i.test(JSON.stringify(document)));
+  const stored = (
+    await db.query<{ d: string }>("SELECT descricao_imovel d FROM properties WHERE id=$1", [
+      (await db.query<{ id: string }>("SELECT property_id id FROM cordial_site_publications WHERE public_id=$1", [id])).rows[0].id,
+    ])
+  ).rows[0].d;
+  assert.ok(stored.includes("Rua Doutor Bozano, nº 1723"));
+});
+test("Cordial sanitizes accents, case and HTML around the street and still hides it when display is allowed", async () => {
+  const id = await published({
+    exibir_endereco_site: "sim",
+    logradouro: "Avenida São José",
+    descricao_imovel: "Apartamento amplo na <strong>AVENIDA SAO   JOSE</strong>, 81. Sacada com churrasqueira.",
+  });
+  const description = String((await documentOf(id)).description);
+  assert.ok(description.includes("Sacada com churrasqueira."));
+  assert.ok(!/s[aã]o\s*jos[eé]/i.test(description));
+  assert.ok(!description.includes("81"));
+});
+test("Cordial falls back to empty when the street cannot be removed safely", async () => {
+  const id = await published({
+    logradouro: "Rua São José",
+    descricao_imovel: "Casa ótima na Rua S&atilde;o Jos&eacute; com pátio.",
+  });
+  assert.equal((await documentOf(id)).description, "");
 });
 test("count, facets and paged items share filters, null/zero semantics and withdrawal", async () => {
   await published({ bairro: "Central", operacao: "aluguel", valor: 0, dormitorios: 0 });

@@ -244,7 +244,8 @@ test("hidden street in prose never appears in public JSON, features, SEO source 
       [pub],
     )
   ).document;
-  assert.equal(document.description, "");
+  assert.ok(document.description.startsWith("Casa"));
+  assert.ok(!document.description.includes("81"));
   assert.deepEqual(document.features, ["Jardim", "Garagem"]);
   assert.equal(document.address, null);
   assert.ok(!JSON.stringify(document).toLowerCase().includes(street.toLowerCase()));
@@ -265,6 +266,34 @@ test("hidden street in prose never appears in public JSON, features, SEO source 
     ).document.description,
     description,
   );
+});
+
+test("Morar keeps the rest of a long description when the street is hidden, and the full text when shown", async () => {
+  const street = "Rua Expedicionário Weber";
+  const description = `Apartamento novo com três dormitórios.\nFica na ${street}, 500, perto de tudo.\nAgende sua visita.`;
+  const id = await property({
+    codigo_morar: `LONG-${randomUUID()}`,
+    logradouro: street,
+    numero: "500",
+    exibir_endereco_site: "nao",
+    descricao_imovel: description,
+  });
+  const pub = await review(id, false);
+  const read = async () =>
+    (
+      await one<{ document: { description: string } }>(
+        "SELECT document FROM morar_site_documents WHERE public_id=$1",
+        [pub],
+      )
+    ).document.description;
+  const hidden = await read();
+  assert.ok(hidden.includes("Apartamento novo com três dormitórios."));
+  assert.ok(hidden.includes("perto de tudo"));
+  assert.ok(hidden.includes("Agende sua visita."));
+  assert.ok(!/weber/i.test(hidden));
+  assert.ok(!hidden.includes("500"));
+  await db.query("UPDATE properties SET exibir_endereco_site='sim' WHERE id=$1", [id]);
+  assert.equal(await read(), description);
 });
 
 test("hidden addresses encoded as HTML entities are withheld before JSON or rendering", async () => {
