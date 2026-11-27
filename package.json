@@ -25,7 +25,7 @@
     "preview:atendimentos": "vite --config tests/atendimentos/vite.config.ts",
     "test:morar": "vitest run --config vitest.morar.config.ts",
     "preview:morar": "vite --config tests/morar-site/preview/vite.config.ts",
-    "test:dashboard": "tsx --test src/lib/dashboard/*.test.ts",
+    "test:dashboard": "tsx --test src/lib/dashboard/*.test.ts && vitest run --config tests/dashboard/audience.vitest.config.ts",
     "preview:dashboard": "vite --config tests/dashboard/vite.config.ts",
     "test:public-bot": "tsx --test tests/public-property-bot/*.test.ts",
     "preview:public-bot": "vite --config tests/public-property-bot/preview.vite.config.ts",

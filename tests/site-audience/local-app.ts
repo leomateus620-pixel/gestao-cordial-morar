@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer, request, type IncomingMessage } from "node:http";
 import { spawn } from "node:child_process";
+import { installAudienceAccess } from "./access-fixture";
 import { PGlite } from "@electric-sql/pglite";
 import type { PublicProperty } from "../../src/lib/cordial-site/contract";
 
@@ -87,6 +88,12 @@ await db.exec(
     "utf8",
   ),
 );
+await installAudienceAccess(db);
+await db.query("INSERT INTO public.user_roles VALUES ($1, 'admin'), ($2, 'corretor')", [
+  users.admin,
+  users.corretor,
+]);
+await db.query("INSERT INTO public.user_agencies VALUES ($1, 'morar')", [users.corretor]);
 for (const brand of brands) {
   for (const item of properties[brand]) {
     await db.query(`insert into ${brand}_site_documents values ($1, $2)`, [item.id, item]);
@@ -172,8 +179,19 @@ const storage = createServer(async (req, res) => {
       return authenticated ? json(userFor(authenticated)) : json({}, 401);
     const rpc = url.pathname.split("/").at(-1)!;
     if (url.pathname.startsWith("/rest/v1/rpc/site_audience_")) {
+      if (rpc === "site_audience_allowed_brands") {
+        if (!authenticated) return json({}, 403);
+        const value = await db.transaction(async (tx) => {
+          await tx.query("SELECT set_config('request.jwt.claim.sub', $1, true)", [authenticated]);
+          const { rows } = await tx.query<{ brands: string[] }>(
+            "SELECT public.site_audience_allowed_brands() AS brands",
+          );
+          return rows[0].brands;
+        });
+        return json(value);
+      }
       if (intakeUnavailable && rpc === "site_audience_ingest") return json({}, 503);
-      if (!service || !/^site_audience_(collection_status|ingest|report)$/.test(rpc))
+      if (!service || !/^site_audience_(collection_status|ingest|report_for_user)$/.test(rpc))
         return json({}, 403);
       const input: Record<string, unknown> = await jsonBody(req);
       const args = Object.keys(input);

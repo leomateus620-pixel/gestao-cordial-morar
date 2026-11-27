@@ -159,7 +159,7 @@ function Dashboard() {
 
       {/* ── Métricas do painel — dados reais de Atendimentos e Agenda ───── */}
       <DashboardMetricCards />
-      {isAdminOwner && <SiteAudienceSection />}
+      <SiteAudienceSection />
       {isAdminOwner && <PublicBotInsightsSection />}
       {session && session.perfil !== "financeiro_admin" && <DailyBriefing />}
 

@@ -15794,6 +15794,7 @@ export type Database = {
         Args: { p_brand: string }
         Returns: Json
       }
+      site_audience_allowed_brands: { Args: never; Returns: string[] }
       site_audience_report: {
         Args: {
           p_brand: string
@@ -15801,6 +15802,18 @@ export type Database = {
           p_offset: number
           p_period: string
           p_policy_version: string
+          p_view: string
+        }
+        Returns: Json
+      }
+      site_audience_report_for_user: {
+        Args: {
+          p_brand: string
+          p_environment: string
+          p_offset: number
+          p_period: string
+          p_policy_version: string
+          p_user_id: string
           p_view: string
         }
         Returns: Json

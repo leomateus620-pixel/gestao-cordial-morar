@@ -24,7 +24,7 @@ createRoot(document.getElementById("root")!).render(
         <SiteAudienceDashboard
           scope="synthetic-preview"
           loadReport={loadReport}
-          initialBrand={brand}
+          brands={brand === "morar" ? ["morar", "cordial"] : ["cordial", "morar"]}
         />
       </main>
     </QueryClientProvider>

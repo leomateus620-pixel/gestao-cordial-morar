@@ -17,13 +17,9 @@ export const getSiteAudienceReport = createServerFn({ method: "GET" })
     const { getRequest, setResponseHeader } = await import("@tanstack/react-start/server");
     setResponseHeader("Cache-Control", "no-store, private");
     setResponseHeader("X-Robots-Tag", "noindex, nofollow");
-    // has_role is deny-dominant in the DB for both external reviewer roles.
-    const role = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (role.error) throw new Error("Não foi possível verificar o acesso ao relatório.");
-    if (role.data !== true) return { status: "unauthorized" };
+    const access = await context.supabase.rpc("site_audience_allowed_brands");
+    if (access.error) throw new Error("Não foi possível verificar o acesso ao relatório.");
+    if (!access.data?.includes(data.brand)) return { status: "unauthorized" };
     const { loadSiteAudienceReport } = await import("./report.server");
-    return loadSiteAudienceReport(data, getRequest());
+    return loadSiteAudienceReport(data, getRequest(), context.userId);
   });
