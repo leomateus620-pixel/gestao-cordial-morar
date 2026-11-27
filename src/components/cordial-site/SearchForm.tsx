@@ -22,6 +22,7 @@ import { allowedTypes, defaultOrder } from "@/lib/cordial-site/search-settings";
 import { MorarSearchForm } from "./MorarSearchForm";
 import { searchLabels as labels } from "@/lib/cordial-site/search-labels";
 import { trackSiteEvent } from "@/lib/cordial-site/experience";
+import { measureAudienceAction } from "@/lib/site-audience/client";
 
 type SearchFormProps = { initial?: Partial<SiteSearch>; compact?: boolean; onApplied?: () => void };
 export function SearchForm(props: SearchFormProps) {
@@ -397,6 +398,7 @@ function CordialSearchForm({
           return;
         }
         setErrors({});
+        measureAudienceAction("cordial", { kind: "search", placement: compact ? "home" : undefined });
         trackSiteEvent("search_applied", {
           source: compact ? "home" : "filters",
           ...(currentCount?.total != null ? { count: currentCount.total } : {}),

@@ -377,13 +377,49 @@ export async function handleSiteRequest(
     const fingerprint = await digest(
       `${process.env[`${channel.envPrefix}_RATE_SECRET`]}:${lead.phone.replace(/\D/g, "")}:${lead.kind}:${lead.propertyId ?? ""}:${lead.message}`,
     );
-    const { data, error } = await siteDb().rpc(`${channel.namespace}_submit_lead`, {
+    const db = siteDb();
+    const { data, error } = await db.rpc(`${channel.namespace}_submit_lead`, {
       _lead: lead,
       _fingerprint: fingerprint,
     });
     if (error || data !== "received") throw new SiteUnavailable();
+    let audienceProof: string | undefined;
+    if (request.headers.get("X-Site-Audience") === "1") {
+      try {
+        const { audienceLeadSettings, audienceRequestIp, makeAudienceFormProof } =
+          await import("../site-audience/privacy.server");
+        const settings = audienceLeadSettings(request, brand);
+        if (
+          settings &&
+          request.headers.get("X-Site-Audience-Policy") === settings.config.policyVersion &&
+          audienceRequestIp(request, settings.environment)
+        ) {
+          // The existing RPC also reports success when a matching message was
+          // deduplicated under a different nonce, which adds no audience event.
+          const persisted = await db
+            .from(`${channel.namespace}_leads`)
+            .select("request_id")
+            .eq("request_id", lead.requestId)
+            .abortSignal(AbortSignal.timeout(1000))
+            .maybeSingle();
+          if (!persisted.error && persisted.data) {
+            audienceProof = await makeAudienceFormProof(
+              settings,
+              persisted.data.request_id,
+              lead.propertyId,
+            );
+          }
+        }
+      } catch {
+        // Measurement is optional. A confirmed lead keeps its original 201 response.
+      }
+    }
     return json(
-      { ok: true, message: "Recebemos sua mensagem. Nossa equipe dará continuidade ao contato." },
+      {
+        ok: true,
+        message: "Recebemos sua mensagem. Nossa equipe dará continuidade ao contato.",
+        ...(audienceProof ? { audienceProof } : {}),
+      },
       201,
     );
   } catch (error) {
