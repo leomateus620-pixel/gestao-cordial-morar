@@ -238,7 +238,14 @@ export function createAudienceFixture(
       status: "ready",
       view,
       overview: {
-        totals: { visitors, sessions, views },
+        totals: {
+          visitors,
+          sessions,
+          views,
+          propertyViews: properties.reduce((count, row) => count + row.views, 0),
+          propertyClicks: properties.reduce((count, row) => count + row.clicks, 0),
+          menuClicks: menus.reduce((count, row) => count + row.count, 0),
+        },
         previous: {
           visitors: Math.round(visitors * 0.85),
           sessions: Math.round(sessions * 0.93),

@@ -102,6 +102,7 @@ export function prepareAudienceForm(brand: SiteBrand) {
 
 export function activateAudience(brand: SiteBrand, config: AudienceConfig, onDisabled: () => void) {
   controllers.get(brand)?.stop();
+  if (readAudiencePreference(brand)?.choice === "denied") clearAudienceIdentity(brand);
   const controller = createAudience(brand, config, onDisabled);
   controllers.set(brand, controller);
   return controller;
@@ -128,8 +129,7 @@ function createAudience(brand: SiteBrand, config: AudienceConfig, onDisabled: ()
   const visible = () => document.visibilityState === "visible";
   const allowed = () => {
     if (!live) return false;
-    const preference = readAudiencePreference(brand);
-    return preference?.policyVersion === config.policyVersion && preference.choice === "granted";
+    return readAudiencePreference(brand)?.choice !== "denied";
   };
 
   function readIdentity(): Identity | null {
@@ -449,7 +449,10 @@ function createAudience(brand: SiteBrand, config: AudienceConfig, onDisabled: ()
     show(true);
   }
   function onStorage(event: StorageEvent) {
-    if ((event.key === keys.preference || event.key === null) && !allowed()) stop();
+    if ((event.key === keys.preference || event.key === null) && !allowed()) {
+      clearAudienceIdentity(brand);
+      stop();
+    }
   }
 
   const timer = window.setInterval(() => {

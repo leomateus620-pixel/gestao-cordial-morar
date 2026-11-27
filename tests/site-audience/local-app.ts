@@ -69,6 +69,12 @@ const migration = await readFile(
   "utf8",
 );
 await db.exec(migration);
+await db.exec(
+  await readFile(
+    new URL("../../drizzle/migrations/0118_site_audience_interaction_totals.sql", import.meta.url),
+    "utf8",
+  ),
+);
 for (const brand of brands) {
   for (const item of properties[brand]) {
     await db.query(`insert into ${brand}_site_documents values ($1, $2)`, [item.id, item]);

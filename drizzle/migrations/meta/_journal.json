@@ -827,6 +827,13 @@
       "when": 1795750481448,
       "tag": "0117_site_audience_production_config",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1795753048691,
+      "tag": "0118_site_audience_interaction_totals",
+      "breakpoints": true
     }
   ]
 }

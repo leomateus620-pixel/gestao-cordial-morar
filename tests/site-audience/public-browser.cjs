@@ -86,20 +86,13 @@ async function verifyNoticeOnly(browser, settings) {
     assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
     returnNotice = true;
     await page.reload();
-    const panel = page.getByRole("region", { name: "Preferências de audiência" });
-    await panel.getByText("Como funciona a medição").click();
-    await panel.getByText(notice, { exact: true }).waitFor();
-    const contact = panel.getByRole("link", { name: "Contato da Morar Imóveis" });
-    assert.match(await contact.getAttribute("href"), /\/contato$/);
-    assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
-    await totals(before, brand, { session_start: 0 }, "notice readable before consent");
-
-    await panel.getByRole("button", { name: "Aceitar audiência" }).click();
+    await page.getByRole("heading", { name: "Quais dados coletamos ao navegar" }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Aceitar audiência" }).count(), 0);
     await totals(
       before,
       brand,
       { session_start: 1, page_view: 1 },
-      "dedicated notice works without general policy",
+      "published notice without banner",
     );
     const expired = await page.evaluate((key) => {
       const identity = JSON.parse(localStorage.getItem(key));
@@ -119,11 +112,6 @@ async function verifyNoticeOnly(browser, settings) {
       identityKey,
     );
     assert.notEqual(current, expired);
-
-    await page.getByRole("button", { name: "Métricas de audiência" }).click();
-    await panel.getByRole("button", { name: "Revogar permissão" }).click();
-    assert.equal(await page.evaluate((key) => localStorage.getItem(key), identityKey), null);
-    await page.getByText(/A política de privacidade está em preparação/).waitFor();
   } finally {
     await browserContext.close();
   }
@@ -163,9 +151,8 @@ async function directAndUnavailable(browser, settings, brand, url) {
     const intake = (response) =>
       response.url().endsWith("/audience") && response.request().method() === "POST";
     let before = await state();
-    await page.goto(url);
     const accepted = page.waitForResponse(intake);
-    await page.getByRole("button", { name: "Aceitar audiência", exact: true }).click();
+    await page.goto(url);
     const initial = await accepted;
     assert.equal(initial.status(), 204);
     const batch = initial.request().postDataJSON();
@@ -222,10 +209,8 @@ async function walk(browser, settings, brand, extended) {
   });
   try {
     await page.goto(origin + "/?utm_source=qa&utm_medium=cpc&utm_campaign=acceptance");
-    await page
-      .getByRole("button", { name: "Aceitar audiência", exact: true })
-      .click({ timeout: 15000 });
-    await totals(before, brand, { session_start: 1, page_view: 1 }, "grant");
+    await totals(before, brand, { session_start: 1, page_view: 1 }, "fresh browser");
+    assert.equal(await page.getByRole("button", { name: "Aceitar audiência" }).count(), 0);
     assert.equal(outgoing[0].events[0].attribution?.campaign, "acceptance");
     if (settings.isMobile)
       await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
@@ -284,7 +269,11 @@ async function walk(browser, settings, brand, extended) {
         .filter((e) => e.kind === "property_view")
         .every((e) => e.navigation === "navigation"),
     );
-    if (!extended) return;
+    if (!extended) {
+      // Flush pagehide keepalive work before the next brand takes its baseline.
+      await page.goto("about:blank", { waitUntil: "networkidle" });
+      return;
+    }
 
     await page.reload();
     await totals(
@@ -331,8 +320,12 @@ async function walk(browser, settings, brand, extended) {
     const next = await tab.evaluate((key) => JSON.parse(localStorage.getItem(key)), identityKey);
     assert.notEqual(original.sessionId, next.sessionId);
     assert.equal(original.visitorId, next.visitorId);
-    await tab.getByRole("button", { name: "Métricas de audiência", exact: true }).click();
-    await tab.getByRole("button", { name: "Revogar permissão", exact: true }).click();
+    const legacyDenial = (brand) =>
+      localStorage.setItem(
+        brand + ":audience:preference:v1",
+        JSON.stringify({ choice: "denied", policyVersion: "previous-policy" }),
+      );
+    await tab.evaluate(legacyDenial, brand);
     await page.reload();
     await tab.reload();
     await sleep(500);
@@ -348,10 +341,9 @@ async function walk(browser, settings, brand, extended) {
     const denied = await guardedContext(browser, settings);
     try {
       const p = await denied.newPage();
+      await p.addInitScript(legacyDenial, brand);
       await p.goto(currentProperty);
-      await p.getByRole("button", { name: "Recusar audiência", exact: true }).click();
-      await p.reload();
-      await p.getByRole("button", { name: "Métricas de audiência", exact: true }).waitFor();
+      await p.getByRole("heading", { level: 1 }).first().waitFor();
       await sleep(500);
       await totals(
         before,
