@@ -201,7 +201,14 @@ export function ResultsPage({
                 key={v}
                 className={(search.finalidade ?? "") === v ? "is-active" : ""}
                 aria-pressed={(search.finalidade ?? "") === v}
-                onClick={() => change({ finalidade: v ? (v as "venda" | "aluguel") : undefined })}
+                onClick={() => {
+                  if ((search.finalidade ?? "") !== v)
+                    change({
+                      finalidade: v ? (v as "venda" | "aluguel") : undefined,
+                      precoMin: undefined,
+                      precoMax: undefined,
+                    });
+                }}
               >
                 {l}
               </button>

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Search, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   defaultSearch,
   searchSchema,
@@ -8,7 +8,7 @@ import {
   type SiteFacets,
 } from "@/lib/cordial-site/contract";
 import { loadCatalogCount, loadFacets } from "@/lib/cordial-site/data";
-import { money, sitePath } from "@/lib/cordial-site/presentation";
+import { money } from "@/lib/cordial-site/presentation";
 import {
   foldSearchText,
   latestRequest,
@@ -16,10 +16,10 @@ import {
   searchQueryKey,
   updateSearchDraft,
 } from "@/lib/cordial-site/search-state";
-import { SiteLink } from "./SiteShell";
+import { changePurpose } from "@/lib/cordial-site/morar-search";
 import { useSite, useSiteBrand } from "@/lib/cordial-site/context";
-import { allowedTypes, defaultOrder } from "@/lib/cordial-site/search-settings";
-import { MorarSearchForm } from "./MorarSearchForm";
+import { allowedTypes } from "@/lib/cordial-site/search-settings";
+import { CatalogSearchForm } from "./CatalogSearchForm";
 import { searchLabels as labels } from "@/lib/cordial-site/search-labels";
 import { trackSiteEvent } from "@/lib/cordial-site/experience";
 import { measureAudienceAction } from "@/lib/site-audience/client";
@@ -27,7 +27,11 @@ import { measureAudienceAction } from "@/lib/site-audience/client";
 type SearchFormProps = { initial?: Partial<SiteSearch>; compact?: boolean; onApplied?: () => void };
 export function SearchForm(props: SearchFormProps) {
   const brand = useSiteBrand();
-  return brand === "morar" ? <MorarSearchForm {...props} /> : <CordialSearchForm {...props} />;
+  return props.compact || brand === "morar" ? (
+    <CatalogSearchForm brand={brand} {...props} />
+  ) : (
+    <CordialSearchForm {...props} />
+  );
 }
 
 function RegionCombobox({
@@ -143,40 +147,12 @@ function RegionCombobox({
   );
 }
 
-function CordialSearchForm({
-  initial = defaultSearch,
-  compact = false,
-  onApplied,
-}: SearchFormProps) {
+function CordialSearchForm({ initial = defaultSearch, onApplied }: SearchFormProps) {
   const { facets, available, settings } = useSite();
   const navigate = useNavigate();
   const id = useId();
-  const [values, setValues] = useState(() =>
-    searchDraft(compact ? { ...initial, finalidade: initial.finalidade ?? "venda" } : initial),
-  );
+  const [values, setValues] = useState(() => searchDraft(initial));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [budget, setBudget] = useState(initial.precoMin != null || initial.precoMax != null);
-  // Compact home: the budget panel floats over the form on small screens; close on outside tap / Escape.
-  useEffect(() => {
-    if (!budget || !compact || !matchMedia("(max-width: 1179px)").matches) return;
-    const panel = () => document.getElementById(`${id}-budget`);
-    const inside = (t: EventTarget | null) =>
-      t instanceof Node &&
-      (panel()?.contains(t) ||
-        (t instanceof Element && !!t.closest(`[aria-controls="${id}-budget"]`)));
-    const down = (e: PointerEvent) => {
-      if (!inside(e.target)) setBudget(false);
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setBudget(false);
-    };
-    document.addEventListener("pointerdown", down);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", down);
-      document.removeEventListener("keydown", key);
-    };
-  }, [budget, compact, id]);
   const [retry, setRetry] = useState(0);
   const [count, setCount] = useState<{ key: string; total?: number; error?: boolean }>({ key: "" });
   const [regionFacets, setRegionFacets] = useState<{
@@ -191,11 +167,13 @@ function CordialSearchForm({
     : "invalid";
   const currentCount = count.key === queryKey ? count : undefined;
   const update = (key: string, value: string) => {
-    setValues((old) => updateSearchDraft(old, key, value));
-    trackSiteEvent("filter_changed", { source: `${compact ? "home" : "filters"}:${key}` });
+    setValues((old) =>
+      key === "finalidade" ? changePurpose(old, value) : updateSearchDraft(old, key, value),
+    );
+    trackSiteEvent("filter_changed", { source: `filters:${key}` });
   };
   useEffect(() => {
-    if (compact || !available || queryKey === "invalid") return;
+    if (!available || queryKey === "invalid") return;
     const requestTracker = requests.current;
     const request = requestTracker.next();
     const abort = new AbortController();
@@ -218,7 +196,7 @@ function CordialSearchForm({
       abort.abort();
       requestTracker.invalidate();
     };
-  }, [queryKey, retry, available, compact]);
+  }, [queryKey, retry, available]);
   useEffect(() => {
     if (!available || facetsKey === "invalid") return;
     const abort = new AbortController();
@@ -304,7 +282,7 @@ function CordialSearchForm({
       value={values.bairro ?? ""}
       onChange={(district, city) => {
         setValues((old) => ({ ...old, bairro: district, ...(city ? { cidade: city } : {}) }));
-        trackSiteEvent("filter_changed", { source: `${compact ? "home" : "filters"}:bairro` });
+        trackSiteEvent("filter_changed", { source: `filters:bairro` });
       }}
     />
   );
@@ -342,10 +320,6 @@ function CordialSearchForm({
       <div className="cs-search-fields">{children}</div>
     </fieldset>
   );
-  const budgetLabel =
-    values.precoMin || values.precoMax
-      ? `${values.precoMin ? money(Number(values.precoMin)) : "Sem mínimo"} — ${values.precoMax ? money(Number(values.precoMax)) : "sem máximo"}`
-      : "Qual faixa de valor?";
   const priceSteps =
     values.finalidade === "venda" || values.finalidade === "aluguel"
       ? settings.priceSteps[values.finalidade]
@@ -367,7 +341,7 @@ function CordialSearchForm({
               onClick={() => {
                 setValues((old) => ({ ...old, precoMin: "", precoMax: String(ceiling) }));
                 trackSiteEvent("filter_changed", {
-                  source: `${compact ? "home" : "filters"}:price_ceiling`,
+                  source: `filters:price_ceiling`,
                 });
               }}
             >
@@ -386,7 +360,7 @@ function CordialSearchForm({
   );
   return (
     <form
-      className={`cs-search-form cs-search-essential ${compact ? "is-compact" : ""}`}
+      className="cs-search-form cs-search-essential"
       onSubmit={(event) => {
         event.preventDefault();
         const valid = searchSchema.safeParse(values);
@@ -394,237 +368,152 @@ function CordialSearchForm({
           setErrors(
             Object.fromEntries(valid.error.issues.map((issue) => [issue.path[0], issue.message])),
           );
-          setBudget(true);
           return;
         }
         setErrors({});
-        measureAudienceAction("cordial", { kind: "search", placement: compact ? "home" : undefined });
+        measureAudienceAction("cordial", { kind: "search" });
         trackSiteEvent("search_applied", {
-          source: compact ? "home" : "filters",
+          source: "filters",
           ...(currentCount?.total != null ? { count: currentCount.total } : {}),
         });
         void navigate({
           to: "/site/buscar",
-          search: { ...valid.data, ordem: defaultOrder(valid.data.ordem, compact, settings), pagina: 1 },
+          search: { ...valid.data, pagina: 1 },
         });
         onApplied?.();
       }}
     >
-      {compact ? (
-        <>
-          <div className="cs-purpose-tabs" role="group" aria-label="Finalidade">
-            {[
-              ["venda", "Quero comprar"],
-              ["aluguel", "Quero alugar"],
-            ].map(([value, label]) => (
-              <button
-                type="button"
-                key={value}
-                aria-pressed={values.finalidade === value}
-                onClick={() => update("finalidade", value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="cs-search-fields">
+      <div className="cs-filter-scroll">
+        {group(
+          "Localização",
+          <>
+            {select(
+              "finalidade",
+              [
+                ["venda", "Comprar"],
+                ["aluguel", "Alugar"],
+              ],
+              "Comprar ou alugar",
+            )}
             {typeField}
             {cityField}
             {regionField}
-            <button
-              type="button"
-              className="cs-budget-trigger"
-              aria-expanded={budget}
-              aria-controls={`${id}-budget`}
-              onClick={() => setBudget((old) => !old)}
-            >
-              <span>Valor</span>
-              <strong>{budgetLabel}</strong>
-              <ChevronDown size={16} />
-            </button>
-          </div>
-          {budget && (
-            <div
-              className="cs-budget-fields cs-search-fields"
-              id={`${id}-budget`}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.stopPropagation();
-                  setBudget(false);
-                  e.currentTarget.ownerDocument
-                    .querySelector<HTMLElement>(`[aria-controls="${id}-budget"]`)
-                    ?.focus();
-                }
-              }}
-            >
-              {pricePresets}
-              {numeric("precoMin")}
-              {numeric("precoMax")}
-            </div>
-          )}
-          <label className="cs-field cs-code-field" htmlFor={`${id}-referencia`}>
-            <span>Código do imóvel</span>
-            <input
-              id={`${id}-referencia`}
-              name="referencia"
-              type="text"
-              autoComplete="off"
-              value={values.referencia ?? ""}
-              maxLength={80}
-              onChange={(e) => update("referencia", e.target.value)}
-              placeholder="Digite a referência"
-            />
-          </label>
-          <button className="cs-button cs-search-submit" type="submit">
-            <Search size={19} />
-            Buscar imóveis
-          </button>
-          <div className="cs-search-links">
-            <SiteLink to={sitePath("/buscar")}>
-              <SlidersHorizontal size={15} />
-              Pesquisa completa
-            </SiteLink>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="cs-filter-scroll">
-            {group(
-              "Localização",
-              <>
-                {select(
-                  "finalidade",
-                  [
-                    ["venda", "Comprar"],
-                    ["aluguel", "Alugar"],
-                  ],
-                  "Comprar ou alugar",
-                )}
-                {typeField}
-                {cityField}
-                {regionField}
-                <label className="cs-field" htmlFor={`${id}-q`}>
-                  <span>Palavra na busca</span>
-                  <input
-                    id={`${id}-q`}
-                    value={values.q ?? ""}
-                    maxLength={100}
-                    onChange={(e) => update("q", e.target.value)}
-                    placeholder="Tipo, cidade ou bairro"
-                  />
-                </label>
-              </>,
+            <label className="cs-field" htmlFor={`${id}-q`}>
+              <span>Palavra na busca</span>
+              <input
+                id={`${id}-q`}
+                value={values.q ?? ""}
+                maxLength={100}
+                onChange={(e) => update("q", e.target.value)}
+                placeholder="Tipo, cidade ou bairro"
+              />
+            </label>
+          </>,
+        )}
+        {group(
+          "Valores",
+          <>
+            {pricePresets}
+            {numeric("precoMin")}
+            {numeric("precoMax")}
+            {select(
+              "valorModo",
+              [
+                ["fixo", "Preço informado"],
+                ["consulte", "Sob consulta"],
+              ],
+              "Todos os preços",
             )}
-            {group(
-              "Valores",
-              <>
-                {pricePresets}
-                {numeric("precoMin")}
-                {numeric("precoMax")}
-                {select(
-                  "valorModo",
-                  [
-                    ["fixo", "Preço informado"],
-                    ["consulte", "Sob consulta"],
-                  ],
-                  "Todos os preços",
-                )}
-              </>,
+          </>,
+        )}
+        {group(
+          "Características",
+          <>
+            {select(
+              "contagem",
+              [
+                ["minima", "Pelo menos a quantidade informada"],
+                ["exata", "Exatamente a quantidade informada"],
+              ],
+              "Pelo menos",
             )}
-            {group(
-              "Características",
-              <>
-                {select(
-                  "contagem",
-                  [
-                    ["minima", "Pelo menos a quantidade informada"],
-                    ["exata", "Exatamente a quantidade informada"],
-                  ],
-                  "Pelo menos",
-                )}
-                {["dormitorios", "banheiros", "suites", "vagas"].map(numeric)}
-              </>,
+            {["dormitorios", "banheiros", "suites", "vagas"].map(numeric)}
+          </>,
+        )}
+        {group(
+          "Área e condições",
+          <>
+            {select(
+              "areaTipo",
+              [
+                ["construida", "Área construída"],
+                ["util", "Área útil"],
+                ["terreno", "Área do terreno"],
+                ["total", "Área total"],
+              ],
+              "Área construída",
             )}
-            {group(
-              "Área e condições",
-              <>
-                {select(
-                  "areaTipo",
-                  [
-                    ["construida", "Área construída"],
-                    ["util", "Área útil"],
-                    ["terreno", "Área do terreno"],
-                    ["total", "Área total"],
-                  ],
-                  "Área construída",
-                )}
-                {numeric("areaMin")}
-                {numeric("areaMax")}
-                {["mobiliado", "permuta", "financiamento", "fotos"].map((key) =>
-                  select(
-                    key,
-                    [
-                      ["sim", "Sim"],
-                      ["nao", "Não"],
-                    ],
-                    "Indiferente",
-                  ),
-                )}
-                {facets.stages.length > 0 &&
-                  select(
-                    "estagio",
-                    facets.stages.map((stage) => [stage, stage]),
-                  )}
-              </>,
+            {numeric("areaMin")}
+            {numeric("areaMax")}
+            {["mobiliado", "permuta", "financiamento", "fotos"].map((key) =>
+              select(
+                key,
+                [
+                  ["sim", "Sim"],
+                  ["nao", "Não"],
+                ],
+                "Indiferente",
+              ),
             )}
-            {group("Referência", referenceFields)}
-          </div>
-          <div className="cs-filter-actions cs-form-actions">
-            <p className="cs-search-count" role="status" aria-live="polite">
-              {!available ? (
-                "Catálogo temporariamente indisponível."
-              ) : queryKey === "invalid" ? (
-                "Revise os valores informados."
-              ) : currentCount?.error ? (
-                <>
-                  Contagem indisponível.{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCount({ key: "" });
-                      setRetry((old) => old + 1);
-                    }}
-                  >
-                    Tentar novamente
-                  </button>
-                </>
-              ) : currentCount?.total != null ? (
-                `${currentCount.total} ${currentCount.total === 1 ? "imóvel corresponde" : "imóveis correspondem"} a estes filtros.`
-              ) : (
-                "Atualizando a contagem…"
+            {facets.stages.length > 0 &&
+              select(
+                "estagio",
+                facets.stages.map((stage) => [stage, stage]),
               )}
-            </p>
-            <button
-              type="button"
-              className="cs-button cs-button-light"
-              onClick={() => {
-                setValues(
-                  searchDraft({ visualizacao: initial.visualizacao, ordem: initial.ordem }),
-                );
-                setErrors({});
-              }}
-            >
-              Limpar
-            </button>
-            <button className="cs-button" type="submit">
-              {currentCount?.total != null
-                ? `Ver ${currentCount.total} imóveis`
-                : "Aplicar filtros"}
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </>
-      )}
+          </>,
+        )}
+        {group("Referência", referenceFields)}
+      </div>
+      <div className="cs-filter-actions cs-form-actions">
+        <p className="cs-search-count" role="status" aria-live="polite">
+          {!available ? (
+            "Catálogo temporariamente indisponível."
+          ) : queryKey === "invalid" ? (
+            "Revise os valores informados."
+          ) : currentCount?.error ? (
+            <>
+              Contagem indisponível.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setCount({ key: "" });
+                  setRetry((old) => old + 1);
+                }}
+              >
+                Tentar novamente
+              </button>
+            </>
+          ) : currentCount?.total != null ? (
+            `${currentCount.total} ${currentCount.total === 1 ? "imóvel corresponde" : "imóveis correspondem"} a estes filtros.`
+          ) : (
+            "Atualizando a contagem…"
+          )}
+        </p>
+        <button
+          type="button"
+          className="cs-button cs-button-light"
+          onClick={() => {
+            setValues(searchDraft({ visualizacao: initial.visualizacao, ordem: initial.ordem }));
+            setErrors({});
+          }}
+        >
+          Limpar
+        </button>
+        <button className="cs-button" type="submit">
+          {currentCount?.total != null ? `Ver ${currentCount.total} imóveis` : "Aplicar filtros"}
+          <ArrowRight size={18} />
+        </button>
+      </div>
     </form>
   );
 }
