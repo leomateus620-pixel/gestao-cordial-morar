@@ -862,6 +862,13 @@
       "when": 1795812252385,
       "tag": "0122_site_description_hide_street",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795836304028,
+      "tag": "0123_inspection_term_snapshot",
+      "breakpoints": true
     }
   ]
 }

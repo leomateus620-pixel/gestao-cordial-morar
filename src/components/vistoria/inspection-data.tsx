@@ -1,3 +1,4 @@
+import { CONDITIONS, CONDITION_KEYS, isRentalTerm } from "@/lib/vistoria/term";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDraftRow, useDrafts } from "@/lib/vistoria/drafts";
@@ -47,7 +48,11 @@ export function DataTab({
     general_notes: current.general_notes ?? "",
     conclusion: current.conclusion ?? "",
     plan_confirmed: Boolean(current.plan_confirmed),
-    participants: (current.participants ?? []) as Array<{ nome: string; papel: string }>,
+    participants: (current.participants ?? []) as Array<{
+      nome: string;
+      papel: string;
+      qualificacao?: string;
+    }>,
     keys: (current.keys ?? []) as Array<{ descricao: string; quantidade: number }>,
   };
   const { controller } = useDrafts();
@@ -86,6 +91,7 @@ export function DataTab({
           <span className="mb-1 block text-xs font-semibold text-foreground/60">Tipo</span>
           <select
             className={f}
+            disabled={Boolean(i.rental_contract_id)}
             value={form.kind}
             onChange={(e) => setForm({ ...form, kind: e.target.value as InspectionKind })}
           >
@@ -105,6 +111,63 @@ export function DataTab({
             onChange={(e) => setForm({ ...form, when: e.target.value })}
           />
         </label>
+        {isRentalTerm(form.kind) && (
+          <>
+            {!i.property_snapshot?.endereco?.trim() && (
+              <label className="block text-sm">
+                Endereço do imóvel vistoriado
+                <Input
+                  value={current.term_address ?? ""}
+                  maxLength={450}
+                  onChange={(e) => draft.set({ term_address: e.target.value })}
+                />
+              </label>
+            )}
+            <label className="block text-sm">
+              Destinação
+              <select
+                value={current.term_purpose ?? ""}
+                onChange={(e) =>
+                  draft.set({
+                    term_purpose: (e.target.value as typeof current.term_purpose) || null,
+                  })
+                }
+                className={f}
+              >
+                <option value="">Conforme o tipo do imóvel</option>
+                <option value="residencial">Residencial</option>
+                <option value="comercial">Comercial</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              Município do termo
+              <Input
+                value={current.term_city ?? conf.cidade ?? cad.cidade ?? ""}
+                onChange={(e) => draft.set({ term_city: e.target.value })}
+                maxLength={160}
+              />
+            </label>
+            <details className="rounded-md border p-3">
+              <summary className="cursor-pointer text-sm font-semibold">
+                Condições gerais do imóvel
+              </summary>
+              {CONDITION_KEYS.map((k) => (
+                <label key={k} className="mt-3 block text-sm">
+                  {CONDITIONS[k]}
+                  <Textarea
+                    maxLength={2000}
+                    value={current.term_conditions?.[k] ?? ""}
+                    onChange={(e) =>
+                      draft.set({
+                        term_conditions: { ...current.term_conditions, [k]: e.target.value },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </details>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <label>
             <span className="mb-1 block text-xs font-semibold text-foreground/60">Mobiliado</span>
@@ -180,7 +243,7 @@ export function DataTab({
         <div>
           <span className="mb-1 block text-xs font-semibold text-foreground/60">Participantes</span>
           {form.participants.map((p, idx) => (
-            <div key={idx} className="mb-2 flex gap-2">
+            <div key={idx} className="mb-2 flex flex-wrap gap-2">
               <Input
                 aria-label="Nome"
                 className="h-11"
@@ -195,6 +258,7 @@ export function DataTab({
                 }
               />
               <Input
+                placeholder="Locador, locatário ou outro papel"
                 aria-label="Papel"
                 className="h-11"
                 value={p.papel}
@@ -207,6 +271,22 @@ export function DataTab({
                   })
                 }
               />
+              {!i.rental_contract_id && (
+                <Textarea
+                  aria-label="Qualificação da parte"
+                  placeholder="Qualificação e endereço residencial da parte"
+                  maxLength={1200}
+                  value={p.qualificacao ?? ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      participants: form.participants.map((x, j) =>
+                        j === idx ? { ...x, qualificacao: e.target.value } : x,
+                      ),
+                    })
+                  }
+                />
+              )}
               <button
                 type="button"
                 aria-label="Remover"

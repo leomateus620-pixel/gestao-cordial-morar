@@ -1,3 +1,5 @@
+import { TERM_BRANDS } from "@/lib/vistoria/term-brands";
+import { inspectionTerm, isRentalTerm, reviewedTermText } from "@/lib/vistoria/term";
 import { Input } from "@/components/ui/input";
 import { useDrafts } from "@/lib/vistoria/drafts";
 import { type PendingEntry } from "@/lib/vistoria/local-store";
@@ -44,11 +46,16 @@ export function ReviewTab({
   refetch: () => void;
 }) {
   const i = data.inspection;
+  const term = useMemo(() => (isRentalTerm(i.kind) ? inspectionTerm(data) : null), [data, i.kind]);
+  const termIssues = term?.issues.length ?? 0;
   const drafts = useDrafts();
   const [reviewed, setReviewed] = useState(false);
   const summary = assessmentSummary(data.items),
     alerts = qualityAlerts(data);
-  useEffect(() => setReviewed(false), [i.revision, drafts.pending.length, pending.length]);
+  useEffect(
+    () => setReviewed(false),
+    [i.revision, data.termRevision, drafts.pending.length, pending.length],
+  );
   const sign = useServerFn(signInspectionFiles);
   const finalize = useServerFn(finalizeInspection);
   const reopen = useServerFn(reopenInspection);
@@ -80,7 +87,13 @@ export function ReviewTab({
     ]);
     const model = toPdfModel(data, { draft, version: draft ? null : i.current_version + 1 });
     const paths = model.rooms.flatMap((r) => r.photos.map((p) => p.path));
-    const urls = paths.length ? await sign({ data: { inspectionId: i.id, paths } }) : {};
+    const urls: Record<string, string> = {};
+    for (let start = 0; start < paths.length; start += 400) {
+      Object.assign(
+        urls,
+        await sign({ data: { inspectionId: i.id, paths: paths.slice(start, start + 400) } }),
+      );
+    }
     const loader = async (path: string) => {
       const u = urls[path];
       if (!u) throw new Error("sem link de acesso");
@@ -128,9 +141,20 @@ export function ReviewTab({
       if (Object.keys(drafts.controller.snapshot()).length || pending.length || queueBlocked)
         throw new Error("Sincronize as alterações deste aparelho antes de emitir.");
       const result = await saver.run(() =>
-        finalize({ data: { id: i.id, expectedRevision: i.revision, reviewed: true } }),
+        finalize({
+          data: {
+            id: i.id,
+            expectedRevision: i.revision,
+            termRevision: data.termRevision,
+            reviewed: true,
+          },
+        }),
       );
       if (!result) throw new Error("A emissão não foi confirmada. Atualize a vistoria.");
+      if (result.photoErrors) {
+        setPhotoErrors(result.photoErrors.map((f) => "Foto " + f.number + " (" + f.room + ")"));
+        return;
+      }
       toast.success(
         i.rental_contract_id ? "Termo registrado." : `Laudo v${result.version} emitido.`,
       );
@@ -161,12 +185,34 @@ export function ReviewTab({
       {!concluded && (
         <section className="premium-card rounded-2xl p-4">
           <h2 className="text-sm font-semibold">
-            {issues.length + drafts.pending.length
-              ? `${issues.length + drafts.pending.length} pendência(s) antes de concluir`
+            {issues.length + termIssues + drafts.pending.length
+              ? `${issues.length + termIssues + drafts.pending.length} pendência(s) antes de concluir`
               : queueBlocked
                 ? "Aguardando sincronização"
                 : "Tudo pronto para concluir"}
           </h2>
+          {term && (
+            <div className="my-3 space-y-2 text-sm">
+              {term.brand && (
+                <p className="font-semibold">
+                  {TERM_BRANDS[term.brand].name} · Termo de{" "}
+                  {i.kind === "saida" ? "saída" : "entrada"} {term.purpose}
+                </p>
+              )}
+              {term.parties.map((p, n) => (
+                <p key={n}>
+                  <strong>{p.role}:</strong> {[p.name, p.qualification].filter(Boolean).join(", ")}
+                </p>
+              ))}
+              {term.issues.length > 0 && (
+                <ul className="list-disc space-y-1 pl-5 text-destructive">
+                  {term.issues.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {rental ? (
             <ul className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Cômodos no termo">
               {data.rooms.map((room) => {
@@ -184,7 +230,7 @@ export function ReviewTab({
                     </p>
                     {notes.map((note) => (
                       <p key={note.id} className="break-words">
-                        {note.approved_text}
+                        {reviewedTermText(note)}
                       </p>
                     ))}
                   </li>
@@ -402,12 +448,13 @@ export function ReviewTab({
             {rental ? "Baixar termo" : "Baixar laudo"} v{i.current_version}
           </button>
         )}
-        {!concluded && (issues.length > 0 || drafts.pending.length > 0 || !reviewed) && (
-          <p className="text-sm text-foreground/60">
-            A emissão exige dados essenciais completos, textos e arquivos sincronizados e sua
-            confirmação da revisão acima.
-          </p>
-        )}
+        {!concluded &&
+          (issues.length + termIssues > 0 || drafts.pending.length > 0 || !reviewed) && (
+            <p className="text-sm text-foreground/60">
+              A emissão exige dados essenciais completos, textos e arquivos sincronizados e sua
+              confirmação da revisão acima.
+            </p>
+          )}
         <button
           type="button"
           disabled={busy !== null}
@@ -426,7 +473,7 @@ export function ReviewTab({
             type="button"
             disabled={
               busy !== null ||
-              issues.length > 0 ||
+              issues.length + termIssues > 0 ||
               drafts.pending.length > 0 ||
               queueBlocked ||
               !reviewed

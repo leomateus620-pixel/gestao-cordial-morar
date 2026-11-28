@@ -8,7 +8,20 @@ import type {
 } from "../../src/lib/vistoria/types";
 import type { RoomKind } from "../../src/lib/vistoria/model";
 import { emptyMeters, itemsForRoom } from "../../src/lib/vistoria/model";
-export const id = "10000000-0000-4000-8000-000000000001";
+const params =
+  typeof location === "undefined" ? new URLSearchParams() : new URLSearchParams(location.search);
+const termQa = params.has("termQa");
+export const id = termQa
+  ? "60000000-0000-4000-8000-000000000002"
+  : "10000000-0000-4000-8000-000000000001";
+async function termRequest(action: string, data: unknown = {}) {
+  const response = await fetch("/__inspection_qa/" + action, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
 export const contractId = "60000000-0000-4000-8000-000000000001";
 export const property = {
   id: "30000000-0000-4000-8000-000000000001",
@@ -28,8 +41,6 @@ export const property = {
   vagas: 1,
   salas: 1,
 };
-const params =
-  typeof location === "undefined" ? new URLSearchParams() : new URLSearchParams(location.search);
 const isRental = ["rental", "room", "list"].includes(params.get("state") ?? "list");
 const brand = params.get("brand") === "morar" ? "morar" : "cordial";
 const inspection: InspectionRow = {
@@ -118,6 +129,7 @@ function ensureOnline() {
 }
 export const getInspection = async () => {
   ensureOnline();
+  if (termQa) full = await termRequest("snapshot");
   return structuredClone(full);
 };
 const rentalProperty = {
@@ -128,19 +140,22 @@ const rentalProperty = {
   brand,
 };
 export const getContractInspectionProperty = async () => rentalProperty;
-export const getContractEntryInspectionState = async () => ({
-  contractId,
-  rentalPropertyId: rentalProperty.id,
-  brand,
-  unlocked: true,
-  reviewedAt: "2026-11-25T12:00:00Z",
-  missing: null,
-  existingInspectionId: full.inspection.rental_contract_id ? full.inspection.id : null,
-  existingInspectionStatus: full.inspection.status,
-  entryHasDocument: full.documents.length > 0,
-  exitInspectionId: null,
-  entryRooms: full.rooms,
-});
+export const getContractEntryInspectionState = async () => {
+  if (termQa) await getInspection();
+  return {
+    contractId,
+    rentalPropertyId: rentalProperty.id,
+    brand,
+    unlocked: true,
+    reviewedAt: "2026-11-25T12:00:00Z",
+    missing: null,
+    existingInspectionId: full.inspection.rental_contract_id ? full.inspection.id : null,
+    existingInspectionStatus: full.inspection.status,
+    entryHasDocument: full.documents.length > 0,
+    exitInspectionId: null,
+    entryRooms: full.rooms,
+  };
+};
 export const startRentalInspection = async ({ data }: { data: { kind: "entrada" | "saida" } }) => {
   full.inspection.rental_contract_id = contractId;
   full.inspection.rental_kind = data.kind;
@@ -154,33 +169,36 @@ export const startRentalInspection = async ({ data }: { data: { kind: "entrada" 
   persist();
   return { id: full.inspection.id };
 };
-export const listInspections = async () => ({
-  rows: [
-    full.inspection,
-    {
-      ...full.inspection,
-      id: "10000000-0000-4000-8000-000000000009",
-      numero: 87,
-      agency: "morar",
-      kind: "saida",
-      status: "concluida",
-      property_snapshot: {
-        ...full.inspection.property_snapshot,
-        endereco: "Rua dos Ipês, 185 · Centro · Cidade exemplo/RS",
+export const listInspections = async () => {
+  if (termQa) await getInspection();
+  return {
+    rows: [
+      full.inspection,
+      {
+        ...full.inspection,
+        id: "10000000-0000-4000-8000-000000000009",
+        numero: 87,
+        agency: "morar",
+        kind: "saida",
+        status: "concluida",
+        property_snapshot: {
+          ...full.inspection.property_snapshot,
+          endereco: "Rua dos Ipês, 185 · Centro · Cidade exemplo/RS",
+        },
       },
+    ],
+    total: 2,
+    pageSize: 20,
+    byStatus: { rascunho: 0, em_andamento: 1, em_revisao: 0, concluida: 1 },
+    continueInspection: {
+      ...full.inspection,
+      last_room: "Sala",
+      pending_items: 20,
+      pending_media: 0,
     },
-  ],
-  total: 2,
-  pageSize: 20,
-  byStatus: { rascunho: 0, em_andamento: 1, em_revisao: 0, concluida: 1 },
-  continueInspection: {
-    ...full.inspection,
-    last_room: "Sala",
-    pending_items: 20,
-    pending_media: 0,
-  },
-  scopeTotal: 2,
-});
+    scopeTotal: 2,
+  };
+};
 export const searchInspectionProperties = async () => [
   property,
   {
@@ -348,11 +366,15 @@ export const registerMedia = async ({
 export const transcribeNote = async () => ({});
 export const deleteVoiceNote = async () => ({});
 export const signInspectionFiles = async ({ data }: { data: { paths: string[] } }) =>
-  Object.fromEntries(
-    data.paths.map((path) => [path, localStorage.getItem(`fixture-object:${path}`) ?? ""]),
-  );
-export const signInspectionDocument = async () => ({});
-export const finalizeInspection = async () => ({ version: 1 });
+  termQa
+    ? termRequest("sign-photos", data)
+    : Object.fromEntries(
+        data.paths.map((path) => [path, localStorage.getItem(`fixture-object:${path}`) ?? ""]),
+      );
+export const signInspectionDocument = async ({ data }: { data: { version: number } }) =>
+  termQa ? termRequest("sign-document", data) : {};
+export const finalizeInspection = async ({ data }: { data: unknown }) =>
+  termQa ? termRequest("emit", data) : { version: 1 };
 export const reopenInspection = async () => ({});
 // Só o transporte de demonstração usa data URLs. O app usa blobs no IndexedDB.
 export const supabase = {

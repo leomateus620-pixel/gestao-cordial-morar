@@ -340,6 +340,20 @@ function PhotoViewer({
             className="mt-1 h-11"
           />
         </label>
+        <label className="block text-sm font-medium">
+          Posição da foto no termo
+          <select
+            disabled={readOnly}
+            value={draft.value.meter ?? ""}
+            onChange={(e) => draft.set({ meter: (e.target.value as typeof media.meter) || null })}
+            className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3"
+          >
+            <option value="">Fotos do ambiente</option>
+            <option value="luz">Medidor de luz</option>
+            <option value="agua">Medidor de água</option>
+            <option value="gas">Medidor de gás</option>
+          </select>
+        </label>
         <select
           disabled={readOnly}
           aria-label="Vincular a um item"

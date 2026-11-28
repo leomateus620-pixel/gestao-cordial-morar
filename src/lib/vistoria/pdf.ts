@@ -16,7 +16,10 @@ import {
   type Meters,
 } from "./model";
 
+import type { InspectionTerm } from "./term";
+
 export type PdfPhoto = {
+  meter?: keyof Meters | null;
   path: string;
   caption: string | null;
   takenAt: string | null;
@@ -42,6 +45,7 @@ export type PdfRoom = {
   photos: PdfPhoto[];
 };
 export type PdfModel = {
+  term?: InspectionTerm;
   brand: "cordial" | "morar";
   numero: number;
   kind: InspectionKind;
@@ -143,6 +147,10 @@ export async function buildInspectionPdf(
   model: PdfModel,
   loadImage: ImageLoader,
 ): Promise<Uint8Array> {
+  if (model.term) {
+    const { renderInspectionTerm } = await import("./term-pdf");
+    return renderInspectionTerm(model, model.term, loadImage);
+  }
   const pdf = await PDFDocument.create();
   pdf.setTitle(pdfSafe(`Laudo de vistoria nº ${model.numero}`));
   pdf.setProducer("Gestão Cordial");
