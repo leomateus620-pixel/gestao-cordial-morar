@@ -19,6 +19,11 @@ export type InspectionRow = {
   revision: number;
   property_id: string | null;
   rental_contract_id?: string | null;
+  rental_property_id?: string | null;
+  term_conditions?: Record<string, string>;
+  term_purpose?: "residencial" | "comercial" | null;
+  term_address?: string | null;
+  term_city?: string | null;
   rental_kind?: "entrada" | "saida" | null;
   agency: "cordial" | "morar";
   kind: InspectionKind;
@@ -35,7 +40,7 @@ export type InspectionRow = {
   furnished: "nao_informado" | "nao" | "semimobiliado" | "mobiliado";
   cleaning: "nao_informado" | "limpo" | "parcial" | "sujo" | "nao_se_aplica";
   meters: Meters;
-  participants: Array<{ nome: string; papel: string }>;
+  participants: Array<{ nome: string; papel: string; qualificacao?: string }>;
   keys: Array<{ descricao: string; quantidade: number }>;
   general_notes: string | null;
   conclusion: string | null;
@@ -72,6 +77,7 @@ export type MediaRow = {
   item_id: string | null;
   client_key?: string;
   storage_path: string;
+  meter?: keyof Meters | null;
   caption: string | null;
   position: number;
   revision: number;
@@ -102,7 +108,30 @@ export type NoteRow = {
   transcription_next_at?: string | null;
   transcription_lease_until?: string | null;
 };
+export type RentalTermParty = {
+  name: string | null;
+  document: string | null;
+  profession?: string | null;
+  address?: string | null;
+  details?: {
+    nationality?: string;
+    maritalStatus?: string;
+    rg?: string;
+    address?: string;
+    profession?: string;
+  } | null;
+};
+export type TermRental = {
+  id: string;
+  propertyId: string;
+  brand: string;
+  modelBrand: string | null;
+  owners: RentalTermParty[];
+  tenants: RentalTermParty[];
+};
 export type InspectionData = {
+  termRental?: TermRental | null;
+  termRevision?: string | null;
   inspection: InspectionRow;
   rooms: RoomRow[];
   items: ItemRow[];

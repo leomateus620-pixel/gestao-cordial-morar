@@ -1,3 +1,4 @@
+import { CONDITION_KEYS } from "./term";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   assertContractEntryInspectionStart,
@@ -272,7 +273,13 @@ const meterSchema = z.object({
 });
 const metersSchema = z.object({ agua: meterSchema, luz: meterSchema, gas: meterSchema });
 const participantsSchema = z
-  .array(z.object({ nome: z.string().trim().min(1).max(120), papel: z.string().trim().max(60) }))
+  .array(
+    z.object({
+      nome: z.string().trim().min(1).max(120),
+      papel: z.string().trim().max(60),
+      qualificacao: z.string().trim().max(1200).optional(),
+    }),
+  )
   .max(10);
 const keysSchema = z
   .array(
@@ -507,34 +514,8 @@ export const startRentalInspection = createServerFn({ method: "POST" })
 
 export type InspectionFull = InspectionData;
 async function loadFull(sb: InspectionClient, id: string): Promise<InspectionData> {
-  const [insp, rooms, items, media, notes, docs, events] = await Promise.all([
-    sb
-      .from("inspections" as never)
-      .select("*")
-      .eq("id", id)
-      .maybeSingle(),
-    sb
-      .from("inspection_rooms" as never)
-      .select("*")
-      .eq("inspection_id", id)
-      .order("position"),
-    sb
-      .from("inspection_items" as never)
-      .select("*")
-      .eq("inspection_id", id)
-      .order("position"),
-    sb
-      .from("inspection_media" as never)
-      .select("*")
-      .eq("inspection_id", id)
-      .order("position")
-      .order("created_at")
-      .order("id"),
-    sb
-      .from("inspection_notes" as never)
-      .select("*")
-      .eq("inspection_id", id)
-      .order("created_at"),
+  const [snapshot, docs, events] = await Promise.all([
+    sb.rpc("inspection_snapshot", { p_id: id }),
     sb
       .from("inspection_documents" as never)
       .select("id, version, byte_size, created_at, created_by")
@@ -547,15 +528,10 @@ async function loadFull(sb: InspectionClient, id: string): Promise<InspectionDat
       .order("created_at", { ascending: false })
       .limit(40),
   ]);
-  for (const r of [insp, rooms, items, media, notes, docs, events])
-    fail(r.error, "Não foi possível carregar a vistoria.");
-  if (!insp.data) throw new Error("Vistoria não encontrada ou sem acesso.");
+  for (const r of [snapshot, docs, events]) fail(r.error, "Não foi possível carregar a vistoria.");
+  if (!snapshot.data) throw new Error("Vistoria não encontrada ou sem acesso.");
   return {
-    inspection: insp.data as unknown as InspectionRow,
-    rooms: (rooms.data ?? []) as unknown as RoomRow[],
-    items: (items.data ?? []) as unknown as ItemRow[],
-    media: (media.data ?? []) as unknown as MediaRow[],
-    notes: (notes.data ?? []) as unknown as NoteRow[],
+    ...(snapshot.data as unknown as InspectionData),
     documents: (docs.data ?? []) as unknown as InspectionData["documents"],
     events: (events.data ?? []) as unknown as InspectionData["events"],
     serverTime: new Date().toISOString(),
@@ -608,6 +584,10 @@ export const updateInspectionBasics = createServerFn({ method: "POST" })
             keys: keysSchema,
             meters: metersSchema,
             plan_confirmed: z.boolean(),
+            term_conditions: z.partialRecord(z.enum(CONDITION_KEYS), z.string().trim().max(2000)),
+            term_purpose: z.enum(["residencial", "comercial"]).nullable(),
+            term_city: text(160),
+            term_address: text(450),
             general_notes: text(4000),
             conclusion: text(4000),
             responsible_id: uuid,
@@ -936,6 +916,7 @@ export const updateMedia = createServerFn({ method: "POST" })
         expectedRevision: z.number().int(),
         patch: z
           .object({
+            meter: z.enum(["agua", "luz", "gas"]).nullable(),
             caption: text(300),
             item_id: uuid.nullable(),
           })
@@ -1076,7 +1057,14 @@ export const updateNote = createServerFn({ method: "POST" })
 export const finalizeInspection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ id: uuid, expectedRevision: z.number().int(), reviewed: z.literal(true) }).parse(d),
+    z
+      .object({
+        id: uuid,
+        expectedRevision: z.number().int(),
+        reviewed: z.literal(true),
+        termRevision: z.string().length(32).nullish(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
@@ -1096,38 +1084,39 @@ export const finalizeInspection = createServerFn({ method: "POST" })
         .maybeSingle();
       fail(de);
       const previous = doc as unknown as { version: number; snapshot: InspectionFull } | null;
-      if (previous?.snapshot?.inspection?.revision === data.expectedRevision)
+      if (
+        previous?.snapshot?.inspection?.revision === data.expectedRevision &&
+        (previous.snapshot.termRevision ?? null) === (data.termRevision ?? null)
+      )
         return { version: previous.version };
       throw new ConflictError();
     }
     if (canonical.inspection.revision !== data.expectedRevision) throw new ConflictError();
-    const [{ buildInspectionPdf }, { toPdfModel }, { createHash }] = await Promise.all([
-      import("./pdf"),
-      import("./pdf-model"),
-      import("node:crypto"),
-    ]);
-    const version = canonical.inspection.current_version + 1;
-    const model = toPdfModel(canonical, {
-      draft: false,
-      version,
-      generatedAt: canonical.inspection.updated_at,
-    });
-    const bytes = await buildInspectionPdf(model, async (path) => {
-      const { data: blob, error: downloadError } = await sb.storage
-        .from(INSPECTION_BUCKET)
-        .download(path);
-      fail(downloadError);
-      if (!blob) throw new Error("Foto não encontrada");
-      return { bytes: new Uint8Array(await blob.arrayBuffer()), mime: blob.type };
-    });
-    const sha = createHash("sha256").update(bytes).digest("hex");
-    const path = `${data.id}/docs/v${version}-${sha.slice(0, 16)}.pdf`;
+    if ((canonical.termRevision ?? null) !== (data.termRevision ?? null)) throw new ConflictError();
+    const { renderOfficialInspection } = await import("./official-pdf.server");
+    let rendered: Awaited<ReturnType<typeof renderOfficialInspection>>;
+    try {
+      rendered = await renderOfficialInspection(canonical, async (path) => {
+        const { data: blob, error: downloadError } = await sb.storage
+          .from(INSPECTION_BUCKET)
+          .download(path);
+        fail(downloadError);
+        if (!blob) throw new Error("Foto não encontrada");
+        return { bytes: new Uint8Array(await blob.arrayBuffer()), mime: blob.type };
+      });
+    } catch (error) {
+      const { PdfPhotoError } = await import("./pdf");
+      if (!(error instanceof PdfPhotoError)) throw error;
+      return { photoErrors: error.failed.map(({ number, room }) => ({ number, room })) };
+    }
+    const { bytes, version, sha, path } = rendered;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const upload = await supabaseAdmin.storage
       .from(INSPECTION_BUCKET)
       .upload(path, bytes, { contentType: "application/pdf", upsert: false });
     if (upload.error && !/exists|duplicate/i.test(upload.error.message)) fail(upload.error);
     if (upload.error) {
+      const { createHash } = await import("node:crypto");
       const { data: stored, error: readError } = await sb.storage
         .from(INSPECTION_BUCKET)
         .download(path);
