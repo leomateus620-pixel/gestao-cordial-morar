@@ -1,7 +1,13 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import * as Popover from "@radix-ui/react-popover";
+import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
+import { trackSiteEvent } from "@/lib/cordial-site/experience";
 import { useNavigate } from "@tanstack/react-router";
 import {
   House,
+  Tags,
+  KeyRound,
+  ChevronDown,
   MapPin,
   Wallet,
   BedDouble,
@@ -19,6 +25,8 @@ import {
   advancedDraft,
   changePurpose,
   formatSearchPrice,
+  priceLabel,
+  budgetSummary,
   mergeAdvanced,
   morarAdvancedFields,
   parseSearchPrice,
@@ -35,7 +43,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { MorarIcon } from "./MorarIcon";
-import { MorarLocationCombobox } from "./MorarLocationCombobox";
+import { CatalogLocationCombobox } from "./CatalogLocationCombobox";
 import { measureAudienceAction } from "@/lib/site-audience/client";
 
 function SearchGroup({
@@ -113,19 +121,29 @@ function MoneyInput({
   );
 }
 
-export function MorarSearchForm({
+export function CatalogSearchForm({
   initial = defaultSearch,
   compact = false,
   onApplied,
+  brand,
 }: {
   initial?: Partial<SiteSearch>;
   compact?: boolean;
   onApplied?: () => void;
+  brand: SiteBrand;
 }) {
   const { facets, available, settings } = useSite();
+  const config = getSiteBrand(brand);
   const navigate = useNavigate();
   const id = useId();
   const [values, setValues] = useState<SearchValues>(() => searchDraft(initial));
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  useEffect(() => {
+    if (!compact) return;
+    const saved = window.history.state?.homeSearch;
+    const restored = saved?.brand === brand && searchSchema.safeParse(saved.search);
+    if (restored && restored.success) setValues(searchDraft(restored.data));
+  }, [compact, brand]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [locationPending, setLocationPending] = useState(false);
   const [locationReset, setLocationReset] = useState(0);
@@ -150,7 +168,7 @@ export function MorarSearchForm({
       loadCatalogCount(
         { ...defaultSearch, ...Object.fromEntries(JSON.parse(countKey)), pagina: 1 },
         abort.signal,
-        "morar",
+        brand,
       )
         .then((result) => {
           if (generation === sequence.current && !abort.signal.aborted)
@@ -164,7 +182,7 @@ export function MorarSearchForm({
       clearTimeout(timer);
       abort.abort();
     };
-  }, [countKey, available]);
+  }, [countKey, available, brand]);
 
   useEffect(() => {
     const key = Object.keys(advancedOpen ? advancedErrors : errors)[0];
@@ -172,6 +190,7 @@ export function MorarSearchForm({
   }, [errors, advancedErrors, advancedOpen, id]);
 
   const update = (key: string, value: string) => {
+    if (brand === "cordial") trackSiteEvent("filter_changed", { source: `home:${key}` });
     setValues((old) => ({ ...old, [key]: value }));
     setErrors((old) => {
       const next = { ...old };
@@ -228,7 +247,7 @@ export function MorarSearchForm({
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-${key}-error` : `${id}-count-help`}
       >
-        <option value="">Todos</option>
+        <option value="">Qualquer</option>
         {roomOptions(current).map((n) => (
           <option key={n} value={n}>
             {n}
@@ -285,10 +304,10 @@ export function MorarSearchForm({
     if (key === "suites") return roomSelect(key, "Suítes", draft[key] ?? "", change, error);
     const label =
       key === "valorModo"
-          ? "Tipo de preço"
-          : key === "destaque"
-            ? "Imóveis em destaque"
-            : (searchLabels[key] ?? key);
+        ? "Tipo de preço"
+        : key === "destaque"
+          ? "Imóveis em destaque"
+          : (searchLabels[key] ?? key);
     const options = advancedChoices[key];
     return (
       <label className="cs-field" htmlFor={`${id}-${key}`} key={key}>
@@ -328,11 +347,49 @@ export function MorarSearchForm({
       </label>
     );
   };
+  const budgetFields = (
+    <div className="ms-budget-fields">
+      <MoneyInput
+        id={`${id}-precoMin`}
+        label="Mínimo"
+        value={values.precoMin ?? ""}
+        error={errors.precoMin}
+        onChange={(value) => update("precoMin", value)}
+      />
+      <MoneyInput
+        id={`${id}-precoMax`}
+        label="Máximo"
+        value={values.precoMax ?? ""}
+        error={errors.precoMax}
+        onChange={(value) => update("precoMax", value)}
+      />
+    </div>
+  );
+  const budgetLabel = budgetSummary(values);
+  const baseline = searchDraft({ finalidade: values.finalidade as SiteSearch["finalidade"] });
+  const canClear =
+    locationPending ||
+    Object.entries(values).some(([key, value]) => value && value !== baseline[key]);
+  const finishBudget = () => {
+    const result = searchSchema.safeParse({ precoMin: values.precoMin, precoMax: values.precoMax });
+    if (result.success) {
+      setBudgetOpen(false);
+      return;
+    }
+    setErrors(
+      Object.fromEntries(
+        result.error.issues.map((issue) => [
+          issue.path[0],
+          issue.code === "invalid_type" ? "Informe um valor válido em reais." : issue.message,
+        ]),
+      ),
+    );
+  };
   const activeAdvanced = advancedCount(values);
   return (
     <Sheet open={advancedOpen} onOpenChange={openAdvanced}>
       <form
-        className={`ms-search ${compact ? "is-compact" : ""}`}
+        className={compact ? "hs-form" : "ms-search"}
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -357,6 +414,7 @@ export function MorarSearchForm({
                 morarAdvancedFields.includes(key as AdvancedField),
               ),
             );
+            if (invalid.precoMin || invalid.precoMax) setBudgetOpen(true);
             setErrors(invalid);
             if (Object.keys(advanced).length) {
               setDraft(advancedDraft(values));
@@ -366,15 +424,29 @@ export function MorarSearchForm({
             return;
           }
           setErrors({});
-          measureAudienceAction("morar", { kind: "search", placement: compact ? "home" : undefined });
+          if (compact)
+            window.history.replaceState(
+              { ...window.history.state, homeSearch: { brand, search: result.data } },
+              "",
+            );
+          if (brand === "cordial") trackSiteEvent("search_applied", { source: "home" });
+          measureAudienceAction(brand, { kind: "search", placement: compact ? "home" : undefined });
           void navigate({
-            to: "/site-morar/buscar",
-            search: { ...result.data, ordem: defaultOrder(result.data.ordem, compact, settings), pagina: 1 },
+            to: `${config.basePath}/buscar`,
+            search: {
+              ...result.data,
+              ordem: defaultOrder(result.data.ordem, compact, settings),
+              pagina: 1,
+            },
           });
           onApplied?.();
         }}
       >
-        <div className="ms-search-purpose" role="group" aria-label="Comprar ou alugar">
+        <div
+          className={compact ? "hs-purpose" : "ms-search-purpose"}
+          role="group"
+          aria-label="Comprar ou alugar"
+        >
           {[
             ["venda", "Quero comprar"],
             ["aluguel", "Quero alugar"],
@@ -386,22 +458,35 @@ export function MorarSearchForm({
               aria-pressed={(values.finalidade ?? "") === value}
               onClick={() => {
                 if ((values.finalidade ?? "") === value) return;
-                setValues((old) => changePurpose(old, value));
+                setValues((old) => {
+                  const next = changePurpose(old, value);
+                  const types = allowedTypes(facets.types, value, settings);
+                  return next.tipo && !types.some((type) => type.value === next.tipo)
+                    ? { ...next, tipo: "" }
+                    : next;
+                });
                 setErrors((old) =>
                   Object.fromEntries(
                     Object.entries(old).filter(([key]) => !key.startsWith("preco")),
                   ),
                 );
-                setAnnouncement(
-                  "Finalidade alterada. O orçamento foi limpo; os demais filtros foram mantidos.",
-                );
+                setAnnouncement("Finalidade alterada. O orçamento foi limpo.");
               }}
             >
+              {compact &&
+                (value === "venda" ? (
+                  <span className="hs-house-tag" aria-hidden="true">
+                    <House size={18} />
+                    <Tags size={10} />
+                  </span>
+                ) : (
+                  <KeyRound size={18} aria-hidden="true" />
+                ))}
               {label}
             </button>
           ))}
         </div>
-        <div className="ms-search-grid">
+        <div className={compact ? "hs-grid" : "ms-search-grid"}>
           <SearchGroup icon={House} title="Tipo de imóvel">
             <select
               id={`${id}-tipo`}
@@ -421,9 +506,11 @@ export function MorarSearchForm({
               ))}
             </select>
           </SearchGroup>
-          <SearchGroup icon={MapPin} title="Onde morar">
-            <MorarLocationCombobox
+          <SearchGroup icon={MapPin} title="Localização">
+            <CatalogLocationCombobox
               id={`${id}-localizacao`}
+              brand={brand}
+              compact={compact}
               facets={facets}
               city={values.cidade ?? ""}
               district={values.bairro ?? ""}
@@ -440,6 +527,75 @@ export function MorarSearchForm({
               }}
             />
           </SearchGroup>
+          {compact ? (
+            <div className="hs-field">
+              <span id={`${id}-budget-label`}>
+                Faixa de valor{values.finalidade === "aluguel" && " mensal"}
+              </span>
+              <Popover.Root open={budgetOpen} onOpenChange={setBudgetOpen}>
+                <Popover.Trigger
+                  type="button"
+                  className="hs-budget-trigger"
+                  aria-labelledby={`${id}-budget-label ${id}-budget-value`}
+                >
+                  <span id={`${id}-budget-value`}>{budgetLabel}</span>
+                  <ChevronDown size={16} />
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    className={`${config.themeClass} hs-budget-panel`}
+                    align="start"
+                    sideOffset={6}
+                    collisionPadding={12}
+                    aria-label="Faixa de valor"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+                        event.preventDefault();
+                        finishBudget();
+                      }
+                    }}
+                  >
+                    {budgetFields}
+                    <div className="hs-presets">
+                      {settings?.priceSteps?.[
+                        values.finalidade === "aluguel" ? "aluguel" : "venda"
+                      ].map((ceiling) => (
+                        <button
+                          key={ceiling}
+                          type="button"
+                          onClick={() => {
+                            setValues((old) => ({
+                              ...old,
+                              precoMin: "",
+                              precoMax: String(ceiling),
+                            }));
+                            setErrors((old) =>
+                              Object.fromEntries(
+                                Object.entries(old).filter(([key]) => !key.startsWith("preco")),
+                              ),
+                            );
+                            setBudgetOpen(false);
+                          }}
+                        >
+                          Até {priceLabel(String(ceiling))}
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button" className="cs-button" onClick={finishBudget}>
+                      Concluir
+                    </button>
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
+            </div>
+          ) : (
+            <SearchGroup
+              icon={Wallet}
+              title={values.finalidade === "aluguel" ? "Faixa de valor mensal" : "Faixa de valor"}
+            >
+              {budgetFields}
+            </SearchGroup>
+          )}
           <label className="cs-field ms-code-field" htmlFor={`${id}-referencia`}>
             <span>Código do imóvel</span>
             <input
@@ -450,62 +606,22 @@ export function MorarSearchForm({
               autoComplete="off"
               maxLength={80}
               value={values.referencia ?? ""}
-              onChange={(event) =>
-                setValues((old) => ({ ...old, referencia: event.target.value }))
-              }
-              placeholder="Digite a referência"
+              onChange={(event) => setValues((old) => ({ ...old, referencia: event.target.value }))}
+              placeholder={compact ? "Ex.: 1234" : "Digite a referência"}
             />
           </label>
-          <SearchGroup
-            icon={Wallet}
-            title={
-              <>
-                Seu orçamento
-                {values.finalidade && (
-                  <span className="ms-legend-unit">
-                    {values.finalidade === "aluguel" ? " · por mês" : " · compra"}
-                  </span>
-                )}
-              </>
-            }
-          >
-            <div className="ms-budget-fields">
-              <MoneyInput
-                id={`${id}-precoMin`}
-                label="Mínimo"
-                value={values.precoMin ?? ""}
-                error={errors.precoMin}
-                onChange={(value) => update("precoMin", value)}
-              />
-              <MoneyInput
-                id={`${id}-precoMax`}
-                label="Máximo"
-                value={values.precoMax ?? ""}
-                error={errors.precoMax}
-                onChange={(value) => update("precoMax", value)}
-              />
-            </div>
-            <small className="ms-field-help">
-              {values.finalidade === "aluguel"
-                ? "Aluguel por mês"
-                : values.finalidade === "venda"
-                  ? "Valor de compra"
-                  : "Valor do imóvel"}{" "}
-              em reais
-            </small>
-          </SearchGroup>
           <SearchGroup icon={BedDouble} title="Espaços">
             <div className="ms-space-fields">
               {roomSelect(
                 "dormitorios",
-                "Dorm.",
+                "Dormitórios",
                 values.dormitorios ?? "",
                 (value) => update("dormitorios", value),
                 errors.dormitorios,
               )}
               {roomSelect(
                 "banheiros",
-                "Banh.",
+                "Banheiros",
                 values.banheiros ?? "",
                 (value) => update("banheiros", value),
                 errors.banheiros,
@@ -518,7 +634,7 @@ export function MorarSearchForm({
                 errors.vagas,
               )}
             </div>
-            <label className="ms-count-mode">
+            <label className={compact ? "hs-count-mode" : "ms-count-mode"}>
               <span>Contagem</span>
               <select
                 id={`${id}-contagem`}
@@ -537,57 +653,60 @@ export function MorarSearchForm({
             </span>
           </SearchGroup>
         </div>
-        <SheetTrigger asChild>
-          <button ref={advancedButton} type="button" className="ms-more-filters">
-            <MorarIcon icon={SlidersHorizontal} />
-            Mais filtros
-            {activeAdvanced > 0 && (
-              <span aria-label={`${activeAdvanced} filtros avançados ativos`}>
-                {activeAdvanced}
-              </span>
-            )}
-          </button>
-        </SheetTrigger>
-        <div className="ms-search-actions">
-          <button
-            type="button"
-            className="cs-text-link"
-            onClick={() => {
-              setValues(
-                searchDraft({
-                  finalidade: values.finalidade as SiteSearch["finalidade"],
-                  visualizacao: initial.visualizacao,
-                  ordem: initial.ordem,
-                }),
-              );
-              setErrors({});
-              setLocationPending(false);
-              setLocationReset((old) => old + 1);
-              setAnnouncement("Filtros limpos. Finalidade mantida.");
-            }}
-          >
-            Limpar filtros
-          </button>
-          <span
-            role="status"
-            aria-live="polite"
-            className="ms-search-count"
-            aria-busy={
-              available && countKey !== "invalid" && count?.key !== countKey && !countError
-            }
-          >
-            {!available || countError
-              ? "Contagem temporariamente indisponível"
-              : countKey === "invalid"
-                ? "Revise os campos para atualizar a contagem"
-                : count
-                  ? `${count.total} ${count.total === 1 ? "imóvel disponível" : "imóveis disponíveis"}${count.key !== countKey ? " · atualizando…" : ""}`
-                  : "Consultando imóveis…"}
-          </span>
-          <button type="submit" className="cs-button">
-            <MorarIcon icon={Search} />
-            Encontrar meu lugar
-          </button>
+        <div className={compact ? "hs-actions" : undefined}>
+          <SheetTrigger asChild>
+            <button ref={advancedButton} type="button" className="ms-more-filters">
+              <MorarIcon icon={SlidersHorizontal} />
+              Mais filtros
+              {activeAdvanced > 0 && (
+                <span aria-label={`${activeAdvanced} filtros avançados ativos`}>
+                  {activeAdvanced}
+                </span>
+              )}
+            </button>
+          </SheetTrigger>
+          <div className={compact ? "hs-action-items" : "ms-search-actions"}>
+            <button
+              type="button"
+              className="cs-text-link"
+              hidden={compact && !canClear}
+              onClick={() => {
+                setValues(
+                  searchDraft({
+                    finalidade: values.finalidade as SiteSearch["finalidade"],
+                    visualizacao: initial.visualizacao,
+                    ordem: initial.ordem,
+                  }),
+                );
+                setErrors({});
+                setLocationPending(false);
+                setLocationReset((old) => old + 1);
+                setAnnouncement("Filtros limpos. Finalidade mantida.");
+              }}
+            >
+              Limpar filtros
+            </button>
+            <span
+              role="status"
+              aria-live="polite"
+              className={compact ? "hs-count" : "ms-search-count"}
+              aria-busy={
+                available && countKey !== "invalid" && count?.key !== countKey && !countError
+              }
+            >
+              {!available || countError
+                ? "Contagem temporariamente indisponível"
+                : countKey === "invalid"
+                  ? "Revise os campos para atualizar a contagem"
+                  : count && (!compact || count.key === countKey)
+                    ? `${count.total} ${count.total === 1 ? "imóvel disponível" : "imóveis disponíveis"}${count.key !== countKey ? " · atualizando…" : ""}`
+                    : "Consultando imóveis…"}
+            </span>
+            <button type="submit" className="cs-button">
+              <MorarIcon icon={Search} />
+              Buscar imóvel
+            </button>
+          </div>
         </div>
         <span className="cs-sr-only" role="status">
           {announcement}
@@ -596,8 +715,8 @@ export function MorarSearchForm({
       <SheetContent
         side="bottom"
         closeLabel="Fechar sem aplicar"
-        className="cordial-site morar-site ms-drawer"
-        overlayClassName="cordial-site morar-site ms-drawer-overlay"
+        className={`${config.themeClass} ms-drawer`}
+        overlayClassName={`${config.themeClass} ms-drawer-overlay`}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           advancedButton.current?.focus();
@@ -616,6 +735,28 @@ export function MorarSearchForm({
           </SheetDescription>
         </SheetHeader>
         <div className="ms-drawer-body">
+          {compact && (
+            <ul className="hs-selected" aria-label="Critérios atuais">
+              {[
+                values.finalidade === "aluguel" ? "Aluguel" : "Compra",
+                values.tipo,
+                [values.bairro, values.cidade].filter(Boolean).join(" · "),
+                (values.precoMin || values.precoMax) &&
+                  budgetLabel + (values.finalidade === "aluguel" ? " / mês" : ""),
+                values.referencia && `Código ${values.referencia}`,
+                ...["dormitorios", "banheiros", "vagas"]
+                  .filter((key) => values[key])
+                  .map(
+                    (key) =>
+                      `${searchLabels[key]}: ${values[key]}${countMode === "minima" ? "+" : ""}`,
+                  ),
+              ]
+                .filter(Boolean)
+                .map((label, index) => (
+                  <li key={index}>{label}</li>
+                ))}
+            </ul>
+          )}
           <div className="ms-advanced-fields">{morarAdvancedFields.map(advancedField)}</div>
         </div>
         <div className="ms-drawer-footer">

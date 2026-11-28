@@ -104,3 +104,18 @@ export function parseSearchPrice(value: string): string {
   const numeric = Number(normalized);
   return Number.isFinite(numeric) ? String(numeric) : "invalid";
 }
+
+export function priceLabel(value: string) {
+  const price = Number(value);
+  if (!Number.isFinite(price)) return "Revisar valor";
+  if (price >= 1000 && price % 1000 === 0)
+    return `R$ ${formatSearchPrice(String(price / 1000))} mil`;
+  return `R$ ${formatSearchPrice(value)}`;
+}
+
+export function budgetSummary({ precoMin, precoMax }: SearchValues) {
+  if (precoMin && precoMax) return `${priceLabel(precoMin)} a ${priceLabel(precoMax)}`;
+  if (precoMin) return `A partir de ${priceLabel(precoMin)}`;
+  if (precoMax) return `Até ${priceLabel(precoMax)}`;
+  return "Qualquer valor";
+}

@@ -12,7 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { renderToString } from "react-dom/server";
 import { hydrateRoot } from "react-dom/client";
-import { MorarSearchForm } from "../../src/components/cordial-site/MorarSearchForm";
+import { CatalogSearchForm } from "../../src/components/cordial-site/CatalogSearchForm";
 import { SiteContext, SiteBrandContext } from "../../src/lib/cordial-site/context";
 import { HomeHero, HomePage } from "../../src/components/cordial-site/HomePage";
 import type { HomeHeroData } from "../../src/lib/cordial-site/home-loader";
@@ -37,6 +37,7 @@ beforeAll(() => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 beforeEach(() => {
+  window.history.replaceState({}, "");
   vi.clearAllMocks();
   mocks.count.mockResolvedValue({ total: 37 });
 });
@@ -62,7 +63,7 @@ const facets = {
   stages: [],
   total: 37,
 };
-function mount(initial: Partial<SiteSearch> = { finalidade: "venda" }) {
+function mount(initial: Partial<SiteSearch> = { finalidade: "venda" }, compact = true) {
   const user = userEvent.setup();
   const view = render(
     <SiteContext.Provider
@@ -75,19 +76,81 @@ function mount(initial: Partial<SiteSearch> = { finalidade: "venda" }) {
       }}
     >
       <div className="cordial-site morar-site">
-        <MorarSearchForm compact initial={initial} />
+        <CatalogSearchForm brand="morar" compact={compact} initial={initial} />
       </div>
     </SiteContext.Provider>,
   );
   return {
     ...view,
     user,
-    submit: () => user.click(screen.getByRole("button", { name: "Encontrar meu lugar" })),
+    submit: () => user.click(screen.getByRole("button", { name: "Buscar imóvel" })),
   };
 }
 const lastSearch = () => mocks.navigate.mock.lastCall?.[0]?.search;
 
 describe("Morar direct search", () => {
+  it.each(["cordial", "morar"] as const)(
+    "uses the %s catalog, preserves the entry on Back and isolates brands",
+    async (brand) => {
+      const user = userEvent.setup();
+      const other = brand === "cordial" ? "morar" : "cordial";
+      window.history.replaceState(
+        { homeSearch: { brand: other, search: { referencia: "outra-marca" } } },
+        "",
+      );
+      const form = () =>
+        render(
+          <SiteContext.Provider
+            value={{
+              facets,
+              settings: settingsSchema.parse({}),
+              available: true,
+              canonicalOrigin: null,
+              indexable: false,
+            }}
+          >
+            <CatalogSearchForm compact brand={brand} initial={{ finalidade: "venda" }} />
+          </SiteContext.Provider>,
+        );
+      const first = form();
+      expect((screen.getByLabelText("Código do imóvel") as HTMLInputElement).value).toBe("");
+      await user.click(screen.getByRole("button", { name: "Quero alugar" }));
+      await user.click(screen.getByRole("button", { name: /Faixa de valor mensal/ }));
+      await user.type(screen.getByLabelText("Mínimo em reais"), "1.200,50{Enter}");
+      await user.selectOptions(screen.getByRole("combobox", { name: "Dormitórios" }), "2");
+      await user.type(screen.getByLabelText("Código do imóvel"), "0019");
+      await screen.findByText("37 imóveis disponíveis");
+      expect(mocks.count.mock.lastCall?.[2]).toBe(brand);
+      await user.click(screen.getByRole("button", { name: "Buscar imóvel" }));
+      expect(mocks.navigate.mock.lastCall?.[0].to).toBe(
+        brand === "morar" ? "/site-morar/buscar" : "/site/buscar",
+      );
+      expect(lastSearch()).toMatchObject({
+        finalidade: "aluguel",
+        referencia: "0019",
+        dormitorios: 2,
+        precoMin: 1200.5,
+      });
+      expect(lastSearch().precoMax).toBeUndefined();
+      first.unmount();
+      form();
+      expect((screen.getByLabelText("Código do imóvel") as HTMLInputElement).value).toBe("0019");
+      expect(screen.getByRole("button", { name: /A partir de R\$ 1.200,5/ })).toBeTruthy();
+    },
+  );
+  it("keeps an invalid range editable and returns focus after correcting the maximum", async () => {
+    const { user } = mount();
+    const trigger = screen.getByRole("button", { name: /Faixa de valor/ });
+    await user.click(trigger);
+    await user.type(screen.getByLabelText("Mínimo em reais"), "2000");
+    await user.type(screen.getByLabelText("Máximo em reais"), "1000");
+    await user.click(screen.getByRole("button", { name: "Concluir" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Máximo em reais"));
+    await user.clear(screen.getByLabelText("Máximo em reais"));
+    await user.type(screen.getByLabelText("Máximo em reais"), "3000{Enter}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
   it.each([true, false])(
     "streams featured listings independently of the hero (desktop: %s)",
     async (wideViewport) => {
@@ -167,8 +230,10 @@ describe("Morar direct search", () => {
         </SiteContext.Provider>
       </SiteBrandContext.Provider>,
     );
+    await user.click(screen.getByRole("button", { name: /Faixa de valor/ }));
     const min = screen.getByRole("textbox", { name: "Mínimo em reais" });
     await user.type(min, "500.000");
+    await user.click(screen.getByRole("button", { name: "Concluir" }));
     await user.selectOptions(screen.getByRole("combobox", { name: "Dormitórios" }), "2");
     await user.click(screen.getByRole("button", { name: "Mais filtros" }));
     await user.selectOptions(screen.getByLabelText("Mobiliado"), "sim");
@@ -177,8 +242,8 @@ describe("Morar direct search", () => {
     });
     expect(screen.getByRole("dialog", { name: "Mais filtros" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Aplicar filtros" }));
-    expect(screen.getByRole("textbox", { name: "Mínimo em reais" })).toBe(min);
-    await user.click(screen.getByRole("button", { name: "Encontrar meu lugar" }));
+    expect(screen.getByRole("button", { name: /A partir de R\$ 500 mil/ })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Buscar imóvel" }));
     expect(lastSearch()).toMatchObject({
       finalidade: "venda",
       precoMin: 500000,
@@ -197,7 +262,8 @@ describe("Morar direct search", () => {
           indexable: false,
         }}
       >
-        <MorarSearchForm
+        <CatalogSearchForm
+          brand="morar"
           compact
           initial={{
             finalidade: "aluguel",
@@ -219,9 +285,7 @@ describe("Morar direct search", () => {
       await act(async () => {
         root = hydrateRoot(host, ui);
       });
-      expect(
-        (within(host).getByRole("textbox", { name: "Máximo em reais" }) as HTMLInputElement).value,
-      ).toBe("1.500,5");
+      expect(within(host).getByRole("button", { name: /Até R\$ 1.500,5/ })).toBeTruthy();
       expect(
         (within(host).getByRole("combobox", { name: "Cidade ou bairro" }) as HTMLInputElement)
           .value,
@@ -252,7 +316,7 @@ describe("Morar direct search", () => {
     const { user, container, submit } = mount();
     expect(screen.queryByRole("button", { name: "Tipo de imóvel" })).toBeNull();
     expect(container.querySelector(".ms-filter-panel")).toBeNull();
-    expect(screen.getByRole("textbox", { name: "Mínimo em reais" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Faixa de valor/ })).toBeTruthy();
     for (const name of ["Dormitórios", "Banheiros", "Vagas"])
       expect(screen.getByRole("combobox", { name })).toBeTruthy();
     const type = screen.getByRole("combobox", { name: "Tipo de imóvel" });
@@ -323,7 +387,7 @@ describe("Morar direct search", () => {
   });
 
   it("validates price order without swapping and submits BRL as numeric values", async () => {
-    const { user, submit } = mount();
+    const { user, submit } = mount({ finalidade: "venda" }, false);
     const min = screen.getByRole("textbox", { name: "Mínimo em reais" });
     const max = screen.getByRole("textbox", { name: "Máximo em reais" });
     await user.type(min, "1.000,50");
@@ -396,7 +460,7 @@ describe("Morar direct search", () => {
   });
 
   it("keeps main inputs mounted, portals only advanced fields and discards with Escape and restores focus", async () => {
-    const { user } = mount({ finalidade: "aluguel", precoMax: 1500 });
+    const { user } = mount({ finalidade: "aluguel", precoMax: 1500 }, false);
     const max = screen.getByRole("textbox", { name: "Máximo em reais" });
     const trigger = screen.getByRole("button", { name: "Mais filtros" });
     await user.click(trigger);
@@ -416,12 +480,15 @@ describe("Morar direct search", () => {
   });
 
   it("applies only advanced keys into the latest main state, including a change while the dialog is open", async () => {
-    const { user, submit } = mount({
-      finalidade: "venda",
-      tipo: "Casa",
-      contagem: "exata",
-      dormitorios: 2,
-    });
+    const { user, submit } = mount(
+      {
+        finalidade: "venda",
+        tipo: "Casa",
+        contagem: "exata",
+        dormitorios: 2,
+      },
+      false,
+    );
     const purpose = screen.getByRole("button", { name: "Quero alugar" });
     const max = screen.getByRole("textbox", { name: "Máximo em reais" });
     await user.click(screen.getByRole("button", { name: "Mais filtros" }));
@@ -452,6 +519,26 @@ describe("Morar direct search", () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
+  it("ignores a slower count even if its transport resolves after cancellation", async () => {
+    const { user } = mount();
+    await screen.findByText("37 imóveis disponíveis");
+    let resolveOld!: (value: { total: number }) => void;
+    mocks.count.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolveOld = done;
+        }),
+    );
+    const type = screen.getByRole("combobox", { name: "Tipo de imóvel" });
+    await user.selectOptions(type, "Casa");
+    await waitFor(() => expect(resolveOld).toBeTypeOf("function"));
+    mocks.count.mockResolvedValueOnce({ total: 0 });
+    await user.selectOptions(type, "Terreno");
+    await screen.findByText("0 imóveis disponíveis");
+    await act(async () => resolveOld({ total: 99 }));
+    expect(screen.getByText("0 imóveis disponíveis")).toBeTruthy();
+  });
+
   it("uses the count endpoint and retains the last real total while replacing a request", async () => {
     const { user } = mount();
     await screen.findByText("37 imóveis disponíveis");
@@ -465,7 +552,7 @@ describe("Morar direct search", () => {
         }),
     );
     await user.selectOptions(screen.getByRole("combobox", { name: "Tipo de imóvel" }), "Casa");
-    expect(screen.getByText("37 imóveis disponíveis · atualizando…")).toBeTruthy();
+    expect(screen.getByText("Consultando imóveis…")).toBeTruthy();
     expect(firstSignal.aborted).toBe(true);
     await waitFor(() => expect(resolve).toBeTypeOf("function"));
     resolve({ total: 12 });

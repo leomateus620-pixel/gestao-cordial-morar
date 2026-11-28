@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, X } from "lucide-react";
+import { getSiteBrand, type SiteBrand } from "@/lib/cordial-site/brand";
 import type { SiteFacets } from "@/lib/cordial-site/contract";
 import {
   filterLocations,
@@ -10,9 +11,11 @@ import {
 } from "@/lib/cordial-site/morar-search";
 import { MorarIcon } from "./MorarIcon";
 
-export function MorarLocationCombobox({
+export function CatalogLocationCombobox({
   id,
   facets,
+  brand,
+  compact = false,
   city,
   district,
   error,
@@ -22,6 +25,8 @@ export function MorarLocationCombobox({
 }: {
   id: string;
   facets: SiteFacets;
+  brand: SiteBrand;
+  compact?: boolean;
   city: string;
   district: string;
   error?: string;
@@ -62,7 +67,10 @@ export function MorarLocationCombobox({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Anchor asChild>
-        <div className="ms-location-input">
+        <div
+          className="ms-location-input"
+          data-selected={(compact && !open && !!selectedLabel) || undefined}
+        >
           <input
             ref={input}
             id={id}
@@ -78,9 +86,13 @@ export function MorarLocationCombobox({
             }
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : undefined}
-            placeholder="Cidade ou bairro"
+            placeholder={compact ? "Onde buscar?" : "Cidade ou bairro"}
+            aria-description="Pesquise por cidade, bairro ou loteamento."
             value={text}
-            onFocus={() => setOpen(true)}
+            onFocus={(event) => {
+              if (selectedLabel) event.currentTarget.select();
+              setOpen(true);
+            }}
             onClick={() => setOpen(true)}
             onChange={(event) => {
               const next = event.target.value;
@@ -114,6 +126,12 @@ export function MorarLocationCombobox({
               } else if (event.key === "Tab") setOpen(false);
             }}
           />
+          {compact && !open && selectedLabel && (
+            <span aria-hidden="true" className="hs-location-selection">
+              {district || city}
+              {district && city && <small>{city}</small>}
+            </span>
+          )}
           {text ? (
             <button
               type="button"
@@ -138,10 +156,10 @@ export function MorarLocationCombobox({
       </Popover.Anchor>
       <Popover.Portal>
         <Popover.Content
-          className="cordial-site morar-site ms-location-options"
+          className={`${getSiteBrand(brand).themeClass} ms-location-options`}
           id={`${id}-options`}
           role="listbox"
-          aria-label="Cidades e bairros da Morar"
+          aria-label={`Cidades, bairros e loteamentos · ${getSiteBrand(brand).shortName}`}
           align="start"
           sideOffset={8}
           collisionPadding={12}
